@@ -163,13 +163,11 @@ export default function Sidebar() {
       <aside className="bg-[#0B0F19] text-slate-300 flex flex-col border-r border-[#1E293B] shadow-2xl z-40 shrink-0 select-none h-screen relative w-60">
         <div className="h-16 flex items-center justify-between px-3 border-b border-[#1E293B] bg-[#0B0F19]">
           <div className="flex items-center gap-2.5 w-full p-1">
-            <div className="h-9 w-9 rounded-xl overflow-hidden border border-red-500/40 shadow-md shadow-red-950/60 flex items-center justify-center shrink-0">
-              <img
-                src="/crmlogo.png"
-                alt="Zigmaa CRM"
-                className="h-full w-full object-cover"
-              />
-            </div>
+            <img
+              src="/crmlogo.png"
+              alt="Zigmaa CRM"
+              className="h-9 w-9 rounded-xl object-cover shrink-0 select-none pointer-events-none"
+            />
             <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
               <span className="font-bold text-sm text-white truncate tracking-tight">
                 Zigmaa CRM
@@ -211,13 +209,11 @@ export default function Sidebar() {
             className="flex items-center gap-2.5 w-full p-1 rounded-xl hover:bg-white/10 transition-colors group text-left cursor-pointer"
             title={expanded ? "Click to collapse sidebar" : "Click to expand sidebar"}
           >
-            <div className="h-9 w-9 rounded-xl overflow-hidden border border-red-500/40 shadow-md shadow-red-950/60 flex items-center justify-center shrink-0 group-hover:scale-105 transition-all">
-              <img
-                src="/crmlogo.png"
-                alt="Zigmaa CRM"
-                className="h-full w-full object-cover"
-              />
-            </div>
+            <img
+              src="/crmlogo.png"
+              alt="Zigmaa CRM"
+              className="h-9 w-9 rounded-xl object-cover shrink-0 select-none pointer-events-none group-hover:scale-105 transition-transform"
+            />
             {expanded && (
               <div className="flex-1 flex items-center justify-between min-w-0 pr-1">
                 <span className="font-bold text-sm text-white truncate tracking-tight">

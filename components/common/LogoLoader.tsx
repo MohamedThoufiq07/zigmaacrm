@@ -70,21 +70,17 @@ export default function LogoLoader({
 
         {/* The Pure Floating Logo */}
         <div className="relative z-10 flex items-center justify-center">
-          <div
+          <img
+            src="/loadinglogo.png"
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/crmlogo.png";
+            }}
+            alt="Zigmaa CRM"
             className={cn(
-              "rounded-3xl p-3.5 bg-white shadow-2xl shadow-black/40 border border-white/90 flex items-center justify-center animate-logo-breathe select-none pointer-events-none backdrop-blur-md",
+              "object-contain animate-logo-breathe select-none pointer-events-none drop-shadow-[0_0_24px_rgba(255,255,255,0.7)]",
               sizeMap.logo
             )}
-          >
-            <img
-              src="/loadinglogo.png"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/crmlogo.png";
-              }}
-              alt="Zigmaa CRM"
-              className="h-full w-full object-contain"
-            />
-          </div>
+          />
         </div>
       </div>
 
@@ -127,7 +123,15 @@ export default function LogoLoader({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#7f1d1d] via-[#dc2626] to-[#991b1b] backdrop-blur-2xl animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#7f1d1d] via-[#dc2626] to-[#991b1b] backdrop-blur-2xl animate-in fade-in duration-200 overflow-hidden">
+        {/* Background watermark of loadinglogo.png */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+          <img
+            src="/loadinglogo.png"
+            alt=""
+            className="w-[500px] h-[500px] object-contain opacity-15 filter blur-xs select-none"
+          />
+        </div>
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/30 pointer-events-none" />
         <div className="p-10 flex items-center justify-center relative z-10">
           {content}

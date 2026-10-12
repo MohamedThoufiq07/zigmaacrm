@@ -1,0 +1,30 @@
+from sqlalchemy import Column, String, Text, ForeignKey, DateTime
+from sqlalchemy.orm import relationship
+from datetime import datetime
+from app.models.base import TimeStampedBase
+
+class Activity(TimeStampedBase):
+    __tablename__ = "activities"
+
+    organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    lead_id = Column(String(36), ForeignKey("leads.id"), nullable=True)
+    deal_id = Column(String(36), ForeignKey("deals.id"), nullable=True)
+    user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    type = Column(String(50), nullable=False)  # CALL, WHATSAPP, EMAIL, NOTE, STAGE_CHANGE
+    notes = Column(Text, nullable=False)
+    status = Column(String(50), default="COMPLETED")  # SCHEDULED, COMPLETED
+    scheduled_at = Column(DateTime, nullable=True)
+
+    lead = relationship("Lead", back_populates="activities")
+    deal = relationship("Deal", back_populates="activities")
+
+class MessageLog(TimeStampedBase):
+    __tablename__ = "message_logs"
+
+    organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
+    recipient_phone = Column(String(50), nullable=False)
+    channel = Column(String(50), default="WHATSAPP")  # WHATSAPP, SMS, EMAIL
+    direction = Column(String(20), default="OUTBOUND")  # INBOUND, OUTBOUND
+    body = Column(Text, nullable=False)
+    status = Column(String(50), default="SENT")  # SENT, DELIVERED, READ, FAILED
+    sent_at = Column(DateTime, default=datetime.utcnow)

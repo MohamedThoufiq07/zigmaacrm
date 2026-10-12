@@ -54,30 +54,37 @@ export default function LogoLoader({
         {/* Deep ambient background red blur */}
         <div className="absolute inset-0 rounded-full bg-red-600/25 blur-3xl transform scale-150 pointer-events-none" />
 
-        {/* Concentric ambient ripples radiating from behind the wolf logo */}
+        {/* Concentric ambient ripples radiating from behind the logo */}
         <div
           className={cn(
-            "absolute rounded-full border border-red-500/25 pointer-events-none animate-ripple-1",
+            "absolute rounded-full border border-white/25 pointer-events-none animate-ripple-1",
             sizeMap.ripple
           )}
         />
         <div
           className={cn(
-            "absolute rounded-full border border-rose-400/20 pointer-events-none animate-ripple-2",
+            "absolute rounded-full border border-rose-200/20 pointer-events-none animate-ripple-2",
             sizeMap.ripple
           )}
         />
 
-        {/* The Pure Floating Logo (No square box, pure transparent silhouette with neon breathing glow) */}
+        {/* The Pure Floating Logo */}
         <div className="relative z-10 flex items-center justify-center">
-          <img
-            src="/crmlogo.png"
-            alt="Zigmaa CRM"
+          <div
             className={cn(
-              "object-contain animate-logo-breathe select-none pointer-events-none",
+              "rounded-3xl p-3.5 bg-white shadow-2xl shadow-black/40 border border-white/90 flex items-center justify-center animate-logo-breathe select-none pointer-events-none backdrop-blur-md",
               sizeMap.logo
             )}
-          />
+          >
+            <img
+              src="/loadinglogo.png"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/crmlogo.png";
+              }}
+              alt="Zigmaa CRM"
+              className="h-full w-full object-contain"
+            />
+          </div>
         </div>
       </div>
 
@@ -85,14 +92,14 @@ export default function LogoLoader({
       <div className="flex flex-col items-center gap-3">
         <div
           className={cn(
-            "relative rounded-full overflow-hidden bg-slate-900/60 dark:bg-slate-950/80 border border-red-500/20 shadow-inner",
+            "relative rounded-full overflow-hidden bg-black/30 border border-white/20 shadow-inner",
             sizeMap.bar
           )}
         >
           {/* Luminous laser beam gliding through the track */}
           <div
             className={cn(
-              "absolute inset-y-0 bg-gradient-to-r from-transparent via-red-500 to-transparent rounded-full animate-progress-slide shadow-[0_0_12px_rgba(239,68,68,0.9)]",
+              "absolute inset-y-0 bg-gradient-to-r from-transparent via-white to-transparent rounded-full animate-progress-slide shadow-[0_0_12px_rgba(255,255,255,0.9)]",
               sizeMap.beam
             )}
           />
@@ -103,14 +110,14 @@ export default function LogoLoader({
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-red-300/70",
+                "font-bold uppercase tracking-[0.25em] text-white/95 drop-shadow-sm",
                 sizeMap.textSize
               )}
             >
               {text}
             </span>
             <span className="flex gap-1 items-center">
-              <span className="w-1 h-1 rounded-full bg-red-500 animate-ping" />
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
             </span>
           </div>
         )}
@@ -120,8 +127,9 @@ export default function LogoLoader({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B0F19]/90 backdrop-blur-xl animate-in fade-in duration-200">
-        <div className="p-10 flex items-center justify-center">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-gradient-to-br from-[#7f1d1d] via-[#dc2626] to-[#991b1b] backdrop-blur-2xl animate-in fade-in duration-200">
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-white/10 via-transparent to-black/30 pointer-events-none" />
+        <div className="p-10 flex items-center justify-center relative z-10">
           {content}
         </div>
       </div>

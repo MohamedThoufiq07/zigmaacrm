@@ -19,38 +19,24 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-// Persistent module-level state so that client-side SPA navigations
-// retain the open/closed state instantly without flicker.
-let hasMountedEver = false;
-let globalExpanded = true;
-let globalHidden = false;
-
 export default function Sidebar() {
   const pathname = usePathname();
-  // Safe initial state: on first page load & hydration, mounted is false so server & client match 100%.
-  // On subsequent client-side SPA navigations, mounted starts true immediately.
-  const [mounted, setMounted] = useState(hasMountedEver);
-  const [expanded, setExpanded] = useState(() => (hasMountedEver ? globalExpanded : true));
-  const [hidden, setHidden] = useState(() => (hasMountedEver ? globalHidden : false));
-  // Only apply CSS transitions when user explicitly clicks the toggle button, not on page changes
+  const [mounted, setMounted] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [hidden, setHidden] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<{ name: string; top: number; icon: any } | null>(null);
 
   useEffect(() => {
-    hasMountedEver = true;
     setMounted(true);
     try {
       const savedState = localStorage.getItem("zigmaa_sidebar_expanded");
       if (savedState !== null) {
-        const isExp = savedState === "true";
-        globalExpanded = isExp;
-        setExpanded(isExp);
+        setExpanded(savedState === "true");
       }
       const savedHidden = localStorage.getItem("zigmaa_sidebar_hidden");
       if (savedHidden !== null) {
-        const isHid = savedHidden === "true";
-        globalHidden = isHid;
-        setHidden(isHid);
+        setHidden(savedHidden === "true");
       }
     } catch {
       // Ignore localStorage access restrictions
@@ -61,8 +47,6 @@ export default function Sidebar() {
     setHasInteracted(true);
     setExpanded(false);
     setHidden(false);
-    globalExpanded = false;
-    globalHidden = false;
     if (typeof window !== "undefined") {
       localStorage.setItem("zigmaa_sidebar_expanded", "false");
       localStorage.setItem("zigmaa_sidebar_hidden", "false");
@@ -73,7 +57,6 @@ export default function Sidebar() {
   const handleHide = () => {
     setHasInteracted(true);
     setHidden(true);
-    globalHidden = true;
     if (typeof window !== "undefined") {
       localStorage.setItem("zigmaa_sidebar_hidden", "true");
       window.dispatchEvent(new CustomEvent("zigmaa_sidebar_toggle", { detail: { hidden: true, expanded } }));
@@ -84,8 +67,6 @@ export default function Sidebar() {
     setHasInteracted(true);
     setHidden(false);
     setExpanded(true);
-    globalHidden = false;
-    globalExpanded = true;
     if (typeof window !== "undefined") {
       localStorage.setItem("zigmaa_sidebar_hidden", "false");
       localStorage.setItem("zigmaa_sidebar_expanded", "true");
@@ -97,8 +78,6 @@ export default function Sidebar() {
     setHasInteracted(true);
     setExpanded(true);
     setHidden(false);
-    globalExpanded = true;
-    globalHidden = false;
     if (typeof window !== "undefined") {
       localStorage.setItem("zigmaa_sidebar_expanded", "true");
       localStorage.setItem("zigmaa_sidebar_hidden", "false");

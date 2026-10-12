@@ -47,7 +47,7 @@ export default function MoreViewsDropdown({
         }}
         className={`px-2.5 py-1.5 rounded-lg font-bold text-sm transition-colors cursor-pointer select-none ${
           isOpen
-            ? "bg-purple-100 text-[#6941C6]"
+            ? "bg-red-50 text-red-600"
             : "text-slate-500 hover:text-slate-900 hover:bg-slate-100"
         }`}
         title="More views"
@@ -72,13 +72,13 @@ export default function MoreViewsDropdown({
                   }}
                   className={`w-[calc(100%-8px)] mx-1 text-left px-3.5 py-2 text-sm transition-colors cursor-pointer flex items-center justify-between rounded-xl select-none ${
                     isSelected
-                      ? "text-[#6941C6] font-semibold bg-purple-50/80"
-                      : "text-slate-700 hover:bg-purple-50/50 hover:text-[#6941C6] font-medium"
+                      ? "text-red-600 font-semibold bg-red-50/80"
+                      : "text-slate-700 hover:bg-red-50/50 hover:text-red-600 font-medium"
                   }`}
                 >
                   <span className="truncate">{view}</span>
                   {isSelected && (
-                    <Check className="w-4 h-4 text-[#6941C6] shrink-0 ml-2" />
+                    <Check className="w-4 h-4 text-red-600 shrink-0 ml-2" />
                   )}
                 </button>
               );

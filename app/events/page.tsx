@@ -302,8 +302,8 @@ export default function EventsCalendarPage() {
       case "Product Demo":
       case "Demo":
         return {
-          bg: "bg-purple-100 text-purple-700 border-purple-200",
-          dot: "bg-purple-600",
+          bg: "bg-rose-100 text-rose-700 border-rose-200",
+          dot: "bg-rose-600",
           icon: Video
         };
       case "Discovery Call":
@@ -425,7 +425,7 @@ export default function EventsCalendarPage() {
             <div className="flex items-center gap-2.5">
               <button
                 onClick={() => window.open("https://calendar.google.com", "_blank")}
-                className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:border-[#6941C6] hover:text-[#6941C6] rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:border-red-500 hover:text-red-600 rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                 title="Open Google Calendar in New Tab"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -434,7 +434,7 @@ export default function EventsCalendarPage() {
 
               <button
                 onClick={() => openModalWithDate(new Date())}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Schedule Meeting</span>
@@ -444,13 +444,13 @@ export default function EventsCalendarPage() {
 
           {/* Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-purple-600 shadow-xs flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-red-600 shadow-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Scheduled</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">{totalScheduled}</p>
                 <p className="text-[10px] text-slate-400 mt-0.5">Active upcoming events</p>
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50 text-[#6941C6]">
+              <div className="p-2.5 rounded-xl bg-red-50 text-red-600">
                 <CalendarIcon className="w-5 h-5" />
               </div>
             </div>
@@ -546,7 +546,7 @@ export default function EventsCalendarPage() {
                       onClick={() => setViewMode(mode)}
                       className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all cursor-pointer ${
                         viewMode === mode
-                          ? "bg-white text-[#6941C6] shadow-xs font-bold"
+                          ? "bg-white text-red-600 shadow-xs font-bold"
                           : "text-slate-600 hover:text-slate-900"
                       }`}
                     >
@@ -597,20 +597,20 @@ export default function EventsCalendarPage() {
                           onClick={() => openModalWithDate(thisCellDate)}
                           className={`group h-22 p-2 rounded-xl border text-xs flex flex-col justify-between transition-all cursor-pointer relative hover:shadow-xs ${
                             isToday
-                              ? "border-[#6941C6] bg-purple-50/25 ring-1 ring-[#6941C6]/30"
-                              : "border-slate-100 bg-white hover:border-purple-300 hover:bg-slate-50/60"
+                              ? "border-red-500 bg-red-50/25 ring-1 ring-red-500/30"
+                              : "border-slate-100 bg-white hover:border-red-300 hover:bg-slate-50/60"
                           }`}
                           title={`Click to schedule a meeting on ${dayDateStr}`}
                         >
                           <div className="flex items-center justify-between">
                             <span
                               className={`w-6 h-6 flex items-center justify-center rounded-full text-[11px] font-semibold ${
-                                isToday ? "bg-[#6941C6] text-white shadow-2xs" : "text-slate-700"
+                                isToday ? "bg-red-600 text-white shadow-2xs" : "text-slate-700"
                               }`}
                             >
                               {dayNum}
                             </span>
-                            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-purple-600 font-bold">
+                            <span className="opacity-0 group-hover:opacity-100 transition-opacity text-[10px] text-red-600 font-bold">
                               + Add
                             </span>
                           </div>
@@ -625,7 +625,7 @@ export default function EventsCalendarPage() {
                                     e.stopPropagation();
                                     setSelectedEvent(ev);
                                   }}
-                                  className={`text-[10px] truncate px-1.5 py-0.5 rounded-md font-medium border border-transparent hover:border-purple-300 flex items-center gap-1 ${badge.bg}`}
+                                  className={`text-[10px] truncate px-1.5 py-0.5 rounded-md font-medium border border-transparent hover:border-red-300 flex items-center gap-1 ${badge.bg}`}
                                 >
                                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${badge.dot}`} />
                                   <span className="truncate">{ev.title}</span>
@@ -665,7 +665,7 @@ export default function EventsCalendarPage() {
                         <div
                           key={`week-day-${index}`}
                           className={`rounded-xl border p-2 flex flex-col min-h-[360px] transition-all ${
-                            isToday ? "border-[#6941C6] bg-purple-50/20" : "border-slate-200 bg-white"
+                            isToday ? "border-red-500 bg-red-50/20" : "border-slate-200 bg-white"
                           }`}
                         >
                           <div
@@ -676,7 +676,7 @@ export default function EventsCalendarPage() {
                             <span className="text-[10px] font-bold text-slate-400 uppercase block">{dayName}</span>
                             <span
                               className={`inline-flex items-center justify-center w-7 h-7 rounded-full text-xs font-bold mt-0.5 ${
-                                isToday ? "bg-[#6941C6] text-white" : "text-slate-800"
+                                isToday ? "bg-red-600 text-white" : "text-slate-800"
                               }`}
                             >
                               {dayNum}
@@ -703,7 +703,7 @@ export default function EventsCalendarPage() {
 
                             <button
                               onClick={() => openModalWithDate(d)}
-                              className="w-full py-1.5 mt-1 border border-dashed border-slate-200 hover:border-purple-300 hover:bg-purple-50/50 rounded-lg text-[10px] text-slate-400 hover:text-purple-600 font-semibold transition-all cursor-pointer"
+                              className="w-full py-1.5 mt-1 border border-dashed border-slate-200 hover:border-red-300 hover:bg-red-50/50 rounded-lg text-[10px] text-slate-400 hover:text-red-600 font-semibold transition-all cursor-pointer"
                             >
                               + Add
                             </button>
@@ -718,13 +718,13 @@ export default function EventsCalendarPage() {
               {/* VIEW 3: DAY VIEW */}
               {viewMode === "Day" && (
                 <div className="space-y-3">
-                  <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl flex items-center justify-between text-xs">
-                    <span className="font-semibold text-purple-900">
+                  <div className="p-3 bg-red-50/50 border border-red-100 rounded-xl flex items-center justify-between text-xs">
+                    <span className="font-semibold text-red-950">
                       Day Agenda: {currentDate.toLocaleDateString("en-US", { weekday: "long", month: "short", day: "numeric", year: "numeric" })}
                     </span>
                     <button
                       onClick={() => openModalWithDate(currentDate)}
-                      className="px-3 py-1 bg-[#6941C6] text-white rounded-lg text-xs font-semibold hover:bg-[#5833af] cursor-pointer"
+                      className="px-3 py-1 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer"
                     >
                       + Schedule Meeting
                     </button>
@@ -773,7 +773,7 @@ export default function EventsCalendarPage() {
                                           e.stopPropagation();
                                           window.open(ev.location, "_blank");
                                         }}
-                                        className="px-2 py-1 bg-white/90 text-purple-700 hover:bg-white text-[10px] font-bold rounded-lg shadow-2xs flex items-center gap-1"
+                                        className="px-2 py-1 bg-white/90 text-red-700 hover:bg-white text-[10px] font-bold rounded-lg shadow-2xs flex items-center gap-1"
                                       >
                                         <Video className="w-3 h-3" />
                                         <span>Join</span>
@@ -783,7 +783,7 @@ export default function EventsCalendarPage() {
                                 );
                               })
                             ) : (
-                              <div className="h-6 flex items-center text-[11px] text-slate-300 group-hover:text-purple-600 transition-colors font-medium">
+                              <div className="h-6 flex items-center text-[11px] text-slate-300 group-hover:text-red-600 transition-colors font-medium">
                                 + Click to schedule at {displayHour}
                               </div>
                             )}
@@ -804,14 +804,14 @@ export default function EventsCalendarPage() {
                     <h3 className="text-sm font-bold text-slate-900">Upcoming Schedule</h3>
                     <p className="text-[11px] text-slate-400">Scheduled client interactions</p>
                   </div>
-                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6941C6] border border-purple-100">
+                  <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
                     {filteredEvents.length} meetings
                   </span>
                 </div>
 
                 {filteredEvents.length === 0 ? (
                   <div className="py-10 text-center space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6941C6] flex items-center justify-center mx-auto shadow-2xs">
+                    <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center mx-auto shadow-2xs">
                       <CalendarCheck className="w-6 h-6" />
                     </div>
                     <div>
@@ -822,7 +822,7 @@ export default function EventsCalendarPage() {
                     </div>
                     <button
                       onClick={() => openModalWithDate(new Date())}
-                      className="px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-semibold rounded-xl shadow-xs transition-colors cursor-pointer"
                     >
                       + Schedule Meeting
                     </button>
@@ -840,7 +840,7 @@ export default function EventsCalendarPage() {
                       return (
                         <div
                           key={ev.id}
-                          className="p-3.5 rounded-xl border border-slate-200 hover:border-purple-300 transition-all bg-slate-50/40 hover:bg-white shadow-2xs space-y-2.5"
+                          className="p-3.5 rounded-xl border border-slate-200 hover:border-red-300 transition-all bg-slate-50/40 hover:bg-white shadow-2xs space-y-2.5"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div>
@@ -864,15 +864,15 @@ export default function EventsCalendarPage() {
 
                           <div className="text-[11px] text-slate-500 space-y-1 pt-0.5">
                             <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                              <Clock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                              <Clock className="w-3.5 h-3.5 text-red-600 shrink-0" />
                               <span>
                                 {formatEventDateDisplay(ev.start_time)} • {formatEventTimeDisplay(ev.start_time, ev.end_time)}
                               </span>
                             </div>
 
                             {ev.lead_or_deal && (
-                              <div className="flex items-center gap-1.5 truncate text-purple-700 font-medium">
-                                <Building2 className="w-3.5 h-3.5 shrink-0 text-purple-500" />
+                              <div className="flex items-center gap-1.5 truncate text-red-700 font-medium">
+                                <Building2 className="w-3.5 h-3.5 shrink-0 text-red-500" />
                                 <span className="truncate">{ev.lead_or_deal}</span>
                               </div>
                             )}
@@ -901,7 +901,7 @@ export default function EventsCalendarPage() {
                             ) : (
                               <button
                                 onClick={() => handleOpenGoogleCalendar(ev)}
-                                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 bg-[#6941C6] hover:bg-[#5833af] text-white text-[11px] font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
+                                className="flex-1 flex items-center justify-center gap-1 px-2.5 py-1.5 bg-red-600 hover:bg-red-700 text-white text-[11px] font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
                               >
                                 <CalendarCheck className="w-3.5 h-3.5" />
                                 <span>Add to GCal</span>
@@ -910,7 +910,7 @@ export default function EventsCalendarPage() {
 
                             <button
                               onClick={() => handleOpenGoogleCalendar(ev)}
-                              className="p-1.5 border border-slate-200 hover:bg-purple-50 hover:text-purple-700 text-slate-600 rounded-lg text-[11px] transition-colors cursor-pointer"
+                              className="p-1.5 border border-slate-200 hover:bg-red-50 hover:text-red-700 text-slate-600 rounded-lg text-[11px] transition-colors cursor-pointer"
                               title="Sync to Google Calendar"
                             >
                               <CalendarCheck className="w-3.5 h-3.5" />
@@ -942,7 +942,7 @@ export default function EventsCalendarPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-purple-50 text-[#6941C6]">
+                <div className="p-2 rounded-xl bg-red-50 text-red-600">
                   <CalendarCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -968,7 +968,7 @@ export default function EventsCalendarPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Product Demo with CloudScale Technologies"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
                 />
               </div>
 
@@ -988,7 +988,7 @@ export default function EventsCalendarPage() {
                     }}
                     onFocus={() => setIsDropdownOpen(true)}
                     placeholder="Search Lead or Deal by name or company..."
-                    className="w-full bg-slate-50 text-slate-900 text-xs pl-8 pr-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs pl-8 pr-8 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
                   />
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-3" />
                   {selectedLeadOrDeal && (
@@ -1024,7 +1024,7 @@ export default function EventsCalendarPage() {
                           key={item.id}
                           type="button"
                           onClick={() => selectLeadOrDeal(item)}
-                          className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-purple-50 hover:text-[#6941C6] transition-colors flex items-center justify-between"
+                          className="w-full text-left px-3 py-2 text-xs rounded-lg hover:bg-red-50 hover:text-red-600 transition-colors flex items-center justify-between"
                         >
                           <span className="font-semibold">{item.title}</span>
                           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">
@@ -1057,7 +1057,7 @@ export default function EventsCalendarPage() {
                       onClick={() => setEventType(m.id)}
                       className={`py-2 px-2.5 rounded-xl text-xs font-semibold border transition-all text-center cursor-pointer ${
                         eventType === m.id
-                          ? "bg-purple-50 border-[#6941C6] text-[#6941C6] font-bold shadow-2xs"
+                          ? "bg-red-50 border-red-500 text-red-600 font-bold shadow-2xs"
                           : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
                       }`}
                     >
@@ -1076,7 +1076,7 @@ export default function EventsCalendarPage() {
                     required
                     value={startTime}
                     onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -1085,7 +1085,7 @@ export default function EventsCalendarPage() {
                     type="datetime-local"
                     value={endTime}
                     onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -1098,7 +1098,7 @@ export default function EventsCalendarPage() {
                     key={mins}
                     type="button"
                     onClick={() => setQuickDuration(mins)}
-                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-purple-100 hover:text-purple-700 text-slate-700 font-semibold transition-colors cursor-pointer"
+                    className="px-2 py-0.5 rounded-md bg-slate-100 hover:bg-red-50 hover:text-red-600 text-slate-700 font-semibold transition-colors cursor-pointer"
                   >
                     {mins}m
                   </button>
@@ -1106,11 +1106,11 @@ export default function EventsCalendarPage() {
               </div>
 
               {/* Add Google Meet Link (Toggle switch) */}
-              <div className="p-3 bg-purple-50/70 border border-purple-200/80 rounded-xl space-y-2">
+              <div className="p-3 bg-red-50/70 border border-red-200/80 rounded-xl space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Video className="w-4 h-4 text-[#6941C6]" />
-                    <span className="text-xs font-bold text-purple-950">Add Google Meet Video Link</span>
+                    <Video className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-bold text-red-950">Add Google Meet Video Link</span>
                   </div>
 
                   {/* Toggle Switch */}
@@ -1121,17 +1121,17 @@ export default function EventsCalendarPage() {
                       onChange={(e) => setIncludeGoogleMeet(e.target.checked)}
                       className="sr-only peer"
                     />
-                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6941C6]"></div>
+                    <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-red-600"></div>
                   </label>
                 </div>
 
                 {includeGoogleMeet ? (
-                  <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-purple-200 text-[11px]">
-                    <span className="text-purple-700 font-mono font-medium truncate flex-1">{meetUrl}</span>
+                  <div className="flex items-center gap-2 bg-white px-2.5 py-1.5 rounded-lg border border-red-200 text-[11px]">
+                    <span className="text-red-700 font-mono font-medium truncate flex-1">{meetUrl}</span>
                     <button
                       type="button"
                       onClick={() => handleCopyLink(meetUrl, "modal")}
-                      className="text-purple-700 hover:text-purple-900 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
+                      className="text-red-700 hover:text-red-900 flex items-center gap-1 text-[10px] font-bold cursor-pointer"
                     >
                       {copiedMeetId === "modal" ? (
                         <>
@@ -1153,7 +1153,7 @@ export default function EventsCalendarPage() {
                       value={customLocation}
                       onChange={(e) => setCustomLocation(e.target.value)}
                       placeholder="Custom location (e.g. Office Boardroom, Zoom link, Phone)"
-                      className="w-full bg-white text-slate-900 text-xs px-2.5 py-1.5 rounded-lg border border-purple-200 focus:outline-none focus:ring-1 focus:ring-[#6941C6]"
+                      className="w-full bg-white text-slate-900 text-xs px-2.5 py-1.5 rounded-lg border border-red-200 focus:outline-none focus:ring-1 focus:ring-red-500"
                     />
                   </div>
                 )}
@@ -1168,7 +1168,7 @@ export default function EventsCalendarPage() {
                     value={attendeeName}
                     onChange={(e) => setAttendeeName(e.target.value)}
                     placeholder="e.g. Sarah Jenkins"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -1178,7 +1178,7 @@ export default function EventsCalendarPage() {
                     value={attendeeEmail}
                     onChange={(e) => setAttendeeEmail(e.target.value)}
                     placeholder="sarah@example.com"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -1191,7 +1191,7 @@ export default function EventsCalendarPage() {
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Outline meeting points, goals, and follow-ups..."
-                  className="w-full bg-slate-50 text-slate-900 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -1201,7 +1201,7 @@ export default function EventsCalendarPage() {
                   type="checkbox"
                   checked={openGCalImmediately}
                   onChange={(e) => setOpenGCalImmediately(e.target.checked)}
-                  className="w-4 h-4 text-[#6941C6] rounded focus:ring-[#6941C6]"
+                  className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                 />
                 <span className="text-xs font-semibold text-slate-700">
                   Open Google Calendar immediately on save to sync event
@@ -1220,7 +1220,7 @@ export default function EventsCalendarPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-xs font-bold rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer"
                 >
                   {submitting ? "Scheduling..." : "Schedule Meeting"}
                 </button>

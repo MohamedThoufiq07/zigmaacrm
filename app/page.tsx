@@ -173,8 +173,8 @@ export default function DashboardPage() {
       title: "YESTERDAY'S LEADS",
       value: yesterdaysLeads,
       icon: Calendar,
-      topBorder: "border-t-[3px] border-purple-500",
-      iconBg: "bg-purple-50 text-purple-600"
+      topBorder: "border-t-[3px] border-rose-500",
+      iconBg: "bg-rose-50 text-rose-600"
     },
     {
       title: "LEADS THIS MONTH",
@@ -233,8 +233,8 @@ export default function DashboardPage() {
       title: "YESTERDAY'S DEALS",
       value: yesterdaysDeals,
       icon: Calendar,
-      topBorder: "border-t-[3px] border-purple-500",
-      iconBg: "bg-purple-50 text-purple-600"
+      topBorder: "border-t-[3px] border-rose-500",
+      iconBg: "bg-rose-50 text-rose-600"
     },
     {
       title: "DEALS THIS MONTH",
@@ -305,7 +305,7 @@ export default function DashboardPage() {
                   onClick={() => setActiveTab("leads")}
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     activeTab === "leads"
-                      ? "bg-[#6941C6] text-white shadow-sm"
+                      ? "bg-red-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -316,7 +316,7 @@ export default function DashboardPage() {
                   onClick={() => setActiveTab("deals")}
                   className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                     activeTab === "deals"
-                      ? "bg-[#6941C6] text-white shadow-sm"
+                      ? "bg-red-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
                 >
@@ -351,7 +351,7 @@ export default function DashboardPage() {
                         className="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center justify-between"
                       >
                         <span>{range}</span>
-                        {dateRange === range && <span className="text-[#6941C6] font-bold">✓</span>}
+                        {dateRange === range && <span className="text-red-600 font-bold">✓</span>}
                       </button>
                     ))}
                   </div>
@@ -361,7 +361,7 @@ export default function DashboardPage() {
               {/* Edit Layout Button */}
               <button
                 onClick={() => setShowEditLayoutModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-[#6941C6] hover:text-[#6941C6] rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-red-500 hover:text-red-600 rounded-xl text-xs font-semibold shadow-xs transition-colors"
               >
                 <LayoutGrid className="w-3.5 h-3.5" />
                 <span>Edit Layout</span>
@@ -407,7 +407,7 @@ export default function DashboardPage() {
                     <h3 className="text-sm font-bold text-slate-900">Leads Trend</h3>
                     <p className="text-xs text-slate-500 font-medium">Volume over last 6 months</p>
                   </div>
-                  <span className="text-xs font-semibold text-[#6941C6] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                  <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
                     Live Record
                   </span>
                 </div>
@@ -428,7 +428,7 @@ export default function DashboardPage() {
                       <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
                         <div className="w-full max-w-[48px] flex items-end justify-center h-32 bg-slate-50 rounded-xl p-1 relative border border-slate-100">
                           <div
-                            className="w-full bg-[#6941C6] rounded-lg transition-all group-hover:bg-[#5833af]"
+                            className="w-full bg-red-600 rounded-lg transition-all group-hover:bg-red-700"
                             style={{ height: `${heightPercent}%` }}
                           />
                           <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow">
@@ -460,7 +460,7 @@ export default function DashboardPage() {
                     { name: "Meta Ads", count: sourceCounts["Meta Ads"], color: "bg-blue-600", icon: Megaphone },
                     { name: "Google Ads", count: sourceCounts["Google Ads"], color: "bg-amber-500", icon: Globe },
                     { name: "Website Form", count: sourceCounts["Website Form"], color: "bg-emerald-500", icon: Share2 },
-                    { name: "Walk-in", count: sourceCounts["Walk-in"], color: "bg-purple-600", icon: Users },
+                    { name: "Walk-in", count: sourceCounts["Walk-in"], color: "bg-rose-600", icon: Users },
                     { name: "Referral", count: sourceCounts["Referral"], color: "bg-cyan-600", icon: Users }
                   ].map((src, idx) => {
                     const percent = totalLeads > 0 ? ((src.count / totalLeads) * 100).toFixed(0) : "0";
@@ -508,7 +508,7 @@ export default function DashboardPage() {
 
                   <Link
                     href="/events"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-[#6941C6] text-xs font-semibold rounded-xl transition-colors"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-xl transition-colors"
                   >
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Google Calendar</span>
@@ -516,7 +516,7 @@ export default function DashboardPage() {
 
                   <Link
                     href="/leads"
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-[#6941C6] hover:underline"
+                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 hover:underline"
                   >
                     <span>View All</span>
                     <ChevronRight className="w-3.5 h-3.5" />
@@ -527,7 +527,7 @@ export default function DashboardPage() {
               {/* Table or Zero State */}
               {leads.length === 0 ? (
                 <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-purple-50 text-[#6941C6] flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
                     <Users className="w-6 h-6" />
                   </div>
                   <div>
@@ -538,7 +538,7 @@ export default function DashboardPage() {
                   </div>
                   <button
                     onClick={() => setShowAddLead(true)}
-                    className="mt-2 flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow-sm hover:bg-[#5833af] transition-all"
+                    className="mt-2 flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-red-700 transition-all"
                   >
                     <Plus className="w-4 h-4" />
                     <span>Add First Lead</span>
@@ -576,7 +576,7 @@ export default function DashboardPage() {
                             </span>
                           </td>
                           <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-[#6941C6] border border-purple-200">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
                               {lead.stage}
                             </span>
                           </td>
@@ -607,7 +607,7 @@ export default function DashboardPage() {
                               )}
                               <button
                                 onClick={() => setSelectedLead(lead)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-[#6941C6] hover:bg-purple-50 transition-colors"
+                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                                 title="View Details"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
@@ -670,7 +670,7 @@ export default function DashboardPage() {
                         [item.key]: e.target.checked
                       })
                     }
-                    className="w-4 h-4 text-[#6941C6] rounded focus:ring-[#6941C6]"
+                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
                   />
                 </label>
               ))}
@@ -679,7 +679,7 @@ export default function DashboardPage() {
             <div className="pt-2 flex justify-end gap-2">
               <button
                 onClick={() => setShowEditLayoutModal(false)}
-                className="px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af]"
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
               >
                 Save Layout
               </button>

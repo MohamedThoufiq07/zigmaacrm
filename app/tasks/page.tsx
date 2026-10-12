@@ -227,7 +227,7 @@ export default function TasksPage() {
                   }}
                   className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm ${
                     activeTab === tab
-                      ? "bg-purple-100/70 text-[#6941C6] font-bold"
+                      ? "bg-red-50 text-red-600 font-bold border border-red-100"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
                 >
@@ -262,7 +262,7 @@ export default function TasksPage() {
               {/* Right Action Buttons */}
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>Add Task</span>
                 <ChevronDown className="w-4 h-4" />
@@ -270,7 +270,7 @@ export default function TasksPage() {
 
               <button
                 onClick={handleExportCsv}
-                className="px-4 py-2 bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
               >
                 Export
               </button>
@@ -282,7 +282,7 @@ export default function TasksPage() {
                   title="Table View"
                   className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     viewMode === "table"
-                      ? "bg-white text-[#6941C6] shadow-2xs font-bold"
+                      ? "bg-white text-red-600 shadow-2xs font-bold"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
@@ -293,7 +293,7 @@ export default function TasksPage() {
                   title="Kanban Board View"
                   className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     viewMode === "kanban"
-                      ? "bg-white text-[#6941C6] shadow-2xs font-bold"
+                      ? "bg-white text-red-600 shadow-2xs font-bold"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
@@ -311,7 +311,7 @@ export default function TasksPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="bg-[#F8F7FD] border-b border-slate-200/80 text-sm font-semibold text-slate-800">
+                      <tr className="bg-slate-50/80 border-b border-slate-200/80 text-sm font-semibold text-slate-800">
                         <th className="py-3.5 px-3 w-12 text-center border-r border-slate-200/80">
                           <div className="flex items-center justify-center">
                             <button
@@ -319,7 +319,7 @@ export default function TasksPage() {
                               className="flex items-center justify-center cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               {selectedIds.size > 0 && selectedIds.size === paginatedTasks.length ? (
-                                <CheckSquare className="w-4 h-4 text-[#6941C6]" />
+                                <CheckSquare className="w-4 h-4 text-red-600" />
                               ) : (
                                 <Square className="w-4 h-4" />
                               )}
@@ -367,7 +367,7 @@ export default function TasksPage() {
                             <tr
                               key={task.id}
                               className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
-                                isSelected ? "bg-purple-50/30" : ""
+                                isSelected ? "bg-red-50/40" : ""
                               }`}
                             >
                               <td
@@ -379,7 +379,7 @@ export default function TasksPage() {
                               >
                                 <div className="flex items-center justify-center">
                                   {isSelected ? (
-                                    <CheckSquare className="w-4 h-4 text-[#6941C6]" />
+                                    <CheckSquare className="w-4 h-4 text-red-600" />
                                   ) : (
                                     <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
                                   )}
@@ -404,7 +404,7 @@ export default function TasksPage() {
                               {/* AssignTo */}
                               <td className="p-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-purple-100 text-[#6941C6] text-[10px] font-bold flex items-center justify-center">
+                                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center">
                                     {(task.related_to || "S").substring(0, 1).toUpperCase()}
                                   </div>
                                   <span className="text-slate-600 text-xs">Assigned Rep</span>
@@ -412,7 +412,7 @@ export default function TasksPage() {
                               </td>
 
                               {/* Subject */}
-                              <td className="p-3 font-bold text-slate-900 group-hover:text-[#6941C6] transition-colors">
+                              <td className="p-3 font-bold text-slate-900 group-hover:text-red-600 transition-colors">
                                 <span className={isCompleted ? "line-through text-slate-400" : ""}>
                                   {task.title}
                                 </span>
@@ -535,7 +535,7 @@ export default function TasksPage() {
                                 key={task.id}
                                 draggable
                                 onDragStart={(e) => e.dataTransfer.setData("taskId", String(task.id))}
-                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-purple-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
+                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
                               >
                                 <div className="flex items-start justify-between gap-2">
                                   <h4 className="text-xs font-bold text-slate-900 leading-tight">
@@ -567,7 +567,7 @@ export default function TasksPage() {
                                 <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
                                   <button
                                     onClick={() => handleToggleStatus(task)}
-                                    className="text-[10px] text-purple-700 font-semibold hover:underline"
+                                    className="text-[10px] text-red-600 font-semibold hover:underline"
                                   >
                                     {task.status === "Completed" ? "Reopen" : "Complete"}
                                   </button>
@@ -592,7 +592,7 @@ export default function TasksPage() {
                                           const idx = TASK_STAGES.findIndex((s) => s.id === stage.id);
                                           if (idx < TASK_STAGES.length - 1) handleStageChange(task.id, TASK_STAGES[idx + 1].id);
                                         }}
-                                        className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
                                         title="Advance status"
                                       >
                                         <ArrowRight className="w-3 h-3" />
@@ -637,7 +637,7 @@ export default function TasksPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Follow up on Enterprise Proposal"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
                 />
               </div>
 
@@ -649,7 +649,7 @@ export default function TasksPage() {
                     required
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -657,7 +657,7 @@ export default function TasksPage() {
                   <select
                     value={priority}
                     onChange={(e) => setPriority(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
                     <option value="High">High</option>
                     <option value="Medium">Medium</option>
@@ -672,7 +672,7 @@ export default function TasksPage() {
                   <select
                     value={taskStatus}
                     onChange={(e) => setTaskStatus(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
                     <option value="To Do">To Do</option>
                     <option value="In Progress">In Progress</option>
@@ -686,7 +686,7 @@ export default function TasksPage() {
                     value={relatedTo}
                     onChange={(e) => setRelatedTo(e.target.value)}
                     placeholder="e.g. Acme Corp Lead"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -701,7 +701,7 @@ export default function TasksPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   Create Task
                 </button>

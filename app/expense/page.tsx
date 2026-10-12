@@ -107,7 +107,7 @@ export default function ExpensesPage() {
 
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Expense</span>
@@ -127,12 +127,12 @@ export default function ExpensesPage() {
               </div>
             </div>
 
-            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-purple-600 shadow-xs flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-red-600 shadow-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase">Total Records</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">{expenses.length}</p>
               </div>
-              <div className="p-2 rounded-full bg-purple-50 text-[#6941C6]">
+              <div className="p-2 rounded-full bg-red-50 text-red-600">
                 <Calendar className="w-4 h-4" />
               </div>
             </div>
@@ -153,7 +153,7 @@ export default function ExpensesPage() {
           {/* Expenses List or Zero State */}
           {expenses.length === 0 ? (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-purple-50 text-[#6941C6] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
                 <Receipt className="w-6 h-6" />
               </div>
               <div>
@@ -164,7 +164,7 @@ export default function ExpensesPage() {
               </div>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl"
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl"
               >
                 Record First Expense
               </button>
@@ -188,7 +188,7 @@ export default function ExpensesPage() {
                     <tr key={exp.id} className="hover:bg-slate-50 transition-colors">
                       <td className="py-3 px-4 font-semibold text-slate-900">{exp.title}</td>
                       <td className="py-3 px-4">
-                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-[#6941C6] border border-purple-100">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-100">
                           {exp.category}
                         </span>
                       </td>
@@ -244,7 +244,7 @@ export default function ExpensesPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. AWS Cloud Hosting / Google Ads"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -254,7 +254,7 @@ export default function ExpensesPage() {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="Software">Software</option>
                     <option value="Marketing">Marketing</option>
@@ -271,7 +271,7 @@ export default function ExpensesPage() {
                     required
                     value={amount}
                     onChange={(e) => setAmount(Number(e.target.value))}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-bold"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
                   />
                 </div>
               </div>
@@ -283,7 +283,7 @@ export default function ExpensesPage() {
                     type="date"
                     value={date}
                     onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -291,7 +291,7 @@ export default function ExpensesPage() {
                   <select
                     value={paymentMethod}
                     onChange={(e) => setPaymentMethod(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="Card">Corporate Card</option>
                     <option value="UPI">UPI</option>
@@ -306,7 +306,7 @@ export default function ExpensesPage() {
                 <select
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 >
                   <option value="Paid">Paid</option>
                   <option value="Pending">Pending Approval</option>
@@ -323,7 +323,7 @@ export default function ExpensesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af]"
+                  className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
                 >
                   Save Expense
                 </button>

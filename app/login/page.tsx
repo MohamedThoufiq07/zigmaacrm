@@ -159,7 +159,7 @@ export default function LoginPage() {
   return (
     <div className="h-screen max-h-screen w-screen overflow-hidden flex flex-col lg:flex-row bg-white text-slate-900 font-sans select-none fixed inset-0">
       {/* ================= LEFT SHOWCASE PANEL ================= */}
-      <div className="relative w-full lg:w-1/2 h-full bg-gradient-to-br from-[#3B1578] via-[#5B259E] to-[#7B2CBF] p-6 lg:p-10 xl:p-12 flex flex-col justify-between overflow-hidden shrink-0">
+      <div className="relative w-full lg:w-1/2 h-full bg-gradient-to-br from-[#0B0F19] via-[#151D2F] to-[#7F1D1D] p-6 lg:p-10 xl:p-12 flex flex-col justify-between overflow-hidden shrink-0">
         {/* Ambient Subtle Grid & Glows */}
         <div
           className="absolute inset-0 opacity-10 pointer-events-none"
@@ -168,12 +168,12 @@ export default function LoginPage() {
             backgroundSize: "24px 24px"
           }}
         />
-        <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-purple-400/20 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
 
         {/* Top Left: Zigmaa Logo & Brand Title */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md p-1.5 flex items-center justify-center border border-white/20 shadow-lg shadow-purple-950/40">
+            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md p-1.5 flex items-center justify-center border border-white/20 shadow-lg shadow-black/40">
               <img
                 src="/crmlogo.png"
                 alt="Zigmaa Logo"
@@ -182,7 +182,7 @@ export default function LoginPage() {
             </div>
             <div>
               <span className="font-bold text-white text-base tracking-tight block">Zigmaa CRM</span>
-              <span className="text-[11px] text-purple-200/80 font-medium block">Enterprise Sales & Operations</span>
+              <span className="text-[11px] text-red-200/80 font-medium block">Enterprise Sales & Operations</span>
             </div>
           </div>
 
@@ -195,10 +195,10 @@ export default function LoginPage() {
         {/* Center: Seamless Glassmorphic CRM Analytics Showcase */}
         <div className="relative z-10 my-auto py-2 max-w-md w-full mx-auto space-y-3">
           {/* Main Glass Card: Sales Velocity */}
-          <div className="rounded-3xl bg-white/[0.12] backdrop-blur-xl border border-white/20 p-5 shadow-2xl shadow-purple-950/50">
+          <div className="rounded-3xl bg-white/[0.12] backdrop-blur-xl border border-white/20 p-5 shadow-2xl shadow-black/50">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <span className="text-[11px] font-bold text-purple-200/90 uppercase tracking-wider block">Sales Velocity</span>
+                <span className="text-[11px] font-bold text-red-200/90 uppercase tracking-wider block">Sales Velocity</span>
                 <span className="text-2xl font-black text-white tracking-tight">$3.8M Revenue</span>
               </div>
               <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-400/30 text-emerald-300 font-bold text-xs">
@@ -233,15 +233,15 @@ export default function LoginPage() {
             {/* Quick Metrics Pills */}
             <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-center">
               <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-purple-200 block">Deals Won</span>
+                <span className="text-[10px] text-red-200 block">Deals Won</span>
                 <span className="text-xs font-bold text-white block">184 Deals</span>
               </div>
               <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-purple-200 block">Conversion</span>
+                <span className="text-[10px] text-red-200 block">Conversion</span>
                 <span className="text-xs font-bold text-white block">94.2%</span>
               </div>
               <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-purple-200 block">Avg Value</span>
+                <span className="text-[10px] text-red-200 block">Avg Value</span>
                 <span className="text-xs font-bold text-white block">$21.4K</span>
               </div>
             </div>
@@ -250,7 +250,7 @@ export default function LoginPage() {
           {/* Secondary Floating Mini Banner */}
           <div className="rounded-2xl bg-white/[0.10] backdrop-blur-md border border-white/15 px-4 py-2.5 flex items-center justify-between text-xs text-white">
             <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-purple-500/30 flex items-center justify-center p-0.5">
+              <div className="w-6 h-6 rounded-lg bg-red-600/30 flex items-center justify-center p-0.5">
                 <img src="/crmlogo.png" alt="Zigmaa" className="w-full h-full object-contain" />
               </div>
               <span className="font-semibold text-xs text-white/95">Omnichannel Lead Pipeline Synchronized</span>
@@ -264,7 +264,7 @@ export default function LoginPage() {
           <h1 className="text-2xl xl:text-3xl font-extrabold text-white tracking-tight leading-tight">
             Empower Your Sales. Accelerate Growth.
           </h1>
-          <p className="mt-1.5 text-xs xl:text-sm text-purple-100/85 font-normal leading-relaxed">
+          <p className="mt-1.5 text-xs xl:text-sm text-red-100/90 font-normal leading-relaxed">
             Unified omnichannel pipeline tracking, client communication, and deal management built for high-performing teams.
           </p>
         </div>
@@ -304,7 +304,7 @@ export default function LoginPage() {
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     placeholder="Enter Your First Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                   />
                 </div>
                 <div>
@@ -317,7 +317,7 @@ export default function LoginPage() {
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     placeholder="Enter Your Last Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                   />
                 </div>
               </div>
@@ -334,7 +334,7 @@ export default function LoginPage() {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Enter Your Company Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                   />
                 </div>
                 <div>
@@ -348,7 +348,7 @@ export default function LoginPage() {
                       value={signUpPassword}
                       onChange={(e) => setSignUpPassword(e.target.value)}
                       placeholder="Enter Your Password"
-                      className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                      className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                     />
                     <button
                       type="button"
@@ -373,7 +373,7 @@ export default function LoginPage() {
                   value={signUpEmail}
                   onChange={(e) => setSignUpEmail(e.target.value)}
                   placeholder="Enter Your Email ID"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                 />
               </div>
 
@@ -382,7 +382,7 @@ export default function LoginPage() {
                 <label className="block text-[13px] font-medium text-[#374151] mb-1">
                   Contact <span className="text-red-500">*</span>
                 </label>
-                <div className="flex rounded-lg border border-[#E5E7EB] bg-white focus-within:border-[#7c3aed] focus-within:ring-1 focus-within:ring-[#7c3aed] transition-colors overflow-hidden">
+                <div className="flex rounded-lg border border-[#E5E7EB] bg-white focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600 transition-colors overflow-hidden">
                   <div className="relative flex items-center bg-slate-50 border-r border-[#E5E7EB] px-2.5">
                     <select
                       value={countryCode}
@@ -413,7 +413,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full mt-2 py-2.5 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] active:bg-[#5b21b6] text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full mt-2 py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 {submitting ? "Creating account..." : "Sign up"}
               </button>
@@ -425,7 +425,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsSignUp(false)}
-                className="font-semibold text-[#7c3aed] hover:underline cursor-pointer"
+                className="font-semibold text-red-600 hover:underline cursor-pointer"
               >
                 Sign In
               </button>
@@ -460,7 +460,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter Your Registered Email Address"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                 />
               </div>
 
@@ -473,7 +473,7 @@ export default function LoginPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter Your Password"
-                    className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed] transition-colors"
+                    className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                   />
                   <button
                     type="button"
@@ -494,7 +494,7 @@ export default function LoginPage() {
                     setShowForgotPassword(true);
                     setResetSent(false);
                   }}
-                  className="text-xs font-medium text-[#7c3aed] hover:underline cursor-pointer"
+                  className="text-xs font-medium text-red-600 hover:underline cursor-pointer"
                 >
                   Forgot Password ?
                 </button>
@@ -504,7 +504,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={submitting}
-                className="w-full py-2.5 px-4 bg-[#7c3aed] hover:bg-[#6d28d9] active:bg-[#5b21b6] text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
               >
                 {submitting ? "Signing in..." : "Login"}
               </button>
@@ -544,7 +544,7 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => setIsSignUp(true)}
-                className="font-medium text-[#7c3aed] hover:underline cursor-pointer"
+                className="font-medium text-red-600 hover:underline cursor-pointer"
               >
                 Sign Up
               </button>
@@ -575,7 +575,7 @@ export default function LoginPage() {
                 </p>
                 <button
                   onClick={() => setShowForgotPassword(false)}
-                  className="w-full mt-2 py-2 bg-[#7c3aed] text-white rounded-lg text-xs font-semibold hover:bg-[#6d28d9] cursor-pointer"
+                  className="w-full mt-2 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer"
                 >
                   Back to Login
                 </button>
@@ -597,7 +597,7 @@ export default function LoginPage() {
                     value={forgotEmail}
                     onChange={(e) => setForgotEmail(e.target.value)}
                     placeholder="Enter Your Registered Email Address"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 placeholder:italic focus:outline-none focus:border-[#7c3aed] focus:ring-1 focus:ring-[#7c3aed]"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 placeholder:italic focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
                   />
                 </div>
 
@@ -611,7 +611,7 @@ export default function LoginPage() {
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 rounded-lg bg-[#7c3aed] hover:bg-[#6d28d9] text-white text-xs font-semibold cursor-pointer"
+                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer"
                   >
                     Submit
                   </button>

@@ -160,7 +160,7 @@ export default function BulkImportPage() {
                 const input = document.getElementById("csv-file-input") as HTMLInputElement;
                 if (input) input.click();
               }}
-              className="p-12 rounded-2xl border-2 border-dashed border-slate-300 hover:border-[#6941C6] bg-white transition-all text-center flex flex-col items-center justify-center space-y-3 cursor-pointer shadow-xs"
+              className="p-12 rounded-2xl border-2 border-dashed border-slate-300 hover:border-red-500 bg-white transition-all text-center flex flex-col items-center justify-center space-y-3 cursor-pointer shadow-xs"
             >
               <input
                 id="csv-file-input"
@@ -173,7 +173,7 @@ export default function BulkImportPage() {
                   }
                 }}
               />
-              <div className="w-14 h-14 rounded-2xl bg-purple-50 text-[#6941C6] flex items-center justify-center">
+              <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-600 flex items-center justify-center">
                 <Upload className="w-7 h-7" />
               </div>
 
@@ -214,7 +214,7 @@ export default function BulkImportPage() {
                   <button
                     onClick={handleConfirmUpload}
                     disabled={uploading}
-                    className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all disabled:opacity-50"
                   >
                     {uploading ? (
                       <>

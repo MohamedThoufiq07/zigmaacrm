@@ -119,10 +119,10 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
               <span className="text-[10px] px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-black">Closed Won</span>
             </div>
           ) : (
-            <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-200 flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-red-50/70 border border-red-200 flex items-center justify-between">
               <div>
                 <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-                  <Briefcase className="w-4 h-4 text-indigo-600" />
+                  <Briefcase className="w-4 h-4 text-red-600" />
                   <span>Convert Lead to Closed Deal</span>
                 </div>
                 <div className="text-[11px] text-slate-500 font-medium">Updates stage to Closed/Won and triggers win log</div>
@@ -131,7 +131,7 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
               <button
                 onClick={handleConvert}
                 disabled={converting}
-                className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50 shrink-0"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-600/20 transition-all disabled:opacity-50 shrink-0"
               >
                 <Sparkles className="w-3.5 h-3.5" />
                 <span>{converting ? "Converting..." : "1-Click Convert"}</span>
@@ -146,7 +146,7 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
             <div className="grid grid-cols-2 gap-3 text-xs">
               <div>
                 <span className="text-slate-500 block text-[10px] font-semibold">Expected Deal Value</span>
-                <span className="font-black text-indigo-600 text-base">{formatCurrency(currentLead.deal_value || 0)}</span>
+                <span className="font-black text-red-600 text-base">{formatCurrency(currentLead.deal_value || 0)}</span>
               </div>
               <div>
                 <span className="text-slate-500 block text-[10px] font-semibold">Lead Source</span>
@@ -184,7 +184,7 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`px-3 py-1 rounded-lg font-bold transition-colors ${
-                      activeTab === tab ? "bg-white text-indigo-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
+                      activeTab === tab ? "bg-white text-red-600 shadow-xs" : "text-slate-500 hover:text-slate-900"
                     }`}
                   >
                     {tab}
@@ -200,11 +200,11 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
                 value={newNote}
                 onChange={(e) => setNewNote(e.target.value)}
                 placeholder="Add follow-up activity note or call log..."
-                className="flex-1 bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white"
+                className="flex-1 bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white"
               />
               <button
                 type="submit"
-                className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
+                className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all flex items-center gap-1.5"
               >
                 <Send className="w-3.5 h-3.5" /> Save Note
               </button>
@@ -220,9 +220,9 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
                 filteredActivities.map((act: Activity) => (
                   <div key={act.id} className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-3">
                     <div className={`p-2 rounded-lg text-xs shrink-0 ${
-                      act.activity_type === "call" ? "bg-indigo-100 text-indigo-700" :
+                      act.activity_type === "call" ? "bg-blue-100 text-blue-700" :
                       act.activity_type === "whatsapp" ? "bg-emerald-100 text-emerald-700" :
-                      "bg-purple-100 text-purple-700"
+                      "bg-red-100 text-red-700"
                     }`}>
                       {act.activity_type === "call" ? <Phone className="w-4 h-4" /> :
                        act.activity_type === "whatsapp" ? <MessageSquare className="w-4 h-4" /> :

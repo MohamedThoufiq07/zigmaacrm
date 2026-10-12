@@ -109,7 +109,7 @@ export default function Header({ title }: HeaderProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search records..."
-              className="w-full bg-slate-50 text-slate-900 text-sm pl-10 pr-4 py-2 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white placeholder:text-slate-400 font-medium transition-all"
+              className="w-full bg-slate-50 text-slate-900 text-sm pl-10 pr-4 py-2 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white placeholder:text-slate-400 font-medium transition-all"
             />
           </form>
 
@@ -145,7 +145,7 @@ export default function Header({ title }: HeaderProps) {
                 title="Notifications"
               >
                 <Bell className="w-4 h-4" />
-                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-[#6941C6]" />
+                <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-600" />
               </button>
 
               {showNotifications && (
@@ -157,7 +157,7 @@ export default function Header({ title }: HeaderProps) {
                   <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-slate-200 p-3 z-50">
                     <div className="flex items-center justify-between pb-2 border-b border-slate-100">
                       <span className="font-bold text-xs text-slate-900">Notifications</span>
-                      <span className="text-[10px] text-[#6941C6] font-semibold cursor-pointer">Mark read</span>
+                      <span className="text-[10px] text-red-600 font-semibold cursor-pointer">Mark read</span>
                     </div>
                     <div className="py-3 text-center text-xs text-slate-500">
                       No unread notifications.
@@ -217,13 +217,13 @@ export default function Header({ title }: HeaderProps) {
                           onMouseEnter={() => setActiveItem(item.label)}
                           className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer ${
                             isHighlighted
-                              ? "bg-[#F5F0FF] text-[#6941C6] font-semibold"
-                              : "text-slate-700 hover:bg-[#F5F0FF] hover:text-[#6941C6] font-medium"
+                              ? "bg-red-50 text-red-600 font-semibold"
+                              : "text-slate-700 hover:bg-red-50 hover:text-red-600 font-medium"
                           }`}
                         >
                           <Icon
                             className={`w-4 h-4 shrink-0 ${
-                              isHighlighted ? "text-[#6941C6]" : "text-slate-500"
+                              isHighlighted ? "text-red-600" : "text-slate-500"
                             }`}
                           />
                           <span className="truncate">{item.label}</span>

@@ -99,7 +99,7 @@ export default function TemplatesPage() {
 
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Template</span>
@@ -111,11 +111,11 @@ export default function TemplatesPage() {
             {templates.map((tpl) => (
               <div
                 key={tpl.id}
-                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-purple-200 transition-all flex flex-col justify-between space-y-3"
+                className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-red-200 transition-all flex flex-col justify-between space-y-3"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`p-1.5 rounded-lg ${tpl.type === "WhatsApp" ? "bg-emerald-50 text-emerald-600" : "bg-purple-50 text-[#6941C6]"}`}>
+                    <div className={`p-1.5 rounded-lg ${tpl.type === "WhatsApp" ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
                       {tpl.type === "WhatsApp" ? <MessageSquare className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
                     </div>
                     <div>
@@ -180,7 +180,7 @@ export default function TemplatesPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Follow-up after Demo"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -190,7 +190,7 @@ export default function TemplatesPage() {
                   <select
                     value={type}
                     onChange={(e) => setType(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="WhatsApp">WhatsApp</option>
                     <option value="Email">Email</option>
@@ -201,7 +201,7 @@ export default function TemplatesPage() {
                   <select
                     value={category}
                     onChange={(e) => setCategory(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   >
                     <option value="Follow-up">Follow-up</option>
                     <option value="Welcome">Welcome</option>
@@ -219,7 +219,7 @@ export default function TemplatesPage() {
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Write your template text. You can use {{name}}, {{company}} placeholders..."
-                  className="w-full bg-slate-50 text-slate-900 text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -233,7 +233,7 @@ export default function TemplatesPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af]"
+                  className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
                 >
                   Save Template
                 </button>

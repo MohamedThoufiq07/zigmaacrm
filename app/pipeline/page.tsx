@@ -57,7 +57,7 @@ const PIPELINE_STAGES = [
 const DEAL_STAGES = [
   { id: "Qualification", label: "Qualification", color: "border-indigo-200 bg-indigo-50/60 text-indigo-700", dot: "bg-indigo-500" },
   { id: "Demo Scheduled", label: "Demo Scheduled", color: "border-blue-200 bg-blue-50/60 text-blue-700", dot: "bg-blue-500" },
-  { id: "Proposal Sent", label: "Proposal Sent", color: "border-purple-200 bg-purple-50/60 text-purple-700", dot: "bg-purple-500" },
+  { id: "Proposal Sent", label: "Proposal Sent", color: "border-rose-200 bg-rose-50/60 text-rose-700", dot: "bg-rose-500" },
   { id: "Negotiation", label: "Negotiation", color: "border-amber-200 bg-amber-50/60 text-amber-700", dot: "bg-amber-500" },
   { id: "Closed Won", label: "Closed Won", color: "border-emerald-200 bg-emerald-50/60 text-emerald-700", dot: "bg-emerald-500" }
 ];
@@ -239,7 +239,7 @@ export default function PipelineDealsPage() {
                   }}
                   className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm ${
                     activeTab === tab
-                      ? "bg-purple-100/70 text-[#6941C6] font-bold"
+                      ? "bg-red-50 text-red-600 font-bold border border-red-100"
                       : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
                 >
@@ -274,7 +274,7 @@ export default function PipelineDealsPage() {
               {/* Right Action Buttons */}
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span>Add Deal</span>
                 <ChevronDown className="w-4 h-4" />
@@ -282,7 +282,7 @@ export default function PipelineDealsPage() {
 
               <button
                 onClick={handleExportCsv}
-                className="px-4 py-2 bg-white border border-purple-200 text-purple-700 hover:bg-purple-50 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
+                className="px-4 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer"
               >
                 Export
               </button>
@@ -294,7 +294,7 @@ export default function PipelineDealsPage() {
                   title="Table View"
                   className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     viewMode === "table"
-                      ? "bg-white text-[#6941C6] shadow-2xs font-bold"
+                      ? "bg-white text-red-600 shadow-2xs font-bold"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
@@ -305,7 +305,7 @@ export default function PipelineDealsPage() {
                   title="Kanban Board View"
                   className={`p-1.5 rounded-lg transition-all cursor-pointer ${
                     viewMode === "kanban"
-                      ? "bg-white text-[#6941C6] shadow-2xs font-bold"
+                      ? "bg-white text-red-600 shadow-2xs font-bold"
                       : "text-slate-400 hover:text-slate-700"
                   }`}
                 >
@@ -323,7 +323,7 @@ export default function PipelineDealsPage() {
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
-                      <tr className="bg-[#F8F7FD] border-b border-slate-200/80 text-sm font-semibold text-slate-800">
+                      <tr className="bg-slate-50/80 border-b border-slate-200/80 text-sm font-semibold text-slate-800">
                         <th className="py-3.5 px-3 w-12 text-center border-r border-slate-200/80">
                           <div className="flex items-center justify-center">
                             <button
@@ -331,7 +331,7 @@ export default function PipelineDealsPage() {
                               className="flex items-center justify-center cursor-pointer text-slate-400 hover:text-slate-600 transition-colors"
                             >
                               {selectedIds.size > 0 && selectedIds.size === paginatedDeals.length ? (
-                                <CheckSquare className="w-4 h-4 text-[#6941C6]" />
+                                 <CheckSquare className="w-4 h-4 text-red-600" />
                               ) : (
                                 <Square className="w-4 h-4" />
                               )}
@@ -375,7 +375,7 @@ export default function PipelineDealsPage() {
                             <tr
                               key={deal.id}
                               className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
-                                isSelected ? "bg-purple-50/30" : ""
+                                isSelected ? "bg-red-50/40" : ""
                               }`}
                             >
                               <td
@@ -387,7 +387,7 @@ export default function PipelineDealsPage() {
                               >
                                 <div className="flex items-center justify-center">
                                   {isSelected ? (
-                                    <CheckSquare className="w-4 h-4 text-[#6941C6]" />
+                                    <CheckSquare className="w-4 h-4 text-red-600" />
                                   ) : (
                                     <Square className="w-4 h-4 text-slate-300 group-hover:text-slate-400" />
                                   )}
@@ -397,7 +397,7 @@ export default function PipelineDealsPage() {
                               {/* Deal Owner */}
                               <td className="p-3">
                                 <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-purple-100 text-[#6941C6] text-[10px] font-bold flex items-center justify-center">
+                                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center">
                                     {(deal.contact_name || deal.title).substring(0, 1).toUpperCase()}
                                   </div>
                                   <span className="text-slate-600 text-xs">Primary Sales Rep</span>
@@ -405,7 +405,7 @@ export default function PipelineDealsPage() {
                               </td>
 
                               {/* Deal Name */}
-                              <td className="p-3 font-bold text-slate-900 group-hover:text-[#6941C6] transition-colors">
+                              <td className="p-3 font-bold text-slate-900 group-hover:text-red-600 transition-colors">
                                 <div>
                                   <p>{deal.title}</p>
                                   <p className="text-[10px] text-slate-400 font-normal">{deal.company_name}</p>
@@ -427,7 +427,7 @@ export default function PipelineDealsPage() {
                                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                       : deal.stage === "Negotiation"
                                       ? "bg-amber-50 text-amber-700 border-amber-200"
-                                      : "bg-purple-50 text-[#6941C6] border-purple-200"
+                                      : "bg-red-50 text-red-700 border-red-200"
                                   }`}
                                 >
                                   {deal.stage}
@@ -527,7 +527,7 @@ export default function PipelineDealsPage() {
                                 key={deal.id}
                                 draggable
                                 onDragStart={(e) => e.dataTransfer.setData("dealId", String(deal.id))}
-                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-purple-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
+                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
                               >
                                 <div>
                                   <h4 className="text-xs font-bold text-slate-900 leading-tight">
@@ -539,7 +539,7 @@ export default function PipelineDealsPage() {
                                 </div>
 
                                 <div className="flex items-center justify-between text-xs pt-1">
-                                  <span className="font-bold text-[#6941C6] text-xs">
+                                  <span className="font-bold text-red-600 text-xs">
                                     {formatCurrency(deal.value)}
                                   </span>
                                   <span className="text-[10px] font-semibold text-slate-400">
@@ -550,7 +550,7 @@ export default function PipelineDealsPage() {
                                 {/* Stage Progress Bar */}
                                 <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
                                   <div
-                                    className="bg-[#6941C6] h-1 rounded-full"
+                                    className="bg-red-600 h-1 rounded-full"
                                     style={{ width: `${deal.probability || 30}%` }}
                                   />
                                 </div>
@@ -580,7 +580,7 @@ export default function PipelineDealsPage() {
                                           const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
                                           if (idx < DEAL_STAGES.length - 1) handleStageChange(deal.id, DEAL_STAGES[idx + 1].id);
                                         }}
-                                        className="p-1 text-purple-600 hover:bg-purple-50 rounded"
+                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
                                         title="Advance stage"
                                       >
                                         <ArrowRight className="w-3 h-3" />
@@ -625,7 +625,7 @@ export default function PipelineDealsPage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Enterprise Cloud Migration Contract"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
                 />
               </div>
 
@@ -637,7 +637,7 @@ export default function PipelineDealsPage() {
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
                     placeholder="Acme Global Inc"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -647,7 +647,7 @@ export default function PipelineDealsPage() {
                     value={contactName}
                     onChange={(e) => setContactName(e.target.value)}
                     placeholder="Robert Smith"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -661,7 +661,7 @@ export default function PipelineDealsPage() {
                     value={value}
                     onChange={(e) => setValue(e.target.value)}
                     placeholder="250000"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -669,7 +669,7 @@ export default function PipelineDealsPage() {
                   <select
                     value={stage}
                     onChange={(e) => setStage(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
                     <option value="Qualification">Qualification</option>
                     <option value="Demo Scheduled">Demo Scheduled</option>
@@ -689,7 +689,7 @@ export default function PipelineDealsPage() {
                     max="100"
                     value={probability}
                     onChange={(e) => setProbability(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -698,7 +698,7 @@ export default function PipelineDealsPage() {
                     type="date"
                     value={closeDate}
                     onChange={(e) => setCloseDate(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -713,7 +713,7 @@ export default function PipelineDealsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   Create Deal
                 </button>

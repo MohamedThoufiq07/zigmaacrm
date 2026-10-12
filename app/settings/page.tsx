@@ -45,7 +45,7 @@ export default function SettingsPage() {
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-purple-50 text-[#6941C6] border border-purple-100">
+              <div className="p-2.5 rounded-2xl bg-red-50 text-red-600 border border-red-100">
                 <Settings className="w-6 h-6" />
               </div>
               <div>
@@ -66,10 +66,10 @@ export default function SettingsPage() {
 
           <div className="max-w-3xl space-y-6">
             {/* Google Calendar Integration Card */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4 border-l-4 border-l-[#6941C6]">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4 border-l-4 border-l-red-600">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-xl bg-purple-50 text-[#6941C6]">
+                  <div className="p-2 rounded-xl bg-red-50 text-red-600">
                     <Calendar className="w-5 h-5" />
                   </div>
                   <div>
@@ -93,7 +93,7 @@ export default function SettingsPage() {
                   href="https://calendar.google.com"
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Launch Google Calendar</span>
@@ -104,7 +104,7 @@ export default function SettingsPage() {
             {/* Workspace Profile */}
             <form onSubmit={handleSave} className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 border-b border-slate-100 pb-3">
-                <Building2 className="w-4 h-4 text-[#6941C6]" />
+                <Building2 className="w-4 h-4 text-red-600" />
                 <span>Workspace Information</span>
               </h3>
 
@@ -115,7 +115,7 @@ export default function SettingsPage() {
                     type="text"
                     value={orgName}
                     onChange={(e) => setOrgName(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -124,7 +124,7 @@ export default function SettingsPage() {
                     type="email"
                     value={adminEmail}
                     onChange={(e) => setAdminEmail(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -132,7 +132,7 @@ export default function SettingsPage() {
               <div className="pt-2 flex justify-end">
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition-colors"
                 >
                   Save Changes
                 </button>
@@ -149,7 +149,7 @@ export default function SettingsPage() {
               <div className="space-y-3 text-xs">
                 <div>
                   <label className="block text-slate-600 font-semibold mb-1">Meta Ads Webhook URL</label>
-                  <code className="block bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-mono text-[#6941C6] text-[11px]">
+                  <code className="block bg-slate-50 p-2.5 rounded-xl border border-slate-200 font-mono text-red-600 text-[11px]">
                     https://your-domain.com/api/v1/webhooks/meta
                   </code>
                 </div>

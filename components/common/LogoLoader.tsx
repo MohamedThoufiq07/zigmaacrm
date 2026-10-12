@@ -51,19 +51,19 @@ export default function LogoLoader({
     <div className={cn("flex flex-col items-center justify-center gap-6 select-none relative", className)}>
       {/* Logo Hero Area */}
       <div className="relative flex items-center justify-center">
-        {/* Deep ambient background purple blur */}
-        <div className="absolute inset-0 rounded-full bg-purple-600/30 blur-3xl transform scale-150 pointer-events-none" />
+        {/* Deep ambient background red blur */}
+        <div className="absolute inset-0 rounded-full bg-red-600/25 blur-3xl transform scale-150 pointer-events-none" />
 
         {/* Concentric ambient ripples radiating from behind the wolf logo */}
         <div
           className={cn(
-            "absolute rounded-full border border-purple-500/25 pointer-events-none animate-ripple-1",
+            "absolute rounded-full border border-red-500/25 pointer-events-none animate-ripple-1",
             sizeMap.ripple
           )}
         />
         <div
           className={cn(
-            "absolute rounded-full border border-indigo-400/20 pointer-events-none animate-ripple-2",
+            "absolute rounded-full border border-rose-400/20 pointer-events-none animate-ripple-2",
             sizeMap.ripple
           )}
         />
@@ -85,14 +85,14 @@ export default function LogoLoader({
       <div className="flex flex-col items-center gap-3">
         <div
           className={cn(
-            "relative rounded-full overflow-hidden bg-purple-950/20 dark:bg-purple-950/40 border border-purple-500/20 shadow-inner",
+            "relative rounded-full overflow-hidden bg-slate-900/60 dark:bg-slate-950/80 border border-red-500/20 shadow-inner",
             sizeMap.bar
           )}
         >
           {/* Luminous laser beam gliding through the track */}
           <div
             className={cn(
-              "absolute inset-y-0 bg-gradient-to-r from-transparent via-[#a855f7] to-transparent rounded-full animate-progress-slide shadow-[0_0_12px_rgba(168,85,247,0.9)]",
+              "absolute inset-y-0 bg-gradient-to-r from-transparent via-red-500 to-transparent rounded-full animate-progress-slide shadow-[0_0_12px_rgba(239,68,68,0.9)]",
               sizeMap.beam
             )}
           />
@@ -103,14 +103,14 @@ export default function LogoLoader({
           <div className="flex items-center gap-2">
             <span
               className={cn(
-                "font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-purple-300/70",
+                "font-bold uppercase tracking-[0.25em] text-slate-500 dark:text-red-300/70",
                 sizeMap.textSize
               )}
             >
               {text}
             </span>
             <span className="flex gap-1 items-center">
-              <span className="w-1 h-1 rounded-full bg-purple-500 animate-ping" />
+              <span className="w-1 h-1 rounded-full bg-red-500 animate-ping" />
             </span>
           </div>
         )}
@@ -120,7 +120,7 @@ export default function LogoLoader({
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0c091f]/85 backdrop-blur-xl animate-in fade-in duration-200">
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#0B0F19]/90 backdrop-blur-xl animate-in fade-in duration-200">
         <div className="p-10 flex items-center justify-center">
           {content}
         </div>

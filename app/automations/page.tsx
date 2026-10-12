@@ -297,14 +297,14 @@ export default function AutomationsPage() {
               <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
                 <span>Operations & Automation</span>
                 <ChevronRight className="w-3.5 h-3.5" />
-                <span className="text-[#6941C6] font-bold">Workflows</span>
+                <span className="text-red-600 font-bold">Workflows</span>
               </div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
                   Automations & Workflows
                 </h1>
-                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-50 text-[#6941C6] border border-purple-200 text-xs font-bold shadow-2xs">
-                  <Zap className="w-3.5 h-3.5 fill-[#6941C6]" />
+                <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 text-red-600 border border-red-200 text-xs font-bold shadow-2xs">
+                  <Zap className="w-3.5 h-3.5 fill-red-600 text-red-600" />
                   HubSpot & Meta Engine Ready
                 </span>
               </div>
@@ -316,7 +316,7 @@ export default function AutomationsPage() {
             <div className="flex items-center gap-3">
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 <span>+ Create Custom Rule</span>
@@ -352,14 +352,14 @@ export default function AutomationsPage() {
             </div>
 
             {/* Card 2: Executions Today */}
-            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-purple-600 shadow-xs flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-red-600 shadow-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Executions Today</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">148 runs</p>
-                <p className="text-[10px] text-purple-700 font-semibold mt-0.5">+24% vs yesterday</p>
+                <p className="text-[10px] text-red-600 font-semibold mt-0.5">+24% vs yesterday</p>
               </div>
-              <div className="p-2.5 rounded-xl bg-purple-50 text-[#6941C6]">
-                <Zap className="w-5 h-5 fill-[#6941C6]" />
+              <div className="p-2.5 rounded-xl bg-red-50 text-red-600">
+                <Zap className="w-5 h-5 fill-red-600 text-red-600" />
               </div>
             </div>
 
@@ -413,7 +413,7 @@ export default function AutomationsPage() {
                     key={rule.id}
                     className={`p-5 rounded-2xl bg-white border transition-all duration-200 shadow-xs flex flex-col justify-between ${
                       rule.active
-                        ? "border-slate-200 hover:border-purple-300 hover:shadow-sm"
+                        ? "border-slate-200 hover:border-red-300 hover:shadow-sm"
                         : "border-slate-200/60 bg-slate-50/40 opacity-75"
                     }`}
                   >
@@ -469,7 +469,7 @@ export default function AutomationsPage() {
                       {/* Logic Block: Trigger -> Action */}
                       <div className="mt-4 p-3 bg-slate-50/80 rounded-xl border border-slate-200/70 space-y-2 text-xs">
                         <div className="flex items-start gap-2">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700 bg-purple-100/70 px-1.5 py-0.5 rounded shrink-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-red-700 bg-red-100/70 px-1.5 py-0.5 rounded shrink-0">
                             Trigger
                           </span>
                           <span className="font-medium text-slate-700 leading-tight">{rule.trigger}</span>
@@ -487,7 +487,7 @@ export default function AutomationsPage() {
                     {/* Footer Info */}
                     <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
                       <span>Executions: <strong className="text-slate-700 font-bold">{rule.executionsCount} runs</strong></span>
-                      <span className="flex items-center gap-1 text-[#6941C6] font-semibold">
+                      <span className="flex items-center gap-1 text-red-600 font-semibold">
                         <Sparkles className="w-3 h-3" />
                         Live Automation
                       </span>
@@ -503,7 +503,7 @@ export default function AutomationsPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
               <div>
                 <div className="flex items-center gap-2">
-                  <Activity className="w-4 h-4 text-[#6941C6]" />
+                  <Activity className="w-4 h-4 text-red-600" />
                   <h3 className="text-sm font-bold text-slate-900">Live Automation Execution Logs</h3>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
@@ -518,7 +518,7 @@ export default function AutomationsPage() {
                   value={searchLogQuery}
                   onChange={(e) => setSearchLogQuery(e.target.value)}
                   placeholder="Filter logs by lead or workflow..."
-                  className="bg-slate-50 text-slate-900 text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white w-64 font-medium"
+                  className="bg-slate-50 text-slate-900 text-xs pl-8 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white w-64 font-medium"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                 {searchLogQuery && (
@@ -568,7 +568,7 @@ export default function AutomationsPage() {
                           <td className="py-3.5 font-bold text-slate-900 whitespace-nowrap">
                             {log.workflowName}
                           </td>
-                          <td className="py-3.5 font-semibold text-purple-700 whitespace-nowrap">
+                          <td className="py-3.5 font-semibold text-red-700 whitespace-nowrap">
                             {log.targetLead}
                           </td>
                           <td className="py-3.5 text-slate-600 max-w-xs truncate">
@@ -618,8 +618,8 @@ export default function AutomationsPage() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 rounded-xl bg-purple-50 text-[#6941C6]">
-                  <Zap className="w-5 h-5 fill-[#6941C6]" />
+                <div className="p-2 rounded-xl bg-red-50 text-red-600">
+                  <Zap className="w-5 h-5 fill-red-600 text-red-600" />
                 </div>
                 <div>
                   <h3 className="font-bold text-slate-900 text-base">Create Custom Workflow Rule</h3>
@@ -644,7 +644,7 @@ export default function AutomationsPage() {
                   value={ruleName}
                   onChange={(e) => setRuleName(e.target.value)}
                   placeholder="e.g. Inbound Demo Auto-Confirmation WhatsApp"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] focus:bg-white font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
                 />
               </div>
 
@@ -654,7 +654,7 @@ export default function AutomationsPage() {
                 <select
                   value={ruleTrigger}
                   onChange={(e) => setRuleTrigger(e.target.value)}
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                 >
                   <option value="When a new lead arrives via Meta/Facebook Ads">
                     When a new lead arrives via Meta/Facebook Ads
@@ -685,7 +685,7 @@ export default function AutomationsPage() {
                   value={ruleCondition}
                   onChange={(e) => setRuleCondition(e.target.value)}
                   placeholder="e.g. Source = 'Meta Ads' AND Deal Value > $1,000"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                 />
               </div>
 
@@ -696,7 +696,7 @@ export default function AutomationsPage() {
                   <select
                     value={ruleChannel}
                     onChange={(e) => setRuleChannel(e.target.value as any)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
                     <option value="WhatsApp">WhatsApp (Emerald)</option>
                     <option value="System">System Round Robin (Indigo)</option>
@@ -710,7 +710,7 @@ export default function AutomationsPage() {
                   <select
                     value={ruleAction}
                     onChange={(e) => setRuleAction(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-medium"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
                     <option value="Dispatch WhatsApp Welcome Template immediately">
                       Dispatch WhatsApp Welcome Template
@@ -736,7 +736,7 @@ export default function AutomationsPage() {
                   value={ruleDescription}
                   onChange={(e) => setRuleDescription(e.target.value)}
                   placeholder="Explain the business objective of this rule..."
-                  className="w-full bg-slate-50 text-slate-900 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -751,7 +751,7 @@ export default function AutomationsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
                 >
                   Save & Activate Rule
                 </button>

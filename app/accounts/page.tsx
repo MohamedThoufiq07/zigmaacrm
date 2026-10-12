@@ -102,13 +102,13 @@ export default function AccountsPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   placeholder="Search accounts..."
-                  className="w-full bg-white text-slate-900 text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-white text-slate-900 text-xs pl-9 pr-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+                className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
               >
                 <Plus className="w-3.5 h-3.5" />
                 <span>Add Account</span>
@@ -119,7 +119,7 @@ export default function AccountsPage() {
           {/* Accounts Grid or Zero State */}
           {accounts.length === 0 ? (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-purple-50 text-[#6941C6] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
                 <Building2 className="w-6 h-6" />
               </div>
               <div>
@@ -130,7 +130,7 @@ export default function AccountsPage() {
               </div>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl"
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl"
               >
                 Add First Account
               </button>
@@ -140,11 +140,11 @@ export default function AccountsPage() {
               {filtered.map((acc) => (
                 <div
                   key={acc.id}
-                  className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-purple-200 transition-all flex flex-col justify-between space-y-3"
+                  className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs hover:border-red-200 transition-all flex flex-col justify-between space-y-3"
                 >
                   <div className="flex items-start justify-between">
                     <div>
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6941C6] border border-purple-100">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-red-50 text-red-600 border border-red-100">
                         {acc.industry}
                       </span>
                       <h3 className="text-sm font-bold text-slate-900 mt-1.5">{acc.name}</h3>
@@ -166,7 +166,7 @@ export default function AccountsPage() {
                           href={acc.website.startsWith("http") ? acc.website : `https://${acc.website}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-[#6941C6] hover:underline truncate"
+                          className="text-red-600 hover:underline truncate"
                         >
                           {acc.website}
                         </a>
@@ -217,7 +217,7 @@ export default function AccountsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Acme Corporation"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -229,7 +229,7 @@ export default function AccountsPage() {
                     value={industry}
                     onChange={(e) => setIndustry(e.target.value)}
                     placeholder="e.g. SaaS"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -239,7 +239,7 @@ export default function AccountsPage() {
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
                     placeholder="e.g. Mumbai"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -252,7 +252,7 @@ export default function AccountsPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91..."
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -262,7 +262,7 @@ export default function AccountsPage() {
                     value={website}
                     onChange={(e) => setWebsite(e.target.value)}
                     placeholder="acme.com"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -273,7 +273,7 @@ export default function AccountsPage() {
                   type="number"
                   value={annualRevenue}
                   onChange={(e) => setAnnualRevenue(Number(e.target.value))}
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6] font-bold"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-bold"
                 />
               </div>
 
@@ -287,7 +287,7 @@ export default function AccountsPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af]"
+                  className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
                 >
                   Save Account
                 </button>

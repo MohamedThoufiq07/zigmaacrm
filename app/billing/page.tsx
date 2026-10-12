@@ -114,7 +114,7 @@ export default function BillingPage() {
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-2xl bg-purple-50 text-[#6941C6] border border-purple-100">
+              <div className="p-2.5 rounded-2xl bg-red-50 text-red-600 border border-red-100">
                 <Receipt className="w-6 h-6" />
               </div>
               <div>
@@ -129,7 +129,7 @@ export default function BillingPage() {
 
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-1.5 px-4 py-2 bg-[#6941C6] hover:bg-[#5833af] text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all"
             >
               <Plus className="w-3.5 h-3.5" />
               <span>Create Invoice</span>
@@ -138,12 +138,12 @@ export default function BillingPage() {
 
           {/* Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-purple-600 shadow-xs flex items-center justify-between">
+            <div className="p-4 rounded-xl bg-white border border-slate-200 border-t-[3px] border-t-red-600 shadow-xs flex items-center justify-between">
               <div>
                 <p className="text-[11px] font-bold text-slate-400 uppercase">Total Invoiced</p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">{formatCurrency(totalInvoiced)}</p>
               </div>
-              <div className="p-2 rounded-full bg-purple-50 text-[#6941C6]">
+              <div className="p-2 rounded-full bg-red-50 text-red-600">
                 <Receipt className="w-4 h-4" />
               </div>
             </div>
@@ -174,7 +174,7 @@ export default function BillingPage() {
           {/* Invoices Table or Zero State */}
           {invoices.length === 0 ? (
             <div className="p-12 rounded-2xl bg-white border border-slate-200 shadow-xs text-center space-y-3">
-              <div className="w-12 h-12 rounded-full bg-purple-50 text-[#6941C6] flex items-center justify-center mx-auto">
+              <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center mx-auto">
                 <Receipt className="w-6 h-6" />
               </div>
               <div>
@@ -185,7 +185,7 @@ export default function BillingPage() {
               </div>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl"
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl"
               >
                 Create First Invoice
               </button>
@@ -223,7 +223,7 @@ export default function BillingPage() {
                         <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedInvoice(inv)}
-                            className="p-1.5 rounded-lg text-slate-500 hover:text-[#6941C6] hover:bg-purple-50"
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50"
                             title="View / Print"
                           >
                             <Printer className="w-3.5 h-3.5" />
@@ -267,7 +267,7 @@ export default function BillingPage() {
                     value={clientName}
                     onChange={(e) => setClientName(e.target.value)}
                     placeholder="e.g. Acme Technologies"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
                 <div>
@@ -277,7 +277,7 @@ export default function BillingPage() {
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+91..."
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                   />
                 </div>
               </div>
@@ -289,7 +289,7 @@ export default function BillingPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="billing@acme.com"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#6941C6]"
+                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
                 />
               </div>
 
@@ -300,7 +300,7 @@ export default function BillingPage() {
                   <button
                     type="button"
                     onClick={handleAddItem}
-                    className="text-xs font-semibold text-[#6941C6] hover:underline flex items-center gap-1"
+                    className="text-xs font-semibold text-red-600 hover:underline flex items-center gap-1"
                   >
                     <Plus className="w-3 h-3" />
                     <span>Add Item</span>
@@ -376,7 +376,7 @@ export default function BillingPage() {
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af]"
+                  className="px-5 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
                 >
                   Generate Invoice
                 </button>
@@ -392,7 +392,7 @@ export default function BillingPage() {
           <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <Receipt className="w-5 h-5 text-[#6941C6]" />
+                <Receipt className="w-5 h-5 text-red-600" />
                 <span className="font-bold text-slate-900 text-sm">Invoice #{selectedInvoice.bill_number}</span>
               </div>
               <button onClick={() => setSelectedInvoice(null)} className="p-1 rounded text-slate-400 hover:text-slate-600">
@@ -417,14 +417,14 @@ export default function BillingPage() {
 
               <div className="flex justify-between text-sm font-bold pt-2 border-t border-slate-100">
                 <span>Total Amount:</span>
-                <span className="text-[#6941C6]">{formatCurrency(selectedInvoice.total_amount)}</span>
+                <span className="text-red-600">{formatCurrency(selectedInvoice.total_amount)}</span>
               </div>
             </div>
 
             <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
               <button
                 onClick={() => window.print()}
-                className="px-4 py-2 bg-[#6941C6] text-white text-xs font-bold rounded-xl shadow hover:bg-[#5833af] flex items-center gap-1.5"
+                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700 flex items-center gap-1.5"
               >
                 <Printer className="w-3.5 h-3.5" />
                 <span>Print Invoice</span>

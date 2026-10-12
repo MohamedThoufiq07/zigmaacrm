@@ -52,8 +52,8 @@ export default function FilterSelect({
         onClick={() => setIsOpen(!isOpen)}
         className={`h-10 px-4 flex items-center justify-between gap-2.5 bg-white border rounded-xl text-sm transition-all cursor-pointer shadow-2xs select-none ${
           isOpen
-            ? "border-[#6941C6] ring-2 ring-purple-100"
-            : "border-slate-200 hover:border-purple-300"
+            ? "border-red-500 ring-2 ring-red-100"
+            : "border-slate-200 hover:border-red-300"
         }`}
       >
         <span
@@ -78,7 +78,7 @@ export default function FilterSelect({
           )}
           <ChevronDown
             className={`w-4 h-4 transition-transform duration-200 ${
-              isOpen ? "rotate-180 text-[#6941C6]" : "text-slate-400"
+              isOpen ? "rotate-180 text-red-600" : "text-slate-400"
             }`}
           />
         </div>
@@ -100,8 +100,8 @@ export default function FilterSelect({
                   }}
                   className={`w-full text-left px-4 py-2 text-sm transition-colors cursor-pointer flex items-center justify-between ${
                     active
-                      ? "bg-purple-50 text-[#6941C6] font-semibold"
-                      : "text-slate-700 hover:bg-slate-50 hover:text-[#6941C6] font-medium"
+                      ? "bg-red-50 text-red-600 font-semibold"
+                      : "text-slate-700 hover:bg-red-50/60 hover:text-red-600 font-medium"
                   }`}
                 >
                   <span>{opt}</span>

@@ -189,7 +189,7 @@ export default function LeadsPage() {
           {/* Controls: ONE Straight Row Above Table (Tabs on Left | Actions on Right) */}
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
             {/* Left: Navigation Tabs + More Views (···) */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-sm">
+            <div className="flex items-center gap-1.5 text-sm flex-wrap sm:flex-nowrap">
               {["All Leads", "My Leads", "Open Leads", "Converted Leads", "Today's Leads"].map((tab) => (
                 <button
                   key={tab}

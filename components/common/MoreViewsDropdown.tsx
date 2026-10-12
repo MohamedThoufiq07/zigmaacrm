@@ -28,18 +28,23 @@ export default function MoreViewsDropdown({
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
     };
-  }, []);
+  }, [isOpen]);
 
   return (
     <div ref={containerRef} className={`relative inline-block ${className}`}>
       {/* More Button: ··· */}
       <button
         type="button"
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen((prev) => !prev);
+        }}
         className={`px-2.5 py-1.5 rounded-lg font-bold text-sm transition-colors cursor-pointer select-none ${
           isOpen
             ? "bg-purple-100 text-[#6941C6]"
@@ -52,7 +57,7 @@ export default function MoreViewsDropdown({
 
       {/* Popover Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 mt-1.5 w-60 max-h-80 overflow-y-auto bg-white border border-slate-200/90 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+        <div className="absolute left-0 top-full mt-1.5 w-60 max-h-80 overflow-y-auto bg-white border border-slate-200/90 rounded-2xl shadow-2xl py-2 z-[999] animate-in fade-in zoom-in-95 duration-100">
           <div className="space-y-0.5">
             {views.map((view) => {
               const isSelected = activeView === view;
@@ -60,7 +65,8 @@ export default function MoreViewsDropdown({
                 <button
                   key={view}
                   type="button"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onSelect(view);
                     setIsOpen(false);
                   }}

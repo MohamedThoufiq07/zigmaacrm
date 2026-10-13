@@ -27,6 +27,8 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
+import { useToast } from "@/components/common/ToastProvider";
+
 
 interface WorkflowRule {
   id: string;
@@ -146,7 +148,9 @@ const INITIAL_LOGS: ExecutionLog[] = [
 ];
 
 export default function AutomationsPage() {
+  const { toast, confirm } = useToast();
   const [rules, setRules] = useState<WorkflowRule[]>(DEFAULT_RULES);
+
   const [logs, setLogs] = useState<ExecutionLog[]>(INITIAL_LOGS);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [searchLogQuery, setSearchLogQuery] = useState("");
@@ -236,13 +240,22 @@ export default function AutomationsPage() {
   };
 
   // Delete a rule
-  const handleDeleteRule = (id: string, name: string) => {
-    if (confirm(`Are you sure you want to delete workflow "${name}"?`)) {
+  const handleDeleteRule = async (id: string, name: string) => {
+    const confirmed = await confirm({
+      title: "Delete Workflow",
+      message: `Are you sure you want to delete workflow "${name}"?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       const updated = rules.filter((r) => r.id !== id);
       saveRulesToStorage(updated);
-      showToast(`Deleted rule "${name}"`);
+      toast.success("Workflow Deleted", `Removed "${name}".`);
     }
   };
+
 
   // Filter logs
   const filteredLogs = logs.filter(

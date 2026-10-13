@@ -2,19 +2,47 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, X, CheckCircle2, TrendingUp, ChevronDown } from "lucide-react";
+import { 
+  Eye, 
+  EyeOff, 
+  X, 
+  CheckCircle2, 
+  ChevronDown, 
+  Users, 
+  Briefcase, 
+  GitBranch, 
+  Zap, 
+  BarChart3, 
+  CheckCircle, 
+  ArrowUpRight,
+  ShieldCheck,
+  Building2,
+  Phone,
+  FileText,
+  Trophy,
+  ArrowRight,
+  Layers,
+  Sparkles,
+  Mail,
+  Lock,
+  AlertCircle
+} from "lucide-react";
 import { api } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isSignUp, setIsSignUp] = useState(false);
+  const [isResetPassword, setIsResetPassword] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [otpValues, setOtpValues] = useState(["", "", "", "", "", ""]);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [forgotEmail, setForgotEmail] = useState("");
 
   // Login form state
-  const [email, setEmail] = useState("admin@zigmaa.com");
-  const [password, setPassword] = useState("admin123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
   // Sign up form state
@@ -23,24 +51,63 @@ export default function LoginPage() {
   const [companyName, setCompanyName] = useState("");
   const [signUpPassword, setSignUpPassword] = useState("");
   const [signUpEmail, setSignUpEmail] = useState("");
-  const [countryCode, setCountryCode] = useState("IN");
+  const [countryCode, setCountryCode] = useState("+91");
   const [contactNumber, setContactNumber] = useState("");
   const [showSignUpPassword, setShowSignUpPassword] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [otpVerified, setOtpVerified] = useState(false);
+
+  // Field-level error validation mapping (e.g. { email: "Invalid email", password: "Password is required" })
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const validateEmailFormat = (val: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim());
+  };
+
+  const validatePhoneFormat = (val: string) => {
+    const clean = val.replace(/\D/g, "");
+    return clean.length === 10;
+  };
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!email.trim() && !password) {
+      setError("Please enter your email and password.");
+      return;
+    }
+
+    if (!email.trim()) {
+      setError("Email address is required.");
+      return;
+    }
+
+    if (!validateEmailFormat(email)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
+
+    if (!password) {
+      setError("Password is required.");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
+    setSuccessMsg("");
 
     try {
-      await api.getHealth();
+      await api.login(email, password);
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to log in.");
+      const errMsg = err.message || "Incorrect email or password";
+      setError(errMsg);
+      // Keep error message in top banner only - no duplicate underneath the fields
     } finally {
       setSubmitting(false);
     }
@@ -48,19 +115,137 @@ export default function LoginPage() {
 
   async function handleSignUp(e: React.FormEvent) {
     e.preventDefault();
+    const errors: Record<string, string> = {};
+
+    if (!firstName.trim()) {
+      errors.firstName = "First name is required";
+    }
+    if (!lastName.trim()) {
+      errors.lastName = "Last name is required";
+    }
+    if (!companyName.trim()) {
+      errors.companyName = "Company name is required";
+    }
+    if (!signUpPassword) {
+      errors.signUpPassword = "Password is required";
+    } else if (signUpPassword.length < 6) {
+      errors.signUpPassword = "Password must be at least 6 characters";
+    }
+
+    if (!signUpEmail.trim()) {
+      errors.signUpEmail = "Email is required";
+    } else if (!validateEmailFormat(signUpEmail)) {
+      errors.signUpEmail = "Invalid email";
+    }
+
+    if (!contactNumber.trim()) {
+      errors.contactNumber = "Contact number is required";
+    } else if (!validatePhoneFormat(contactNumber)) {
+      errors.contactNumber = "Please enter a valid 10-digit mobile number";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
+
+    setFieldErrors({});
     setSubmitting(true);
     setError("");
+    setSuccessMsg("");
 
     try {
-      // Simulate account registration and log directly into CRM
-      await new Promise((resolve) => setTimeout(resolve, 600));
+      const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      await api.register({
+        email: signUpEmail.trim(),
+        password: signUpPassword,
+        full_name: fullName,
+        organization_name: companyName.trim()
+      });
       router.push("/");
     } catch (err: any) {
-      setError(err.message || "Failed to create account.");
+      const errMsg = err.message || "Failed to create account.";
+      setError(errMsg);
+      // Keep error message in top banner only - no duplicate underneath the fields
     } finally {
       setSubmitting(false);
     }
   }
+
+  async function handleSendOtp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetEmail.trim()) {
+      setError("Please enter your email address");
+      return;
+    }
+    setSubmitting(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const res = await api.sendOtp(resetEmail);
+      setOtpSent(true);
+      setOtpVerified(false);
+      setSuccessMsg(res.message || `Verification code sent to ${resetEmail}`);
+    } catch (err: any) {
+      setError(err.message || "Failed to send verification code. Ensure your email exists.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleVerifyOtp(e: React.FormEvent) {
+    e.preventDefault();
+    const otpCode = otpValues.join("");
+    if (otpCode.length !== 6) {
+      setError("Please enter the complete 6-digit OTP");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const res = await api.verifyOtp(resetEmail, otpCode);
+      setOtpVerified(true);
+      setSuccessMsg("Code verified! Please enter your new password below.");
+    } catch (err: any) {
+      setError(err.message || "Invalid or expired verification code.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  async function handleResetPasswordSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const otpCode = otpValues.join("");
+    if (!newPassword || newPassword.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    setSubmitting(true);
+    setError("");
+    setSuccessMsg("");
+
+    try {
+      const res = await api.resetPassword(resetEmail, otpCode, newPassword);
+      setSuccessMsg(res.message || "Password updated successfully. Please log in.");
+      setTimeout(() => {
+        setIsResetPassword(false);
+        setOtpSent(false);
+        setOtpVerified(false);
+        setPassword(newPassword);
+        setEmail(resetEmail);
+      }, 1500);
+    } catch (err: any) {
+      setError(err.message || "Failed to reset password.");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
 
   // Google OAuth Client ID
   const GOOGLE_CLIENT_ID =
@@ -115,7 +300,7 @@ export default function LoginPage() {
                 router.push("/");
               } catch (e: any) {
                 console.error("Failed to process Google profile", e);
-                setError("Google sign-in succeeded, but syncing with CRM failed.");
+                setError(e.message || "No account found with this Google email. Please sign up first.");
                 setGoogleLoading(false);
               }
             } else {
@@ -157,124 +342,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="h-screen max-h-screen w-screen overflow-hidden flex flex-col lg:flex-row bg-white text-slate-900 font-sans select-none fixed inset-0">
-      {/* ================= LEFT SHOWCASE PANEL ================= */}
-      <div className="relative w-full lg:w-1/2 h-full bg-gradient-to-br from-[#0B0F19] via-[#151D2F] to-[#7F1D1D] p-6 lg:p-10 xl:p-12 flex flex-col justify-between overflow-hidden shrink-0">
-        {/* Ambient Subtle Grid & Glows */}
-        <div
-          className="absolute inset-0 opacity-10 pointer-events-none"
-          style={{
-            backgroundImage: "radial-gradient(rgba(255, 255, 255, 0.5) 1px, transparent 1px)",
-            backgroundSize: "24px 24px"
-          }}
-        />
-        <div className="absolute top-1/3 left-1/4 w-80 h-80 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="relative h-screen max-h-screen w-screen overflow-hidden bg-white text-slate-900 font-sans select-none fixed inset-0">
+      {/* ================= FULL SPLIT DESIGN BACKGROUND ================= */}
+      {/* 
+        This stretches across 100% width and 100% height of the page.
+        Left ~62.5% is the dark CRM dashboard showcase with laptop,
+        Right ~37.5% is the clean white background.
+      */}
+      <img
+        src="/Zigmaa%20CRM%20Dashboard%20Split%20Design.png"
+        alt="Zigmaa CRM Login"
+        className="hidden lg:block absolute inset-0 w-full h-full object-fill pointer-events-none select-none z-0"
+        draggable={false}
+      />
 
-        {/* Top Left: Zigmaa Logo & Brand Title */}
-        <div className="relative z-10 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-md p-1.5 flex items-center justify-center border border-white/20 shadow-lg shadow-black/40">
-              <img
-                src="/crmlogo.png"
-                alt="Zigmaa Logo"
-                className="w-full h-full object-contain filter drop-shadow-[0_0_8px_rgba(255,255,255,0.4)]"
-              />
-            </div>
-            <div>
-              <span className="font-bold text-white text-base tracking-tight block">Zigmaa CRM</span>
-              <span className="text-[11px] text-red-200/80 font-medium block">Enterprise Sales & Operations</span>
-            </div>
-          </div>
-
-          <div className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white/90 text-xs font-semibold">
-            <span className="w-2 h-2 rounded-full bg-emerald-400" />
-            <span>Active Suite</span>
-          </div>
-        </div>
-
-        {/* Center: Seamless Glassmorphic CRM Analytics Showcase */}
-        <div className="relative z-10 my-auto py-2 max-w-md w-full mx-auto space-y-3">
-          {/* Main Glass Card: Sales Velocity */}
-          <div className="rounded-3xl bg-white/[0.12] backdrop-blur-xl border border-white/20 p-5 shadow-2xl shadow-black/50">
-            <div className="flex items-center justify-between mb-3">
-              <div>
-                <span className="text-[11px] font-bold text-red-200/90 uppercase tracking-wider block">Sales Velocity</span>
-                <span className="text-2xl font-black text-white tracking-tight">$3.8M Revenue</span>
-              </div>
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-400/20 border border-emerald-400/30 text-emerald-300 font-bold text-xs">
-                <TrendingUp className="w-3.5 h-3.5" /> +28.4%
-              </span>
-            </div>
-
-            {/* Glowing Smooth Curve */}
-            <div className="h-16 w-full">
-              <svg viewBox="0 0 360 70" className="w-full h-full overflow-visible">
-                <defs>
-                  <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#ffffff" stopOpacity="0.3" />
-                    <stop offset="100%" stopColor="#ffffff" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M0,55 C60,50 100,35 150,42 C200,48 260,18 360,10 L360,70 L0,70 Z"
-                  fill="url(#chartGrad)"
-                />
-                <path
-                  d="M0,55 C60,50 100,35 150,42 C200,48 260,18 360,10"
-                  fill="none"
-                  stroke="#ffffff"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-                <circle cx="360" cy="10" r="4.5" fill="#ffffff" />
-              </svg>
-            </div>
-
-            {/* Quick Metrics Pills */}
-            <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-white/10 text-center">
-              <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-red-200 block">Deals Won</span>
-                <span className="text-xs font-bold text-white block">184 Deals</span>
-              </div>
-              <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-red-200 block">Conversion</span>
-                <span className="text-xs font-bold text-white block">94.2%</span>
-              </div>
-              <div className="bg-white/5 rounded-xl py-1.5 px-2">
-                <span className="text-[10px] text-red-200 block">Avg Value</span>
-                <span className="text-xs font-bold text-white block">$21.4K</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Secondary Floating Mini Banner */}
-          <div className="rounded-2xl bg-white/[0.10] backdrop-blur-md border border-white/15 px-4 py-2.5 flex items-center justify-between text-xs text-white">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-red-600/30 flex items-center justify-center p-0.5">
-                <img src="/crmlogo.png" alt="Zigmaa" className="w-full h-full object-contain" />
-              </div>
-              <span className="font-semibold text-xs text-white/95">Omnichannel Lead Pipeline Synchronized</span>
-            </div>
-            <span className="text-[11px] font-bold text-emerald-300">● 100% Online</span>
-          </div>
-        </div>
-
-        {/* Bottom: Attractive CRM Copy */}
-        <div className="relative z-10 max-w-lg">
-          <h1 className="text-2xl xl:text-3xl font-extrabold text-white tracking-tight leading-tight">
-            Empower Your Sales. Accelerate Growth.
-          </h1>
-          <p className="mt-1.5 text-xs xl:text-sm text-red-100/90 font-normal leading-relaxed">
-            Unified omnichannel pipeline tracking, client communication, and deal management built for high-performing teams.
-          </p>
-        </div>
-      </div>
-
-      {/* ================= RIGHT FORM PANEL ================= */}
-      <div className="w-full lg:w-1/2 h-full flex items-center justify-center p-6 sm:p-10 bg-white overflow-hidden">
-        {/* SIGN UP VIEW (Exact Layout & Typography matching user reference) */}
+      {/* ================= INTERACTIVE FORM PANEL ================= */}
+      {/* Positioned directly over the right white section (~37.5% of screen width) */}
+      <div className="relative z-10 w-full lg:w-[37.5%] lg:ml-auto h-full flex items-center justify-center px-6 sm:px-10 lg:px-8 xl:px-12 py-6 bg-white lg:bg-transparent overflow-y-auto">
+        {/* SIGN UP VIEW */}
         {isSignUp ? (
-          <div className="w-full max-w-[440px] space-y-4">
+          <div className="w-full max-w-[420px] space-y-4">
             {/* Header */}
             <div>
               <h2 className="text-[26px] font-bold text-[#111827] tracking-tight">
@@ -291,7 +378,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            <form onSubmit={handleSignUp} className="space-y-3.5">
+            <form onSubmit={handleSignUp} className="space-y-3.5" noValidate>
               {/* Row 1: First Name & Last Name */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
@@ -300,12 +387,30 @@ export default function LoginPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      if (fieldErrors.firstName) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.firstName;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="Enter Your First Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                    className={`w-full px-3.5 py-2.5 rounded-lg border text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none transition-colors ${
+                      fieldErrors.firstName
+                        ? "border-[#EF4444] bg-[#FFF5F5] focus:border-[#EF4444] focus:ring-1 focus:ring-[#EF4444]"
+                        : "border-[#E5E7EB] bg-white focus:border-red-600 focus:ring-1 focus:ring-red-600"
+                    }`}
                   />
+                  {fieldErrors.firstName && (
+                    <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{fieldErrors.firstName}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-[#374151] mb-1">
@@ -313,12 +418,30 @@ export default function LoginPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      if (fieldErrors.lastName) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.lastName;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="Enter Your Last Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                    className={`w-full px-3.5 py-2.5 rounded-lg border text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none transition-colors ${
+                      fieldErrors.lastName
+                        ? "border-[#EF4444] bg-[#FFF5F5] focus:border-[#EF4444] focus:ring-1 focus:ring-[#EF4444]"
+                        : "border-[#E5E7EB] bg-white focus:border-red-600 focus:ring-1 focus:ring-red-600"
+                    }`}
                   />
+                  {fieldErrors.lastName && (
+                    <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{fieldErrors.lastName}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -330,12 +453,30 @@ export default function LoginPage() {
                   </label>
                   <input
                     type="text"
-                    required
                     value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
+                    onChange={(e) => {
+                      setCompanyName(e.target.value);
+                      if (fieldErrors.companyName) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.companyName;
+                          return n;
+                        });
+                      }
+                    }}
                     placeholder="Enter Your Company Name"
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                    className={`w-full px-3.5 py-2.5 rounded-lg border text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none transition-colors ${
+                      fieldErrors.companyName
+                        ? "border-[#EF4444] bg-[#FFF5F5] focus:border-[#EF4444] focus:ring-1 focus:ring-[#EF4444]"
+                        : "border-[#E5E7EB] bg-white focus:border-red-600 focus:ring-1 focus:ring-red-600"
+                    }`}
                   />
+                  {fieldErrors.companyName && (
+                    <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{fieldErrors.companyName}</span>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-[13px] font-medium text-[#374151] mb-1">
@@ -344,11 +485,23 @@ export default function LoginPage() {
                   <div className="relative flex items-center">
                     <input
                       type={showSignUpPassword ? "text" : "password"}
-                      required
                       value={signUpPassword}
-                      onChange={(e) => setSignUpPassword(e.target.value)}
+                      onChange={(e) => {
+                        setSignUpPassword(e.target.value);
+                        if (fieldErrors.signUpPassword) {
+                          setFieldErrors((prev) => {
+                            const n = { ...prev };
+                            delete n.signUpPassword;
+                            return n;
+                          });
+                        }
+                      }}
                       placeholder="Enter Your Password"
-                      className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                      className={`w-full px-3.5 py-2.5 pr-10 rounded-lg border text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none transition-colors ${
+                        fieldErrors.signUpPassword
+                          ? "border-[#EF4444] bg-[#FFF5F5] focus:border-[#EF4444] focus:ring-1 focus:ring-[#EF4444]"
+                          : "border-[#E5E7EB] bg-white focus:border-red-600 focus:ring-1 focus:ring-red-600"
+                      }`}
                     />
                     <button
                       type="button"
@@ -359,6 +512,12 @@ export default function LoginPage() {
                       {showSignUpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                  {fieldErrors.signUpPassword && (
+                    <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      <span>{fieldErrors.signUpPassword}</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -369,12 +528,30 @@ export default function LoginPage() {
                 </label>
                 <input
                   type="email"
-                  required
                   value={signUpEmail}
-                  onChange={(e) => setSignUpEmail(e.target.value)}
+                  onChange={(e) => {
+                    setSignUpEmail(e.target.value);
+                    if (fieldErrors.signUpEmail) {
+                      setFieldErrors((prev) => {
+                        const n = { ...prev };
+                        delete n.signUpEmail;
+                        return n;
+                      });
+                    }
+                  }}
                   placeholder="Enter Your Email ID"
-                  className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                  className={`w-full px-3.5 py-2.5 rounded-lg border text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none transition-colors ${
+                    fieldErrors.signUpEmail
+                      ? "border-[#EF4444] bg-[#FFF5F5] focus:border-[#EF4444] focus:ring-1 focus:ring-[#EF4444]"
+                      : "border-[#E5E7EB] bg-white focus:border-red-600 focus:ring-1 focus:ring-red-600"
+                  }`}
                 />
+                {fieldErrors.signUpEmail && (
+                  <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{fieldErrors.signUpEmail}</span>
+                  </div>
+                )}
               </div>
 
               {/* Row 4: Contact Number with Country Code Dropdown */}
@@ -382,31 +559,43 @@ export default function LoginPage() {
                 <label className="block text-[13px] font-medium text-[#374151] mb-1">
                   Contact <span className="text-red-500">*</span>
                 </label>
-                <div className="flex rounded-lg border border-[#E5E7EB] bg-white focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600 transition-colors overflow-hidden">
-                  <div className="relative flex items-center bg-slate-50 border-r border-[#E5E7EB] px-2.5">
-                    <select
-                      value={countryCode}
-                      onChange={(e) => setCountryCode(e.target.value)}
-                      className="bg-transparent text-xs font-semibold text-[#374151] pr-4 py-2.5 appearance-none cursor-pointer focus:outline-none"
-                    >
-                      <option value="IN">IN</option>
-                      <option value="US">US</option>
-                      <option value="UK">UK</option>
-                      <option value="AE">AE</option>
-                      <option value="CA">CA</option>
-                      <option value="AU">AU</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 text-slate-500 pointer-events-none absolute right-1.5" />
+                <div
+                  className={`flex rounded-lg border transition-colors overflow-hidden ${
+                    fieldErrors.contactNumber
+                      ? "border-[#EF4444] bg-[#FFF5F5] focus-within:border-[#EF4444] focus-within:ring-1 focus-within:ring-[#EF4444]"
+                      : "border-[#E5E7EB] bg-white focus-within:border-red-600 focus-within:ring-1 focus-within:ring-red-600"
+                  }`}
+                >
+                  <div className="flex items-center bg-slate-50 border-r border-[#E5E7EB] px-3.5 select-none">
+                    <span className="text-xs font-bold text-[#374151] tracking-wide">+91</span>
                   </div>
                   <input
                     type="tel"
-                    required
+                    inputMode="numeric"
+                    maxLength={10}
                     value={contactNumber}
-                    onChange={(e) => setContactNumber(e.target.value)}
-                    placeholder="Enter Your Contact Number"
-                    className="flex-1 px-3.5 py-2.5 bg-transparent text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none"
+                    onChange={(e) => {
+                      // Only allow numeric digits and cap at 10 digits
+                      const digitsOnly = e.target.value.replace(/\D/g, "").slice(0, 10);
+                      setContactNumber(digitsOnly);
+                      if (fieldErrors.contactNumber) {
+                        setFieldErrors((prev) => {
+                          const n = { ...prev };
+                          delete n.contactNumber;
+                          return n;
+                        });
+                      }
+                    }}
+                    placeholder="Enter 10-digit Mobile Number"
+                    className="flex-1 px-3.5 py-2.5 bg-transparent text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none font-medium tracking-wide"
                   />
                 </div>
+                {fieldErrors.contactNumber && (
+                  <div className="flex items-center gap-1 text-[11px] text-[#EF4444] mt-1 font-medium">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    <span>{fieldErrors.contactNumber}</span>
+                  </div>
+                )}
               </div>
 
               {/* Sign Up Button */}
@@ -431,16 +620,17 @@ export default function LoginPage() {
               </button>
             </div>
           </div>
-        ) : (
-          /* SIGN IN (LOGIN) VIEW */
-          <div className="w-full max-w-[390px] space-y-5">
-            {/* Header */}
+        ) : isResetPassword ? (
+          /* RESET PASSWORD / FORGOT PASSWORD VIEW (Matches Image 3 & 4) */
+          <div className="w-full max-w-[400px] space-y-6">
             <div>
-              <h2 className="text-[26px] sm:text-[28px] font-bold text-[#111827] tracking-tight">
-                Welcome back
+              <h2 className="text-[28px] sm:text-[32px] font-bold text-[#111827] tracking-tight">
+                Reset your password
               </h2>
               <p className="text-xs sm:text-sm text-[#6B7280] mt-1 font-normal">
-                Sign in to continue to your Zigmaa account.
+                {otpSent 
+                  ? "We've sent the 6 Digit OTP to your registered email address."
+                  : "We will sent the OTP for your below email address"}
               </p>
             </div>
 
@@ -450,28 +640,240 @@ export default function LoginPage() {
               </div>
             )}
 
+            {successMsg && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                {successMsg}
+              </div>
+            )}
+
+            {!otpSent ? (
+              /* Step 1: Enter Email & Send OTP (Matches Image 3) */
+              <form onSubmit={handleSendOtp} className="space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    placeholder="Enter your email"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {submitting ? "Sending OTP..." : "Send OTP"}
+                </button>
+
+                <div className="text-center text-xs text-[#4B5563] pt-1">
+                  Already a Member?{" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetPassword(false);
+                      setOtpSent(false);
+                      setError("");
+                      setSuccessMsg("");
+                    }}
+                    className="font-medium text-red-600 hover:underline cursor-pointer"
+                  >
+                    Sign In
+                  </button>
+                </div>
+              </form>
+            ) : !otpVerified ? (
+              /* Step 2: Enter 6-digit OTP & Verify (Matches Image 4) */
+              <form onSubmit={handleVerifyOtp} className="space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    readOnly
+                    value={resetEmail}
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-slate-50 text-[#111827] text-xs sm:text-sm cursor-not-allowed"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">
+                    Enter 6-digit OTP
+                  </label>
+                  <div className="flex gap-2 justify-between">
+                    {otpValues.map((digit, idx) => (
+                      <input
+                        key={idx}
+                        id={`otp-input-${idx}`}
+                        type="text"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const nextOtp = [...otpValues];
+                          nextOtp[idx] = val;
+                          setOtpValues(nextOtp);
+                          if (val && idx < 5) {
+                            const nextElem = document.getElementById(`otp-input-${idx + 1}`);
+                            nextElem?.focus();
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Backspace" && !otpValues[idx] && idx > 0) {
+                            const prevElem = document.getElementById(`otp-input-${idx - 1}`);
+                            prevElem?.focus();
+                          }
+                        }}
+                        className="w-11 h-11 text-center font-bold text-base rounded-lg border border-[#E5E7EB] bg-white text-[#111827] focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {submitting ? "Verifying..." : "Verify OTP"}
+                </button>
+
+                <div className="space-y-1.5 pt-1 text-center text-xs text-[#4B5563]">
+                  <div>
+                    Already a Member?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsResetPassword(false);
+                        setOtpSent(false);
+                        setOtpVerified(false);
+                        setError("");
+                        setSuccessMsg("");
+                      }}
+                      className="font-medium text-red-600 hover:underline cursor-pointer"
+                    >
+                      Sign In
+                    </button>
+                  </div>
+                  <div>
+                    Didn't Received?{" "}
+                    <button
+                      type="button"
+                      disabled={submitting}
+                      onClick={handleSendOtp}
+                      className="font-medium text-red-600 hover:underline cursor-pointer"
+                    >
+                      Resend OTP
+                    </button>
+                  </div>
+                </div>
+              </form>
+            ) : (
+              /* Step 3: Set New Password after verification */
+              <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-[13px] font-medium text-[#374151] mb-1.5">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter your new password"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="w-full py-2.5 px-4 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-semibold text-sm rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  {submitting ? "Saving..." : "Update Password"}
+                </button>
+
+                <div className="text-center text-xs text-[#4B5563] pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsResetPassword(false);
+                      setOtpSent(false);
+                      setOtpVerified(false);
+                      setError("");
+                      setSuccessMsg("");
+                    }}
+                    className="font-medium text-red-600 hover:underline cursor-pointer"
+                  >
+                    Back to Sign In
+                  </button>
+                </div>
+              </form>
+            )}
+
+          </div>
+        ) : (
+          /* SIGN IN (LOGIN) VIEW (Matches Image 1 Text, Sizing, Inputs & Button without arrow) */
+          <div className="w-full max-w-[400px] space-y-5">
+            {/* Header */}
+            <div>
+              <h2 className="text-[26px] sm:text-[28px] font-bold text-[#111827] tracking-tight">
+                Welcome back
+              </h2>
+              <p className="text-xs sm:text-sm text-[#6B7280] mt-1 font-normal">
+                Sign in to continue to your Zigmaa CRM account.
+              </p>
+            </div>
+
+            {error && (
+              <div className="p-2.5 rounded-lg bg-rose-50 border border-rose-200 text-rose-600 text-xs font-medium">
+                {error}
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
+                {successMsg}
+              </div>
+            )}
+
+
             {/* Form */}
-            <form onSubmit={handleLogin} className="space-y-3.5">
+            <form onSubmit={handleLogin} className="space-y-3.5" noValidate>
               <div>
-                <label className="block text-[13px] font-medium text-[#374151] mb-1">Email Address</label>
+                <label className="block text-[13px] font-medium text-[#374151] mb-1">
+                  Email Address
+                </label>
                 <input
                   type="email"
-                  required
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError("");
+                  }}
                   placeholder="Enter Your Registered Email Address"
                   className="w-full px-3.5 py-2.5 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-[13px] font-medium text-[#374151] mb-1">Password</label>
+                <label className="block text-[13px] font-medium text-[#374151] mb-1">
+                  Password
+                </label>
                 <div className="relative flex items-center">
                   <input
                     type={showPassword ? "text" : "password"}
-                    required
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError("");
+                    }}
                     placeholder="Enter Your Password"
                     className="w-full px-3.5 py-2.5 pr-10 rounded-lg border border-[#E5E7EB] bg-white text-[#111827] text-xs sm:text-sm placeholder:text-[#9CA3AF] placeholder:italic placeholder:font-normal focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600 transition-colors"
                   />
@@ -491,8 +893,9 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => {
-                    setShowForgotPassword(true);
-                    setResetSent(false);
+                    setResetEmail(email || "");
+                    setIsResetPassword(true);
+                    setOtpSent(false);
                   }}
                   className="text-xs font-medium text-red-600 hover:underline cursor-pointer"
                 >
@@ -500,7 +903,7 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {/* Login Button */}
+              {/* Login Button (No arrow, exact label) */}
               <button
                 type="submit"
                 disabled={submitting}
@@ -515,7 +918,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
-              className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-[#E5E7EB] text-[#374151] font-medium text-xs sm:text-sm rounded-lg shadow-xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+              className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-[#E5E7EB] text-[#374151] font-medium text-xs sm:text-sm rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
                 <path
@@ -543,7 +946,10 @@ export default function LoginPage() {
               Not a Member ?{" "}
               <button
                 type="button"
-                onClick={() => setIsSignUp(true)}
+                onClick={() => {
+                  setIsSignUp(true);
+                  setIsResetPassword(false);
+                }}
                 className="font-medium text-red-600 hover:underline cursor-pointer"
               >
                 Sign Up
@@ -553,74 +959,6 @@ export default function LoginPage() {
         )}
       </div>
 
-      {/* ================= FORGOT PASSWORD MODAL ================= */}
-      {showForgotPassword && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 space-y-4 relative">
-            <button
-              onClick={() => setShowForgotPassword(false)}
-              className="absolute right-3.5 top-3.5 p-1 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
-            {resetSent ? (
-              <div className="text-center py-3 space-y-2.5">
-                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <h3 className="text-base font-bold text-slate-900">Reset Link Sent</h3>
-                <p className="text-xs text-slate-500">
-                  We've sent a password reset link to <span className="font-semibold text-slate-800">{forgotEmail}</span>.
-                </p>
-                <button
-                  onClick={() => setShowForgotPassword(false)}
-                  className="w-full mt-2 py-2 bg-red-600 text-white rounded-lg text-xs font-semibold hover:bg-red-700 cursor-pointer"
-                >
-                  Back to Login
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleForgotPasswordSubmit} className="space-y-3.5">
-                <div>
-                  <h3 className="text-base font-bold text-slate-900">Forgot Password</h3>
-                  <p className="text-xs text-slate-500 mt-0.5">
-                    Enter your email to receive password reset instructions.
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-slate-700 mb-1">Email Address</label>
-                  <input
-                    type="email"
-                    required
-                    value={forgotEmail}
-                    onChange={(e) => setForgotEmail(e.target.value)}
-                    placeholder="Enter Your Registered Email Address"
-                    className="w-full px-3 py-2 rounded-lg border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 placeholder:italic focus:outline-none focus:border-red-600 focus:ring-1 focus:ring-red-600"
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setShowForgotPassword(false)}
-                    className="flex-1 py-2 rounded-lg border border-slate-200 text-xs font-medium text-slate-600 hover:bg-slate-50 cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-semibold cursor-pointer"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

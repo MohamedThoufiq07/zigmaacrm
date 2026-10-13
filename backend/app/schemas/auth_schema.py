@@ -42,3 +42,33 @@ class OrganizationOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+class SendOtpRequest(BaseModel):
+    email: EmailStr
+
+class VerifyOtpRequest(BaseModel):
+    email: EmailStr
+    otp: str
+
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr
+    otp: str
+    new_password: str
+
+class ChangePasswordRequest(BaseModel):
+    email: EmailStr
+    current_password: str
+    new_password: str
+
+class UpdateProfileRequest(BaseModel):
+    email: EmailStr
+    full_name: Optional[str] = None
+    new_email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    organization_name: Optional[str] = None
+    picture: Optional[str] = None
+
+class SimpleMessageResponse(BaseModel):
+    message: str
+    success: bool = True
+

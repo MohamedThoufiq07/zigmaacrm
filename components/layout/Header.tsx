@@ -17,9 +17,11 @@ import {
   ShieldCheck,
   HelpCircle,
   LogOut,
-  ChevronDown
+  ChevronDown,
+  Camera
 } from "lucide-react";
 import AddLeadModal from "@/components/leads/AddLeadModal";
+import HelpSupportModal from "@/components/common/HelpSupportModal";
 import { api } from "@/lib/api";
 
 interface HeaderProps {
@@ -33,8 +35,11 @@ export default function Header({ title }: HeaderProps) {
   const [showAddLead, setShowAddLead] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [activeItem, setActiveItem] = useState("User Activity");
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
+
+  const [currentUser, setCurrentUser] = useState<any>(null);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -43,11 +48,40 @@ export default function Header({ title }: HeaderProps) {
         setIsSidebarHidden(Boolean(e.detail?.hidden));
       };
       window.addEventListener("zigmaa_sidebar_toggle", handleSidebarChange);
+
+      // Load logged-in user details
+      const loadUser = () => {
+        const user = api.getCurrentUser();
+        if (user) {
+          setCurrentUser(user);
+        }
+      };
+
+      loadUser();
+      window.addEventListener("zigmaa_user_updated", loadUser);
+      window.addEventListener("storage", loadUser);
+
       return () => {
         window.removeEventListener("zigmaa_sidebar_toggle", handleSidebarChange);
+        window.removeEventListener("zigmaa_user_updated", loadUser);
+        window.removeEventListener("storage", loadUser);
       };
     }
   }, []);
+
+  const getInitials = (name?: string, email?: string) => {
+    if (name && name.trim()) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (email) {
+      return email.slice(0, 2).toUpperCase();
+    }
+    return "U";
+  };
 
   const getPageTitle = () => {
     if (title) return title;
@@ -73,6 +107,7 @@ export default function Header({ title }: HeaderProps) {
   };
 
   const handleLogout = () => {
+    api.logout();
     setShowProfileMenu(false);
     router.push("/login");
   };
@@ -80,10 +115,9 @@ export default function Header({ title }: HeaderProps) {
   const menuItems = [
     { label: "Profile", href: "/settings", icon: User },
     { label: "Manage Users & Roles", href: "/settings", icon: UserPlus },
-    { label: "Manage Organization", href: "/accounts", icon: Building2 },
     { label: "Settings", href: "/settings", icon: Settings },
     { label: "User Activity", href: "/events", icon: Activity },
-    { label: "Privacy Policy", href: "/settings", icon: ShieldCheck },
+    { label: "Privacy Policy", href: "/privacy-policy", icon: ShieldCheck },
     { label: "Help", href: "/settings", icon: HelpCircle }
   ];
 
@@ -129,13 +163,6 @@ export default function Header({ title }: HeaderProps) {
             >
               <CalendarDays className="w-4 h-4" />
             </Link>
-            <Link
-              href="/tasks"
-              className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors"
-              title="Documents & Notes"
-            >
-              <FileText className="w-4 h-4" />
-            </Link>
 
             {/* Notifications Dropdown */}
             <div className="relative">
@@ -172,10 +199,23 @@ export default function Header({ title }: HeaderProps) {
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-8 h-8 rounded-full bg-[#E5B83A] text-slate-900 font-bold flex items-center justify-center text-xs shadow-xs border border-amber-400/60 shrink-0 cursor-pointer hover:ring-2 hover:ring-[#E5B83A]/70 transition-all"
-              title="Mohamed Thoufiq"
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white font-bold flex items-center justify-center text-xs shadow-xs border border-amber-300/80 shrink-0 cursor-pointer hover:ring-2 hover:ring-red-500/40 transition-all overflow-hidden"
+              title={currentUser?.full_name || currentUser?.email || "User Profile"}
             >
-              MT
+              {currentUser?.picture ? (
+                <img
+                  src={currentUser.picture}
+                  alt={currentUser?.full_name || "Profile"}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
+              ) : (
+                <span className="text-[11px] font-bold text-white">
+                  {getInitials(currentUser?.full_name, currentUser?.email)}
+                </span>
+              )}
             </button>
 
             {showProfileMenu && (
@@ -187,15 +227,36 @@ export default function Header({ title }: HeaderProps) {
                 />
 
                 {/* Popover Card */}
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-slate-100 z-50 text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-68 bg-white rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-slate-100 z-50 text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                   {/* Top Avatar & Name Section */}
-                  <div className="pt-6 pb-3 flex flex-col items-center">
-                    <div className="w-20 h-20 rounded-full bg-[#E5B83A] text-slate-900 font-bold text-2xl flex items-center justify-center shadow-xs select-none">
-                      MT
+                  <div className="pt-6 pb-3 flex flex-col items-center px-4">
+                    {/* Interactive Profile Avatar with hover change overlay */}
+                    {/* Avatar Display */}
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold text-2xl flex items-center justify-center shadow-md select-none overflow-hidden border-2 border-white ring-2 ring-red-100">
+                      {currentUser?.picture ? (
+                        <img
+                          src={currentUser.picture}
+                          alt={currentUser?.full_name || "Profile"}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
+                      ) : (
+                        <span className="text-xl font-bold tracking-tight text-white drop-shadow-xs">
+                          {getInitials(currentUser?.full_name, currentUser?.email)}
+                        </span>
+                      )}
                     </div>
-                    <h3 className="mt-3 text-sm font-bold text-slate-800 tracking-tight select-none">
-                      Mohamed Thoufiq
+
+                    <h3 className="mt-2 text-sm font-bold text-slate-800 tracking-tight select-none text-center">
+                      {currentUser?.full_name || "CRM Administrator"}
                     </h3>
+                    {currentUser?.email && (
+                      <p className="text-[11px] text-slate-400 font-normal truncate max-w-[210px] mt-0.5 text-center">
+                        {currentUser.email}
+                      </p>
+                    )}
                   </div>
 
                   <div className="h-px bg-slate-100 mx-3 my-1" />
@@ -205,6 +266,32 @@ export default function Header({ title }: HeaderProps) {
                     {menuItems.map((item) => {
                       const Icon = item.icon;
                       const isHighlighted = activeItem === item.label;
+
+                      if (item.label === "Help") {
+                        return (
+                          <button
+                            key={item.label}
+                            type="button"
+                            onClick={() => {
+                              setShowProfileMenu(false);
+                              setShowHelpModal(true);
+                            }}
+                            onMouseEnter={() => setActiveItem(item.label)}
+                            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs transition-colors cursor-pointer text-left ${
+                              isHighlighted
+                                ? "bg-red-50 text-red-600 font-semibold"
+                                : "text-slate-700 hover:bg-red-50 hover:text-red-600 font-medium"
+                            }`}
+                          >
+                            <Icon
+                              className={`w-4 h-4 shrink-0 ${
+                                isHighlighted ? "text-red-600" : "text-slate-500"
+                              }`}
+                            />
+                            <span className="truncate">{item.label} & Support</span>
+                          </button>
+                        );
+                      }
 
                       return (
                         <Link
@@ -257,6 +344,7 @@ export default function Header({ title }: HeaderProps) {
       </header>
 
       {showAddLead && <AddLeadModal isOpen={showAddLead} onClose={() => setShowAddLead(false)} />}
+      <HelpSupportModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
     </>
   );
 }

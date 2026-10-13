@@ -16,8 +16,10 @@ import Header from "@/components/layout/Header";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Expense } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
 
 export default function ExpensesPage() {
+  const { toast, confirm } = useToast();
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -58,15 +60,27 @@ export default function ExpensesPage() {
     setTitle("");
     setAmount(0);
     setShowAddModal(false);
+    toast.success("Expense Added", `"${title}" was recorded.`);
     loadExpenses();
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Delete this expense?")) {
+    const expense = expenses.find((ex) => String(ex.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Expense",
+      message: `Are you sure you want to delete ${expense ? `"${expense.title}"` : "this expense"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       await api.deleteExpense(id);
+      toast.success("Expense Deleted", "The record was removed.");
       loadExpenses();
     }
   };
+
 
   const filtered = expenses.filter(
     (e) => categoryFilter === "All" || e.category === categoryFilter

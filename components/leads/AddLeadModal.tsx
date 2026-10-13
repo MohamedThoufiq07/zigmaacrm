@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, UserPlus, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
+import { useToast } from "@/components/common/ToastProvider";
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
+  const { toast } = useToast();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -44,14 +46,17 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
         deal_value: Number(dealValue),
         notes
       });
+      toast.success("Lead Created", `${name} added to your pipeline.`);
       if (onLeadAdded) onLeadAdded();
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to create lead.");
+      toast.error("Failed to Create Lead", err.message || "Please check your inputs.");
     } finally {
       setSubmitting(false);
     }
   }
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-fade-in text-slate-800">
@@ -171,14 +176,14 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={submitting}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl shadow-md shadow-indigo-600/20 transition-all disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl shadow-xs transition-all disabled:opacity-50 cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5" />
               <span>{submitting ? "Saving..." : "Save Lead"}</span>
@@ -189,3 +194,4 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
     </div>
   );
 }
+

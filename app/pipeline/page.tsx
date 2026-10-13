@@ -24,7 +24,8 @@ import {
   ArrowLeft,
   DollarSign,
   Calendar,
-  Sparkles
+  Sparkles,
+  GripVertical
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -33,6 +34,8 @@ import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Deal } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
+
 
 const DEALS_MORE_VIEWS = [
   "All Deals",
@@ -63,7 +66,9 @@ const DEAL_STAGES = [
 ];
 
 export default function PipelineDealsPage() {
+  const { toast, confirm } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
+
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [activeTab, setActiveTab] = useState<string>("All Deals");
   const [selectedStage, setSelectedStage] = useState("ALL");
@@ -132,13 +137,24 @@ export default function PipelineDealsPage() {
     setContactName("");
     setValue("");
     setShowAddModal(false);
+    toast.success("Deal Created", `"${newDeal.title}" was added.`);
     loadDeals();
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Are you sure you want to delete this deal?")) {
+    const deal = deals.find((d) => String(d.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Deal",
+      message: `Are you sure you want to delete ${deal ? `"${deal.title}"` : "this deal"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       setDeals((prev) => prev.filter((d) => String(d.id) !== String(id)));
       await api.deleteDeal(id);
+      toast.success("Deal Deleted", "The deal record was removed.");
     }
   };
 
@@ -147,11 +163,12 @@ export default function PipelineDealsPage() {
       prev.map((d) => (String(d.id) === String(dealId) ? { ...d, stage: newStage as any } : d))
     );
     await api.updateDeal(dealId, { stage: newStage as any });
+    toast.info("Pipeline Updated", `Deal moved to "${newStage}"`);
   };
 
   const handleExportCsv = () => {
     if (deals.length === 0) {
-      alert("No deals to export.");
+      toast.warning("Export Warning", "No deals available to export.");
       return;
     }
     const headers = ["Deal Name", "Company", "Contact", "Amount", "Stage", "Probability", "Close Date"];
@@ -172,10 +189,12 @@ export default function PipelineDealsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success("Export Complete", `Exported ${deals.length} deals.`);
   };
 
   // Filtered Deals
   const filteredDeals = useMemo(() => {
+
     return deals.filter((d) => {
       // Tab filter
       if (activeTab === "Open Deals" && d.stage === "Closed Won") return false;
@@ -233,15 +252,18 @@ export default function PipelineDealsPage() {
               {["All Deals", "My Deals", "Open Deals", "Won Deals", "Closing This Month"].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
                     setActiveTab(tab);
                     setCurrentPage(1);
+                    e.currentTarget.blur();
                   }}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm ${
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! focus-visible:ring-0! border select-none ${
                     activeTab === tab
-                      ? "bg-red-50 text-red-600 font-bold border border-red-100"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-red-50 text-red-600 font-bold border-red-200/80 shadow-2xs"
+                      : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
+                  style={{ outline: "none", boxShadow: activeTab === tab ? undefined : "none" }}
                 >
                   {tab}
                 </button>
@@ -315,12 +337,10 @@ export default function PipelineDealsPage() {
             </div>
           </div>
 
-          {/* Main Card Container */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-            {/* VIEW 1: TABLE VIEW */}
-            {viewMode === "table" && (
-              <div>
-                <div className="overflow-x-auto">
+          {/* VIEW 1: TABLE VIEW */}
+          {viewMode === "table" && (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-200/80 text-sm font-semibold text-slate-800">
@@ -480,125 +500,146 @@ export default function PipelineDealsPage() {
                   </div>
                 )}
               </div>
-            )}
+          )}
 
-            {/* VIEW 2: KANBAN VIEW */}
-            {viewMode === "kanban" && (
-              <div className="p-4 overflow-x-auto">
-                <div className="flex items-start gap-4 min-w-[1000px]">
-                  {DEAL_STAGES.map((st) => {
-                    const stageDeals = filteredDeals.filter((d) => d.stage === st.id);
-                    const stageTotalValue = stageDeals.reduce((sum, d) => sum + (d.value || 0), 0);
+          {/* VIEW 2: KANBAN VIEW (Matching Leads: Independent Columns, Red Theme, Horizontal Board Scroll, Individual Column Scroll) */}
+          {viewMode === "kanban" && (
+            <div className="w-full overflow-x-auto pb-4 pt-1">
+              <div className="flex items-start gap-4 w-max min-w-full">
+                {DEAL_STAGES.map((st) => {
+                  const stageDeals = filteredDeals.filter((d) => d.stage === st.id);
+                  const stageTotalValue = stageDeals.reduce((sum, d) => sum + (d.value || 0), 0);
 
-                    return (
-                      <div
-                        key={st.id}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const dealId = e.dataTransfer.getData("dealId");
-                          if (dealId) handleStageChange(dealId, st.id);
-                        }}
-                        className="w-72 shrink-0 bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 space-y-3"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
+                  return (
+                    <div
+                      key={st.id}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const dealId = e.dataTransfer.getData("dealId");
+                        if (dealId) handleStageChange(dealId, st.id);
+                      }}
+                      className="w-[280px] sm:w-[305px] shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[calc(100vh-215px)] min-h-[500px] max-h-[700px] transition-all"
+                    >
+                      {/* Column Header: [Dot] [Grip] [Title] [Count Pill] [Chevron] */}
+                      <div className="p-3.5 border-b border-slate-100 flex items-center justify-between select-none shrink-0 bg-white rounded-t-2xl">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${st.dot} shrink-0`} />
+                          <GripVertical className="w-3.5 h-3.5 text-slate-300" />
                           <div>
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${st.dot}`} />
-                              <h3 className="text-xs font-bold text-slate-800">{st.label}</h3>
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-0.5">{formatCurrency(stageTotalValue)}</p>
+                            <h3 className="text-[13px] font-bold text-slate-800 tracking-tight truncate max-w-[140px]">
+                              {st.label}
+                            </h3>
+                            <p className="text-[10px] text-slate-400 font-medium">{formatCurrency(stageTotalValue)}</p>
                           </div>
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 shadow-2xs">
-                            {stageDeals.length}
-                          </span>
                         </div>
 
-                        {/* Cards */}
-                        <div className="space-y-2.5 min-h-[300px]">
-                          {stageDeals.length === 0 ? (
-                            <div className="h-28 border-2 border-dashed border-slate-200/80 rounded-xl flex items-center justify-center text-slate-400 text-xs">
-                              + Drop deals here
-                            </div>
-                          ) : (
-                            stageDeals.map((deal) => (
-                              <div
-                                key={deal.id}
-                                draggable
-                                onDragStart={(e) => e.dataTransfer.setData("dealId", String(deal.id))}
-                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
-                              >
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold flex items-center justify-center">
+                            {stageDeals.length}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                            title="Toggle column"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Column Body: Individual Vertical Scrollbar */}
+                      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto custom-scrollbar flex flex-col">
+                        {stageDeals.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 text-center select-none">
+                            <p className="text-xs text-slate-500 font-medium mb-3">
+                              No Columns found
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddModal(true)}
+                              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-full shadow-xs transition-all cursor-pointer"
+                            >
+                              Create Deals
+                            </button>
+                          </div>
+                        ) : (
+                          stageDeals.map((deal) => (
+                            <div
+                              key={deal.id}
+                              draggable
+                              onDragStart={(e) => e.dataTransfer.setData("dealId", String(deal.id))}
+                              className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2.5 group shrink-0"
+                            >
+                              <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-red-600 transition-colors leading-tight">
                                     {deal.title}
                                   </h4>
                                   <p className="text-[11px] text-slate-500 font-medium mt-0.5">
                                     {deal.company_name} {deal.contact_name ? `• ${deal.contact_name}` : ""}
                                   </p>
                                 </div>
+                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                  {deal.probability}% Prob.
+                                </span>
+                              </div>
 
-                                <div className="flex items-center justify-between text-xs pt-1">
-                                  <span className="font-bold text-red-600 text-xs">
-                                    {formatCurrency(deal.value)}
-                                  </span>
-                                  <span className="text-[10px] font-semibold text-slate-400">
-                                    {deal.probability}% Prob.
-                                  </span>
-                                </div>
+                              <div className="flex items-center justify-between text-xs pt-1">
+                                <span className="font-bold text-red-600 text-xs">
+                                  {formatCurrency(deal.value)}
+                                </span>
+                                <span className="text-[10px] text-slate-400">
+                                  Close: {deal.close_date || "Open"}
+                                </span>
+                              </div>
 
-                                {/* Stage Progress Bar */}
-                                <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
-                                  <div
-                                    className="bg-red-600 h-1 rounded-full"
-                                    style={{ width: `${deal.probability || 30}%` }}
-                                  />
-                                </div>
+                              {/* Stage Progress Bar */}
+                              <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
+                                <div
+                                  className="bg-red-600 h-1 rounded-full"
+                                  style={{ width: `${deal.probability || 30}%` }}
+                                />
+                              </div>
 
-                                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
-                                  <span className="text-[10px] text-slate-400">
-                                    Close: {deal.close_date || "Open"}
-                                  </span>
-
-                                  {/* Quick Stage Movers */}
-                                  <div className="flex items-center gap-1">
-                                    {st.id !== "Qualification" && (
-                                      <button
-                                        onClick={() => {
-                                          const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
-                                          if (idx > 0) handleStageChange(deal.id, DEAL_STAGES[idx - 1].id);
-                                        }}
-                                        className="p-1 text-slate-400 hover:text-slate-700 rounded"
-                                        title="Move back"
-                                      >
-                                        <ArrowLeft className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                    {st.id !== "Closed Won" && (
-                                      <button
-                                        onClick={() => {
-                                          const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
-                                          if (idx < DEAL_STAGES.length - 1) handleStageChange(deal.id, DEAL_STAGES[idx + 1].id);
-                                        }}
-                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                        title="Advance stage"
-                                      >
-                                        <ArrowRight className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
+                              <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs">
+                                <div className="flex items-center gap-1">
+                                  {st.id !== "Qualification" && (
+                                    <button
+                                      onClick={() => {
+                                        const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
+                                        if (idx > 0) handleStageChange(deal.id, DEAL_STAGES[idx - 1].id);
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-slate-700 rounded cursor-pointer"
+                                      title="Move back"
+                                    >
+                                      <ArrowLeft className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {st.id !== "Closed Won" && (
+                                    <button
+                                      onClick={() => {
+                                        const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
+                                        if (idx < DEAL_STAGES.length - 1) handleStageChange(deal.id, DEAL_STAGES[idx + 1].id);
+                                      }}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded cursor-pointer"
+                                      title="Advance stage"
+                                    >
+                                      <ArrowRight className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                            ))
-                          )}
-                        </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </main>
       </div>
 

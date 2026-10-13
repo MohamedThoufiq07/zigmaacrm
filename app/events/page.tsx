@@ -29,9 +29,12 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { api, formatGoogleCalendarUrl, downloadIcsFile } from "@/lib/api";
 import { CalendarEvent, Lead, Deal } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
 
 export default function EventsCalendarPage() {
+  const { toast, confirm } = useToast();
   const [mounted, setMounted] = useState(false);
+
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -184,18 +187,29 @@ export default function EventsCalendarPage() {
   };
 
   const handleDeleteEvent = async (id: number | string) => {
-    if (confirm("Are you sure you want to delete this meeting?")) {
+    const event = events.find((e) => String(e.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Meeting",
+      message: `Are you sure you want to delete ${event ? `"${event.title}"` : "this meeting"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       setEvents((prev) => prev.filter((e) => String(e.id) !== String(id)));
       if (selectedEvent && String(selectedEvent.id) === String(id)) {
         setSelectedEvent(null);
       }
       try {
         await api.deleteEvent(id);
+        toast.success("Meeting Deleted", "The calendar event was removed.");
       } catch (e) {
         console.error(e);
       }
     }
   };
+
 
   const handleOpenGoogleCalendar = (ev: CalendarEvent) => {
     const url = formatGoogleCalendarUrl(ev);

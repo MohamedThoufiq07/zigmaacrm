@@ -107,3 +107,47 @@ async def bulk_upload(
         total_processed=total_processed,
         message=f"Bulk ingestion finished. Processed {total_processed} rows: {success_count} inserted, {duplicate_count} duplicates skipped."
     )
+
+@router.get("/leads/{lead_id}", response_model=LeadOut)
+async def get_lead(lead_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead
+
+@router.patch("/leads/{lead_id}", response_model=LeadOut)
+async def update_lead(lead_id: str, patch_data: dict, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    # Map fields
+    if "name" in patch_data and "full_name" not in patch_data:
+        patch_data["full_name"] = patch_data["name"]
+    if "ad_source" in patch_data and "source" not in patch_data:
+        patch_data["source"] = patch_data["ad_source"]
+    if "stage" in patch_data and "status" not in patch_data:
+        patch_data["status"] = patch_data["stage"]
+
+    allowed_fields = ["full_name", "email", "phone", "company_name", "source", "status", "notes", "custom_fields", "tags", "assigned_user_id"]
+    for key, val in patch_data.items():
+        if key in allowed_fields and val is not None:
+            setattr(lead, key, val)
+
+    await db.commit()
+    await db.refresh(lead)
+    return lead
+
+@router.delete("/leads/{lead_id}")
+async def delete_lead(lead_id: str, db: AsyncSession = Depends(get_db)):
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    await db.delete(lead)
+    await db.commit()
+    return {"message": "Lead deleted successfully", "success": True}
+

@@ -24,7 +24,8 @@ import {
   ChevronRight,
   ExternalLink,
   ArrowRight,
-  ArrowLeft
+  ArrowLeft,
+  GripVertical
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -32,6 +33,7 @@ import FilterSelect from "@/components/common/FilterSelect";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import { api } from "@/lib/api";
 import { Contact } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
 
 const CONTACTS_MORE_VIEWS = [
   "All Contacts",
@@ -60,7 +62,9 @@ const CONTACT_STAGES = [
 ];
 
 export default function ContactsPage() {
+  const { toast, confirm } = useToast();
   const [contacts, setContacts] = useState<Contact[]>([]);
+
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [activeTab, setActiveTab] = useState<string>("All Contacts");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -126,13 +130,24 @@ export default function ContactsPage() {
     setJobTitle("");
     setStatus("Active");
     setShowAddModal(false);
+    toast.success("Contact Created", `${newContact.name} was added successfully.`);
     loadContacts();
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Are you sure you want to delete this contact?")) {
+    const contact = contacts.find((c) => String(c.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Contact",
+      message: `Are you sure you want to delete ${contact ? `"${contact.name}"` : "this contact"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       setContacts((prev) => prev.filter((c) => String(c.id) !== String(id)));
       await api.deleteContact(id);
+      toast.success("Contact Deleted", "The contact record was deleted.");
     }
   };
 
@@ -140,6 +155,7 @@ export default function ContactsPage() {
     setContacts((prev) =>
       prev.map((c) => (String(c.id) === String(contactId) ? { ...c, status: newStatus as any } : c))
     );
+    toast.info("Status Changed", `Contact status updated to "${newStatus}"`);
     // Persist in localStorage
     try {
       const saved = localStorage.getItem("zigmaa_contacts");
@@ -153,7 +169,7 @@ export default function ContactsPage() {
 
   const handleExportCsv = () => {
     if (contacts.length === 0) {
-      alert("No contacts to export.");
+      toast.warning("Export Warning", "No contacts available to export.");
       return;
     }
     const headers = ["First Name", "Company", "Job Title", "Mobile", "Email", "Status"];
@@ -173,10 +189,12 @@ export default function ContactsPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success("Export Complete", `Exported ${contacts.length} contacts.`);
   };
 
   // Filtered contacts
   const filteredContacts = useMemo(() => {
+
     return contacts.filter((c) => {
       // Tab filter
       if (activeTab === "Active Contacts" && c.status !== "Active") return false;
@@ -232,15 +250,18 @@ export default function ContactsPage() {
               {["All Contacts", "My Contacts", "Active Contacts", "Customers", "Leads"].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
                     setActiveTab(tab);
                     setCurrentPage(1);
+                    e.currentTarget.blur();
                   }}
-                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm ${
+                  className={`px-3.5 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! focus-visible:ring-0! border select-none ${
                     activeTab === tab
-                      ? "bg-red-50 text-red-600 font-bold border border-red-100"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-red-50 text-red-600 font-bold border-red-200/80 shadow-2xs"
+                      : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
+                  style={{ outline: "none", boxShadow: activeTab === tab ? undefined : "none" }}
                 >
                   {tab}
                 </button>
@@ -314,12 +335,10 @@ export default function ContactsPage() {
             </div>
           </div>
 
-          {/* Main Card Container */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-            {/* VIEW 1: TABLE VIEW */}
-            {viewMode === "table" && (
-              <div>
-                <div className="overflow-x-auto">
+          {/* VIEW 1: TABLE VIEW */}
+          {viewMode === "table" && (
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
                   <table className="w-full text-left text-sm">
                     <thead>
                       <tr className="bg-slate-50/80 border-b border-slate-200/80 text-sm font-semibold text-slate-800">
@@ -514,129 +533,157 @@ export default function ContactsPage() {
                   </div>
                 )}
               </div>
-            )}
+          )}
 
-            {/* VIEW 2: KANBAN VIEW */}
-            {viewMode === "kanban" && (
-              <div className="p-4 overflow-x-auto">
-                <div className="flex items-start gap-4 min-w-[900px]">
-                  {CONTACT_STAGES.map((stage) => {
-                    const stageContacts = filteredContacts.filter((c) => c.status === stage.id);
+          {/* VIEW 2: KANBAN VIEW (Matching Leads: Independent Columns, Red Theme, Horizontal Board Scroll, Individual Column Scroll) */}
+          {viewMode === "kanban" && (
+            <div className="w-full overflow-x-auto pb-4 pt-1">
+              <div className="flex items-start gap-4 w-max min-w-full">
+                {CONTACT_STAGES.map((stage) => {
+                  const stageContacts = filteredContacts.filter((c) => c.status === stage.id);
 
-                    return (
-                      <div
-                        key={stage.id}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const contactId = e.dataTransfer.getData("contactId");
-                          if (contactId) handleStageChange(contactId, stage.id);
-                        }}
-                        className="w-72 shrink-0 bg-slate-50/70 rounded-2xl p-3 border border-slate-200/80 space-y-3"
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between pb-2 border-b border-slate-200/60">
-                          <div className="flex items-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${stage.dot}`} />
-                            <h3 className="text-xs font-bold text-slate-800">{stage.label}</h3>
-                          </div>
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-600 shadow-2xs">
-                            {stageContacts.length}
-                          </span>
+                  return (
+                    <div
+                      key={stage.id}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const contactId = e.dataTransfer.getData("contactId");
+                        if (contactId) handleStageChange(contactId, stage.id);
+                      }}
+                      className="w-[280px] sm:w-[305px] shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[calc(100vh-215px)] min-h-[500px] max-h-[700px] transition-all"
+                    >
+                      {/* Column Header: [Dot] [Grip] [Title] [Count Pill] [Chevron] */}
+                      <div className="p-3.5 border-b border-slate-100 flex items-center justify-between select-none shrink-0 bg-white rounded-t-2xl">
+                        <div className="flex items-center gap-2">
+                          <span className={`w-2.5 h-2.5 rounded-full ${stage.dot} shrink-0`} />
+                          <GripVertical className="w-3.5 h-3.5 text-slate-300" />
+                          <h3 className="text-[13px] font-bold text-slate-800 tracking-tight truncate max-w-[150px]">
+                            {stage.label}
+                          </h3>
                         </div>
 
-                        {/* Cards */}
-                        <div className="space-y-2.5 min-h-[300px]">
-                          {stageContacts.length === 0 ? (
-                            <div className="h-28 border-2 border-dashed border-slate-200/80 rounded-xl flex items-center justify-center text-slate-400 text-xs">
-                              + Drop contacts here
-                            </div>
-                          ) : (
-                            stageContacts.map((contact) => (
-                              <div
-                                key={contact.id}
-                                draggable
-                                onDragStart={(e) => e.dataTransfer.setData("contactId", String(contact.id))}
-                                className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2"
-                              >
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <span className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[11px] font-semibold flex items-center justify-center">
+                            {stageContacts.length}
+                          </span>
+                          <button
+                            type="button"
+                            className="text-slate-400 hover:text-slate-600 p-0.5 rounded cursor-pointer"
+                            title="Toggle column"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Column Body: Individual Vertical Scrollbar */}
+                      <div className="flex-1 p-3 space-y-2.5 overflow-y-auto custom-scrollbar flex flex-col">
+                        {stageContacts.length === 0 ? (
+                          <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 text-center select-none">
+                            <p className="text-xs text-slate-500 font-medium mb-3">
+                              No Columns found
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setShowAddModal(true)}
+                              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-full shadow-xs transition-all cursor-pointer"
+                            >
+                              Create Contact
+                            </button>
+                          </div>
+                        ) : (
+                          stageContacts.map((contact) => (
+                            <div
+                              key={contact.id}
+                              draggable
+                              onDragStart={(e) => e.dataTransfer.setData("contactId", String(contact.id))}
+                              className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2.5 group shrink-0"
+                            >
+                              <div className="flex items-start justify-between gap-2">
                                 <div>
-                                  <h4 className="text-xs font-bold text-slate-900 leading-tight">
+                                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-red-600 transition-colors leading-tight">
                                     {contact.name}
                                   </h4>
                                   <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                    {contact.job_title ? `${contact.job_title} • ` : ""}{contact.company_name || "Direct Contact"}
+                                    {contact.job_title ? `${contact.job_title} • ` : ""}{contact.company_name || "Direct Client"}
                                   </p>
                                 </div>
+                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                                  {contact.status}
+                                </span>
+                              </div>
 
-                                <div className="text-[11px] text-slate-600 space-y-1">
-                                  <div className="font-mono text-slate-700">{contact.phone}</div>
-                                  {contact.email && <div className="text-slate-400 truncate">{contact.email}</div>}
+                              <div className="text-[11px] text-slate-600 space-y-1">
+                                <div className="font-mono text-slate-700">{contact.phone}</div>
+                                {contact.email && <div className="text-slate-400 truncate">{contact.email}</div>}
+                              </div>
+
+                              <div className="flex items-center justify-between pt-2 border-t border-slate-100 text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  {contact.phone && (
+                                    <a
+                                      href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-1 rounded text-slate-400 hover:text-emerald-600"
+                                      title="WhatsApp"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
+                                  {contact.email && (
+                                    <a
+                                      href={`mailto:${contact.email}`}
+                                      onClick={(e) => e.stopPropagation()}
+                                      className="p-1 rounded text-slate-400 hover:text-red-600"
+                                      title="Email"
+                                    >
+                                      <Mail className="w-3.5 h-3.5" />
+                                    </a>
+                                  )}
                                 </div>
 
-                                <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-[11px]">
-                                  {/* Quick Contact Actions */}
-                                  <div className="flex items-center gap-1.5">
-                                    {contact.phone && (
-                                      <a
-                                        href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`}
-                                        target="_blank"
-                                        rel="noreferrer"
-                                        className="p-1 rounded text-slate-400 hover:text-emerald-600"
-                                        title="WhatsApp"
-                                      >
-                                        <MessageSquare className="w-3.5 h-3.5" />
-                                      </a>
-                                    )}
-                                    {contact.email && (
-                                      <a
-                                        href={`mailto:${contact.email}`}
-                                        className="p-1 rounded text-slate-400 hover:text-red-600"
-                                        title="Email"
-                                      >
-                                        <Mail className="w-3.5 h-3.5" />
-                                      </a>
-                                    )}
-                                  </div>
-
-                                  {/* Quick Stage Mover */}
-                                  <div className="flex items-center gap-1">
-                                    {stage.id !== "Active" && (
-                                      <button
-                                        onClick={() => {
-                                          const idx = CONTACT_STAGES.findIndex((s) => s.id === stage.id);
-                                          if (idx > 0) handleStageChange(contact.id, CONTACT_STAGES[idx - 1].id);
-                                        }}
-                                        className="p-1 text-slate-400 hover:text-slate-700 rounded"
-                                        title="Move back"
-                                      >
-                                        <ArrowLeft className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                    {stage.id !== "Archived" && (
-                                      <button
-                                        onClick={() => {
-                                          const idx = CONTACT_STAGES.findIndex((s) => s.id === stage.id);
-                                          if (idx < CONTACT_STAGES.length - 1) handleStageChange(contact.id, CONTACT_STAGES[idx + 1].id);
-                                        }}
-                                        className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                        title="Advance status"
-                                      >
-                                        <ArrowRight className="w-3 h-3" />
-                                      </button>
-                                    )}
-                                  </div>
+                                <div className="flex items-center gap-1">
+                                  {stage.id !== "Active" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const idx = CONTACT_STAGES.findIndex((s) => s.id === stage.id);
+                                        if (idx > 0) handleStageChange(contact.id, CONTACT_STAGES[idx - 1].id);
+                                      }}
+                                      className="p-1 text-slate-400 hover:text-slate-700 rounded"
+                                      title="Move back"
+                                    >
+                                      <ArrowLeft className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                  {stage.id !== "Archived" && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const idx = CONTACT_STAGES.findIndex((s) => s.id === stage.id);
+                                        if (idx < CONTACT_STAGES.length - 1) handleStageChange(contact.id, CONTACT_STAGES[idx + 1].id);
+                                      }}
+                                      className="p-1 text-red-600 hover:bg-red-50 rounded"
+                                      title="Advance stage"
+                                    >
+                                      <ArrowRight className="w-3 h-3" />
+                                    </button>
+                                  )}
                                 </div>
                               </div>
-                            ))
-                          )}
-                        </div>
+                            </div>
+                          ))
+                        )}
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                  );
+                })}
               </div>
-            )}
-          </div>
+            </div>
+          )}
         </main>
       </div>
 

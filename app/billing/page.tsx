@@ -18,9 +18,12 @@ import Header from "@/components/layout/Header";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Invoice, InvoiceItem } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
 
 export default function BillingPage() {
+  const { toast, confirm } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+
   const [clientName, setClientName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -87,6 +90,7 @@ export default function BillingPage() {
       setItems([{ name: "Software Subscription / Professional Services", qty: 1, unit_price: 0, total: 0 }]);
       setShowCreateModal(false);
       setSelectedInvoice(newInv);
+      toast.success("Invoice Created", `Invoice ${newInv.bill_number} generated.`);
       loadInvoices();
     } catch (err) {
       console.error("Billing creation error", err);
@@ -96,11 +100,22 @@ export default function BillingPage() {
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Delete this invoice?")) {
+    const inv = invoices.find((i) => String(i.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Invoice",
+      message: `Are you sure you want to delete invoice ${inv ? inv.bill_number : ""}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       await api.deleteInvoice(id);
+      toast.success("Invoice Deleted", "The record was removed.");
       loadInvoices();
     }
   };
+
 
   const totalInvoiced = invoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
 

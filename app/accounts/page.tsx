@@ -18,9 +18,12 @@ import Header from "@/components/layout/Header";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Account } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
 
 export default function AccountsPage() {
+  const { toast, confirm } = useToast();
   const [accounts, setAccounts] = useState<Account[]>([]);
+
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
 
@@ -62,15 +65,27 @@ export default function AccountsPage() {
     setCity("");
     setAnnualRevenue(0);
     setShowAddModal(false);
+    toast.success("Account Created", `"${name}" added to accounts directory.`);
     loadAccounts();
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Delete this company account?")) {
+    const acc = accounts.find((a) => String(a.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Account",
+      message: `Are you sure you want to delete ${acc ? `"${acc.name}"` : "this company"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       await api.deleteAccount(id);
+      toast.success("Account Deleted", "Company account removed.");
       loadAccounts();
     }
   };
+
 
   const filtered = accounts.filter((a) =>
     (a.name || "").toLowerCase().includes(search.toLowerCase()) ||

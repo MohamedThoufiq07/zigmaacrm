@@ -20,6 +20,7 @@ import confetti from "canvas-confetti";
 import { Lead, Activity } from "@/lib/mockData";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { useToast } from "@/components/common/ToastProvider";
 
 interface Props {
   lead: Lead;
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Props) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState<"All" | "Calls" | "Notes" | "WhatsApp">("All");
   const [newNote, setNewNote] = useState("");
   const [currentLead, setCurrentLead] = useState<Lead>(lead);
@@ -39,10 +41,15 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
     e.preventDefault();
     if (!newNote.trim()) return;
 
-    const updated = await api.addLeadNote(currentLead.id, newNote, "note");
-    if (updated) setCurrentLead(updated);
-    setNewNote("");
-    if (onLeadUpdated) onLeadUpdated();
+    try {
+      const updated = await api.addLeadNote(currentLead.id, newNote, "note");
+      if (updated) setCurrentLead(updated);
+      setNewNote("");
+      toast.success("Note Added", "Activity log updated successfully.");
+      if (onLeadUpdated) onLeadUpdated();
+    } catch {
+      toast.error("Failed to Add Note", "Please try again.");
+    }
   }
 
   async function handleConvert() {
@@ -58,13 +65,16 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
       const updated = await api.updateLeadStage(currentLead.id, "Closed / Won");
       if (updated) setCurrentLead(updated);
       setConvertedDeal(true);
+      toast.success("Deal Won!", `${currentLead.name} converted to Closed / Won!`);
       if (onLeadUpdated) onLeadUpdated();
     } catch (err) {
       console.error("Conversion failed", err);
+      toast.error("Conversion Failed", "Unable to convert lead.");
     } finally {
       setConverting(false);
     }
   }
+
 
   const activities = currentLead.activities || [];
   const filteredActivities = activities.filter((act: Activity) => {

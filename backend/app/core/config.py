@@ -28,8 +28,17 @@ class Settings(BaseSettings):
     CELERY_BROKER_URL: str = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
     CELERY_RESULT_BACKEND: str = os.getenv("CELERY_RESULT_BACKEND", "redis://localhost:6379/0")
 
+    # SMTP Configuration
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "zigmaatech@gmail.com")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "fhgu cnck rkhj anmq")
+    SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Zigmaacrm")
+    SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "zigmaatech@gmail.com")
+
     class Config:
         env_file = ".env"
         extra = "allow"
 
 settings = Settings()
+

@@ -22,7 +22,7 @@ import {
   downloadIcsFile
 } from "./mockData";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8005/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE || "http://localhost:8000/api/v1";
 
 function getStorage<T>(key: string, defaultValue: T): T {
   if (typeof window === "undefined") return defaultValue;
@@ -53,60 +53,210 @@ export const zigmaaApi = {
   },
 
   async login(email: string, password: string) {
-    try {
-      const res = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password })
-      });
-      if (res.ok) return await res.json();
-    } catch {}
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), password })
+    });
     
-    return {
-      access_token: "jwt_token_zigmaa_pixelize",
-      token_type: "bearer",
-      user: {
-        id: "user-1",
-        organization_id: "org-1",
-        email: email || "admin@zigmaa.com",
-        full_name: "Mohamed Thoufiq",
-        role: "ADMIN",
-        is_active: true
-      }
+    if (!res.ok) {
+      let errorMsg = "Incorrect email or password";
+      try {
+        const errorData = await res.json();
+        errorMsg = errorData.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const data = await res.json();
+    setStorage("zigmaa_token", data.access_token);
+    setStorage("zigmaa_user", data.user);
+    return data;
+  },
+
+  async register(data: { email: string; password: string; full_name: string; organization_name?: string }) {
+    const res = await fetch(`${API_BASE}/auth/register`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Failed to create account";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const resData = await res.json();
+    setStorage("zigmaa_token", resData.access_token);
+    setStorage("zigmaa_user", resData.user);
+    return resData;
+  },
+
+  async sendOtp(email: string) {
+    const res = await fetch(`${API_BASE}/auth/send-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim() })
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Failed to send verification code";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return await res.json();
+  },
+
+  async verifyOtp(email: string, otp: string) {
+    const res = await fetch(`${API_BASE}/auth/verify-otp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), otp: otp.trim() })
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Invalid verification code";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return await res.json();
+  },
+
+  async resetPassword(email: string, otp: string, newPassword: string) {
+    const res = await fetch(`${API_BASE}/auth/reset-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: email.trim(), otp: otp.trim(), new_password: newPassword })
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Failed to reset password";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return await res.json();
+  },
+
+  async changePassword(params: { email: string; current_password: string; new_password: string }) {
+    const res = await fetch(`${API_BASE}/auth/change-password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email: params.email.trim(),
+        current_password: params.current_password,
+        new_password: params.new_password
+      })
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Failed to update password";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return await res.json();
+  },
+
+  async updateProfile(params: {
+    email: string;
+    full_name?: string;
+    new_email?: string;
+    phone?: string;
+    organization_name?: string;
+    picture?: string;
+  }) {
+    const res = await fetch(`${API_BASE}/auth/update-profile`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(params)
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Failed to update profile";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const updatedUser = await res.json();
+    const current = this.getCurrentUser() || {};
+    const merged = {
+      ...current,
+      ...updatedUser,
+      phone: params.phone !== undefined ? params.phone : current.phone,
+      organization_name: params.organization_name !== undefined ? params.organization_name : current.organization_name,
+      picture: params.picture !== undefined ? params.picture : current.picture
     };
+    setStorage("zigmaa_user", merged);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
+    return merged;
+  },
+
+  getCurrentUser() {
+    return getStorage<any>("zigmaa_user", null);
+  },
+
+  logout() {
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("zigmaa_token");
+      localStorage.removeItem("zigmaa_user");
+    }
   },
 
   async loginWithGoogle(googleUser: { email: string; name?: string; picture?: string; token?: string }) {
-    try {
-      const res = await fetch(`${API_BASE}/auth/google`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(googleUser)
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setStorage("zigmaa_token", data.access_token);
-        setStorage("zigmaa_user", data.user || googleUser);
-        return data;
-      }
-    } catch {}
+    const res = await fetch(`${API_BASE}/auth/google`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(googleUser)
+    });
 
-    // Fallback: save local session so user enters CRM instantly
-    setStorage("zigmaa_user", googleUser);
-    setStorage("zigmaa_token", `google_token_${Date.now()}`);
-    return {
-      access_token: `google_token_${Date.now()}`,
-      token_type: "bearer",
-      user: {
-        id: "google-user-1",
-        organization_id: "org-1",
-        email: googleUser.email,
-        full_name: googleUser.name || "Google User",
-        role: "ADMIN",
-        is_active: true
-      }
+    if (!res.ok) {
+      let errorMsg = `No account found with ${googleUser.email}. Please register first.`;
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const data = await res.json();
+    setStorage("zigmaa_token", data.access_token);
+    const resolvedUser = {
+      id: data.user?.id || `google-${Date.now()}`,
+      organization_id: data.user?.organization_id || "org-1",
+      email: googleUser.email,
+      full_name: googleUser.name || data.user?.full_name || "Google User",
+      picture: googleUser.picture || data.user?.picture,
+      role: data.user?.role || "ADMIN",
+      is_active: true
     };
+    setStorage("zigmaa_user", resolvedUser);
+    return { ...data, user: resolvedUser };
   },
+
 
   // ===== DASHBOARD METRICS (STARTS FROM ZERO) =====
   async getDashboardMetrics() {

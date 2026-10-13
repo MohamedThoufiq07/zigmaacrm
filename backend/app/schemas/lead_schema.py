@@ -16,12 +16,25 @@ class LeadBase(BaseModel):
 class LeadCreate(LeadBase):
     pass
 
+class LeadUpdate(BaseModel):
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    company_name: Optional[str] = None
+    source: Optional[str] = None
+    status: Optional[str] = None
+    custom_fields: Optional[Dict[str, Any]] = None
+    tags: Optional[List[str]] = None
+    notes: Optional[str] = None
+    assigned_user_id: Optional[str] = None
+
 class LeadOut(LeadBase):
     id: str
     organization_id: str
     assigned_user_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+
 
     class Config:
         from_attributes = True

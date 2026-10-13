@@ -302,23 +302,33 @@ export default function DashboardPage() {
               {/* Segmented Pill Switcher */}
               <div className="p-1 bg-slate-200/80 rounded-xl flex items-center gap-1 border border-slate-300/60">
                 <button
-                  onClick={() => setActiveTab("leads")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  type="button"
+                  onClick={(e) => {
+                    setActiveTab("leads");
+                    e.currentTarget.blur();
+                  }}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! select-none cursor-pointer ${
                     activeTab === "leads"
                       ? "bg-red-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
+                  style={{ outline: "none" }}
                 >
                   <Users className="w-3.5 h-3.5" />
                   <span>Leads</span>
                 </button>
                 <button
-                  onClick={() => setActiveTab("deals")}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  type="button"
+                  onClick={(e) => {
+                    setActiveTab("deals");
+                    e.currentTarget.blur();
+                  }}
+                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! select-none cursor-pointer ${
                     activeTab === "deals"
                       ? "bg-red-600 text-white shadow-sm"
                       : "text-slate-600 hover:text-slate-900"
                   }`}
+                  style={{ outline: "none" }}
                 >
                   <Kanban className="w-3.5 h-3.5" />
                   <span>Deals</span>

@@ -26,11 +26,16 @@ import {
   UserCheck
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
+
 import Header from "@/components/layout/Header";
 import FilterSelect from "@/components/common/FilterSelect";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import { api } from "@/lib/api";
 import { Task } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
+
+
+
 
 const TASKS_MORE_VIEWS = [
   "All Tasks",
@@ -57,7 +62,9 @@ const TASK_STAGES = [
 ];
 
 export default function TasksPage() {
+  const { toast, confirm } = useToast();
   const [tasks, setTasks] = useState<Task[]>([]);
+
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [activeTab, setActiveTab] = useState<string>("All Tasks");
   const [selectedStatus, setSelectedStatus] = useState("ALL");
@@ -118,13 +125,24 @@ export default function TasksPage() {
     setTitle("");
     setRelatedTo("");
     setShowAddModal(false);
+    toast.success("Task Created", `"${newTask.title}" was added.`);
     loadTasks();
   };
 
   const handleDelete = async (id: number | string) => {
-    if (confirm("Are you sure you want to delete this task?")) {
+    const task = tasks.find((t) => String(t.id) === String(id));
+    const confirmed = await confirm({
+      title: "Delete Task",
+      message: `Are you sure you want to delete ${task ? `"${task.title}"` : "this task"}?`,
+      confirmText: "Delete",
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
       setTasks((prev) => prev.filter((t) => String(t.id) !== String(id)));
       await api.deleteTask(id);
+      toast.success("Task Deleted", "The task was removed.");
     }
   };
 
@@ -134,6 +152,7 @@ export default function TasksPage() {
       prev.map((t) => (t.id === task.id ? { ...t, status: nextStatus } : t))
     );
     await api.updateTask(task.id, { status: nextStatus });
+    toast.info("Task Updated", `Marked as ${nextStatus}`);
   };
 
   const handleStageChange = async (taskId: number | string, newStatus: string) => {
@@ -141,11 +160,12 @@ export default function TasksPage() {
       prev.map((t) => (String(t.id) === String(taskId) ? { ...t, status: newStatus as any } : t))
     );
     await api.updateTask(taskId, { status: newStatus as any });
+    toast.info("Status Changed", `Task moved to "${newStatus}"`);
   };
 
   const handleExportCsv = () => {
     if (tasks.length === 0) {
-      alert("No tasks to export.");
+      toast.warning("Export Warning", "No tasks available to export.");
       return;
     }
     const headers = ["Subject", "Due Date", "Priority", "Status", "Related To"];
@@ -164,7 +184,9 @@ export default function TasksPage() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    toast.success("Export Complete", `Exported ${tasks.length} tasks.`);
   };
+
 
   // Filtered Tasks
   const filteredTasks = useMemo(() => {
@@ -221,15 +243,18 @@ export default function TasksPage() {
               {["All Tasks", "My Tasks", "To Do", "In Progress", "Completed"].map((tab) => (
                 <button
                   key={tab}
-                  onClick={() => {
+                  type="button"
+                  onClick={(e) => {
                     setActiveTab(tab);
                     setCurrentPage(1);
+                    e.currentTarget.blur();
                   }}
-                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm ${
+                  className={`px-3 py-1.5 rounded-lg font-semibold transition-all cursor-pointer whitespace-nowrap text-sm outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! focus-visible:ring-0! border select-none ${
                     activeTab === tab
-                      ? "bg-red-50 text-red-600 font-bold border border-red-100"
-                      : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                      ? "bg-red-50 text-red-600 font-bold border-red-200/80 shadow-2xs"
+                      : "border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100"
                   }`}
+                  style={{ outline: "none", boxShadow: activeTab === tab ? undefined : "none" }}
                 >
                   {tab}
                 </button>

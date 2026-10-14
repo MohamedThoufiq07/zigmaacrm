@@ -1,16 +1,22 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from typing import List, Optional
+from typing import List, Optional, Any, Dict
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.deal import Deal
-from app.models.lead_pipeline import PipelineStage
+from app.models.lead_pipeline import Pipeline, PipelineStage, Lead
+from app.models.contact import Contact
 from app.models.organization_user import Organization
 from app.models.activity import Activity
 from app.schemas.deal_schema import DealCreate, DealOut, DealStageMove
 
 router = APIRouter()
+
+class DealStageUpdate(BaseModel):
+    stage_id: Optional[str] = None
+    stage: Optional[str] = None
 
 @router.get("/deals", response_model=List[DealOut])
 async def get_deals(
@@ -23,6 +29,81 @@ async def get_deals(
     result = await db.execute(query)
     return result.scalars().all()
 
+@router.get("/deals/board")
+async def get_deals_board(
+    pipeline_id: Optional[str] = Query(None),
+    db: AsyncSession = Depends(get_db)
+):
+    # Retrieve pipeline
+    if pipeline_id:
+        p_res = await db.execute(select(Pipeline).where(Pipeline.id == pipeline_id))
+        pipeline = p_res.scalar_one_or_none()
+    else:
+        p_res = await db.execute(select(Pipeline).order_by(Pipeline.is_default.desc(), Pipeline.created_at.asc()))
+        pipeline = p_res.scalars().first()
+
+    if not pipeline:
+        return {"pipeline": None, "stages": []}
+
+    stages_res = await db.execute(
+        select(PipelineStage)
+        .where(PipelineStage.pipeline_id == pipeline.id)
+        .order_by(PipelineStage.stage_order.asc())
+    )
+    stages = stages_res.scalars().all()
+
+    # Retrieve deals for this pipeline
+    deals_res = await db.execute(
+        select(Deal).where(Deal.pipeline_id == pipeline.id).order_by(Deal.updated_at.desc())
+    )
+    deals = deals_res.scalars().all()
+
+    # Also map lead / contact company and names if needed
+    board_stages = []
+    for st in stages:
+        stage_deals = []
+        total_value = 0.0
+        for d in deals:
+            # match by stage_id or case-insensitive title match
+            if d.stage_id == st.id or d.stage_id == st.title:
+                total_value += float(d.deal_value or 0.0)
+                company = (d.custom_data or {}).get("company_name", "")
+                contact_name = (d.custom_data or {}).get("contact_name", "")
+                stage_deals.append({
+                    "id": d.id,
+                    "title": d.title,
+                    "deal_value": d.deal_value,
+                    "currency": d.currency,
+                    "stage_id": d.stage_id,
+                    "stage": st.title,
+                    "probability": st.probability,
+                    "expected_close_date": d.expected_close_date,
+                    "company_name": company,
+                    "contact_name": contact_name,
+                    "assigned_user_id": d.assigned_user_id,
+                    "status": d.status,
+                    "custom_data": d.custom_data or {},
+                    "created_at": d.created_at.isoformat() if d.created_at else None
+                })
+        board_stages.append({
+            "id": st.id,
+            "title": st.title,
+            "stage_order": st.stage_order,
+            "probability": st.probability,
+            "color_code": st.color_code,
+            "count": len(stage_deals),
+            "total_value": total_value,
+            "deals": stage_deals
+        })
+
+    return {
+        "pipeline": {
+            "id": pipeline.id,
+            "name": pipeline.name
+        },
+        "stages": board_stages
+    }
+
 @router.post("/deals", response_model=DealOut)
 async def create_deal(
     deal_in: DealCreate,
@@ -34,26 +115,53 @@ async def create_deal(
         org = res.scalars().first()
         org_id = org.id if org else "default_org"
 
+    # Resolve pipeline & stage if not provided or provided as names
+    pipeline_id = deal_in.pipeline_id
+    if not pipeline_id:
+        p_res = await db.execute(select(Pipeline).order_by(Pipeline.is_default.desc(), Pipeline.created_at.asc()))
+        first_p = p_res.scalars().first()
+        pipeline_id = first_p.id if first_p else "default_pipeline"
+
+    stage_id = deal_in.stage_id
+    if not stage_id or not len(stage_id) > 20: # If name was provided e.g. "Discovery"
+        # Find stage by title or get first stage
+        st_res = await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                PipelineStage.title.ilike(f"%{deal_in.stage_id or 'New'}%")
+            )
+        )
+        found_st = st_res.scalars().first()
+        if not found_st:
+            st_first = await db.execute(
+                select(PipelineStage).where(PipelineStage.pipeline_id == pipeline_id).order_by(PipelineStage.stage_order.asc())
+            )
+            found_st = st_first.scalars().first()
+        stage_id = found_st.id if found_st else deal_in.stage_id or "default_stage"
+
     deal = Deal(
         organization_id=org_id,
-        pipeline_id=deal_in.pipeline_id,
-        stage_id=deal_in.stage_id,
+        pipeline_id=pipeline_id,
+        stage_id=stage_id,
         lead_id=deal_in.lead_id,
+        contact_id=deal_in.contact_id,
         title=deal_in.title,
         deal_value=deal_in.deal_value,
         currency=deal_in.currency,
         expected_close_date=deal_in.expected_close_date,
-        status=deal_in.status or "OPEN"
+        status=deal_in.status or "OPEN",
+        custom_data=deal_in.custom_data or {}
     )
     db.add(deal)
     await db.commit()
     await db.refresh(deal)
     return deal
 
-@router.patch("/deals/{deal_id}/move-stage", response_model=DealOut)
-async def move_deal_stage(
+@router.patch("/deals/{deal_id}/stage")
+@router.patch("/deals/{deal_id}/move-stage")
+async def update_deal_stage(
     deal_id: str,
-    move_in: DealStageMove,
+    move_in: DealStageUpdate,
     db: AsyncSession = Depends(get_db)
 ):
     result = await db.execute(select(Deal).where(Deal.id == deal_id))
@@ -61,13 +169,31 @@ async def move_deal_stage(
     if not deal:
         raise HTTPException(status_code=404, detail="Deal not found")
 
-    old_stage_id = deal.stage_id
-    deal.stage_id = move_in.stage_id
+    target_stage = move_in.stage_id or move_in.stage
+    if not target_stage:
+        raise HTTPException(status_code=400, detail="stage_id or stage is required")
 
-    # Fetch stage title for log
-    stage_res = await db.execute(select(PipelineStage).where(PipelineStage.id == move_in.stage_id))
-    stage = stage_res.scalar_one_or_none()
-    stage_title = stage.title if stage else move_in.stage_id
+    # Try resolving stage by ID or Title
+    stage_res = await db.execute(
+        select(PipelineStage).where(
+            (PipelineStage.id == target_stage) | (PipelineStage.title.ilike(target_stage))
+        )
+    )
+    stage = stage_res.scalars().first()
+    if stage:
+        deal.stage_id = stage.id
+        stage_title = stage.title
+    else:
+        deal.stage_id = target_stage
+        stage_title = target_stage
+
+    # Update deal status if moved to won or lost
+    if "won" in stage_title.lower():
+        deal.status = "WON"
+    elif "lost" in stage_title.lower():
+        deal.status = "LOST"
+    else:
+        deal.status = "OPEN"
 
     # Log activity
     act = Activity(
@@ -81,4 +207,23 @@ async def move_deal_stage(
     db.add(act)
     await db.commit()
     await db.refresh(deal)
-    return deal
+    return {
+        "success": True,
+        "deal_id": deal.id,
+        "stage_id": deal.stage_id,
+        "stage": stage_title,
+        "status": deal.status
+    }
+
+@router.delete("/deals/{deal_id}")
+async def delete_deal(
+    deal_id: str,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Deal).where(Deal.id == deal_id))
+    deal = result.scalar_one_or_none()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+    await db.delete(deal)
+    await db.commit()
+    return {"message": "Deal deleted successfully"}

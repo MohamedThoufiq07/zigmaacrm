@@ -13,6 +13,7 @@ class Lead(TimeStampedBase):
     source = Column(String(50), default="META_ADS")  # META_ADS, GOOGLE_ADS, WEBSITE_FORM, CSV_IMPORT, MANUAL
     status = Column(String(50), default="NEW")  # NEW, CONTACTED, QUALIFIED, UNQUALIFIED, CONVERTED
     custom_fields = Column(JSON, default=dict)
+    custom_data = Column(JSON, default=dict)
     tags = Column(JSON, default=list)
     assigned_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     notes = Column(Text, nullable=True)

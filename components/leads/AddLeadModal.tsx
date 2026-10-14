@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, UserPlus, Sparkles } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
@@ -19,10 +19,19 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
   const [companyName, setCompanyName] = useState("");
   const [adSource, setAdSource] = useState("Meta Ads");
   const [stage, setStage] = useState("New Lead");
-  const [dealValue, setDealValue] = useState(0);
   const [notes, setNotes] = useState("");
+  const [customFields, setCustomFields] = useState<any[]>([]);
+  const [customData, setCustomData] = useState<Record<string, any>>({});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getCustomFields("LEAD").then((res) => {
+        setCustomFields(res || []);
+      }).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -43,8 +52,8 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
         company_name: companyName,
         ad_source: adSource as any,
         stage: stage as any,
-        deal_value: Number(dealValue),
-        notes
+        notes,
+        custom_fields: customData
       });
       toast.success("Lead Created", `${name} added to your pipeline.`);
       if (onLeadAdded) onLeadAdded();
@@ -136,30 +145,70 @@ export default function AddLeadModal({ isOpen, onClose, onLeadAdded }: Props) {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Lead Source</label>
-              <select
-                value={adSource}
-                onChange={(e) => setAdSource(e.target.value)}
-                className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white font-medium"
-              >
-                <option value="Meta Ads">Meta Ads (Instagram / FB)</option>
-                <option value="Google Ads">Google Search Ads</option>
-                <option value="Website Form">Website Form & Direct</option>
-                <option value="Referral">Partner / Referral</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Deal Value (₹)</label>
-              <input
-                type="number"
-                value={dealValue}
-                onChange={(e) => setDealValue(Number(e.target.value))}
-                className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white font-bold"
-              />
-            </div>
+          <div>
+            <label className="block text-xs font-bold text-slate-700 mb-1">Lead Source</label>
+            <select
+              value={adSource}
+              onChange={(e) => setAdSource(e.target.value)}
+              className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:bg-white font-medium"
+            >
+              <option value="Meta Ads">Meta Ads (Instagram / FB)</option>
+              <option value="Google Ads">Google Search Ads</option>
+              <option value="Website Form">Website Form & Direct</option>
+              <option value="Referral">Partner / Referral</option>
+              <option value="Manual">Manual Entry</option>
+            </select>
           </div>
+
+          {/* Dynamic Custom Fields */}
+          {customFields.length > 0 && (
+            <div className="space-y-3 pt-2 border-t border-slate-100">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                Custom Attributes
+              </span>
+              <div className="grid grid-cols-2 gap-3">
+                {customFields.map((cf) => (
+                  <div key={cf.id}>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      {cf.label} {cf.is_required && <span className="text-red-500">*</span>}
+                    </label>
+                    {cf.field_type === "SELECT" ? (
+                      <select
+                        value={customData[cf.field_key] || ""}
+                        onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
+                        required={cf.is_required}
+                        className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      >
+                        <option value="">Select option</option>
+                        {(cf.options || []).map((opt: string) => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : cf.field_type === "BOOLEAN" ? (
+                      <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={!!customData[cf.field_key]}
+                          onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.checked })}
+                          className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
+                        />
+                        <span>Yes / Enabled</span>
+                      </label>
+                    ) : (
+                      <input
+                        type={cf.field_type === "NUMBER" ? "number" : cf.field_type === "DATE" ? "date" : "text"}
+                        value={customData[cf.field_key] || ""}
+                        onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
+                        required={cf.is_required}
+                        placeholder={cf.label}
+                        className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-600"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold text-slate-700 mb-1">Inquiry Description & Requirements</label>

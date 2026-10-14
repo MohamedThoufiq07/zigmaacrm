@@ -2,11 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
 from typing import List, Optional
+from datetime import datetime
 
 from app.core.database import get_db
-from app.models.lead_pipeline import Lead
+from app.models.lead_pipeline import Lead, Pipeline, PipelineStage
 from app.models.organization_user import Organization
-from app.schemas.lead_schema import LeadCreate, LeadOut, BulkUploadResponse
+from app.models.contact import Contact
+from app.models.deal import Deal
+from app.models.activity import Activity
+from app.schemas.lead_schema import LeadCreate, LeadOut, BulkUploadResponse, LeadConvertRequest, LeadConvertResponse
 from app.services.lead_service import LeadService
 from app.services.csv_parser_service import CSVParserService
 
@@ -150,4 +154,136 @@ async def delete_lead(lead_id: str, db: AsyncSession = Depends(get_db)):
     await db.delete(lead)
     await db.commit()
     return {"message": "Lead deleted successfully", "success": True}
+
+@router.post("/leads/{lead_id}/convert", response_model=LeadConvertResponse)
+async def convert_lead(
+    lead_id: str,
+    payload: LeadConvertRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    # 1. Fetch Lead
+    result = await db.execute(select(Lead).where(Lead.id == lead_id))
+    lead = result.scalar_one_or_none()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+
+    org_id = lead.organization_id
+
+    # 2. Mark Lead as CONVERTED
+    lead.status = "CONVERTED"
+
+    # 3. Create or find Contact in contacts table
+    contact_q = select(Contact).where(
+        Contact.organization_id == org_id,
+        or_(Contact.phone == lead.phone, Contact.email == lead.email)
+    ) if lead.email else select(Contact).where(
+        Contact.organization_id == org_id,
+        Contact.phone == lead.phone
+    )
+    contact_res = await db.execute(contact_q)
+    contact = contact_res.scalars().first()
+
+    if not contact:
+        contact = Contact(
+            organization_id=org_id,
+            full_name=lead.full_name,
+            phone=lead.phone,
+            email=lead.email,
+            company_name=lead.company_name,
+            status="Customer",
+            assigned_user_id=lead.assigned_user_id
+        )
+        db.add(contact)
+        await db.flush()
+
+    # 4. Resolve Pipeline and Stage
+    pipeline_id = payload.pipeline_id
+    if not pipeline_id:
+        p_res = await db.execute(select(Pipeline).where(Pipeline.organization_id == org_id, Pipeline.is_default == True))
+        pipeline = p_res.scalars().first()
+        if not pipeline:
+            p_res = await db.execute(select(Pipeline).where(Pipeline.organization_id == org_id))
+            pipeline = p_res.scalars().first()
+        if not pipeline:
+            pipeline = Pipeline(organization_id=org_id, name="Standard Sales Pipeline", is_default=True)
+            db.add(pipeline)
+            await db.flush()
+        pipeline_id = pipeline.id
+
+    stage_id = None
+    if payload.pipeline_stage:
+        stg_res = await db.execute(
+            select(PipelineStage).where(
+                PipelineStage.pipeline_id == pipeline_id,
+                or_(
+                    PipelineStage.id == payload.pipeline_stage,
+                    PipelineStage.title.ilike(f"%{payload.pipeline_stage}%")
+                )
+            )
+        )
+        matched_stage = stg_res.scalars().first()
+        if matched_stage:
+            stage_id = matched_stage.id
+
+    if not stage_id:
+        first_stg_res = await db.execute(
+            select(PipelineStage).where(PipelineStage.pipeline_id == pipeline_id).order_by(PipelineStage.stage_order.asc())
+        )
+        first_stg = first_stg_res.scalars().first()
+        if not first_stg:
+            first_stg = PipelineStage(
+                pipeline_id=pipeline_id,
+                title="Discovery / First Call",
+                stage_order=0,
+                probability=20,
+                color_code="#3B82F6"
+            )
+            db.add(first_stg)
+            await db.flush()
+        stage_id = first_stg.id
+
+    # 5. Create Deal
+    deal_title = payload.deal_name or (f"{lead.company_name or lead.full_name} - Deal")
+    deal_val = float(payload.deal_value or 0.0)
+    deal = Deal(
+        organization_id=org_id,
+        pipeline_id=pipeline_id,
+        stage_id=stage_id,
+        lead_id=lead.id,
+        contact_id=contact.id,
+        title=deal_title,
+        deal_value=deal_val,
+        currency="INR",
+        expected_close_date=payload.expected_close_date or (datetime.utcnow().strftime("%Y-%m-%d")),
+        assigned_user_id=lead.assigned_user_id,
+        status="OPEN"
+    )
+    db.add(deal)
+    await db.flush()
+
+    # 6. Log Activity
+    act = Activity(
+        organization_id=org_id,
+        lead_id=lead.id,
+        deal_id=deal.id,
+        user_id=lead.assigned_user_id,
+        type="STAGE_CHANGE",
+        notes=f"Converted to Deal '{deal.title}' (Value: ₹{deal.deal_value:,.2f})",
+        status="COMPLETED"
+    )
+    db.add(act)
+
+    # 7. Commit transaction
+    await db.commit()
+    await db.refresh(deal)
+
+    return LeadConvertResponse(
+        success=True,
+        message="Lead converted to Deal successfully",
+        lead_id=str(lead.id),
+        contact_id=str(contact.id),
+        deal_id=str(deal.id),
+        deal_title=str(deal.title)
+    )
+
 

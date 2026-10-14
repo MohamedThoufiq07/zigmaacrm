@@ -4,13 +4,15 @@ from datetime import datetime
 
 class DealBase(BaseModel):
     title: str
-    pipeline_id: str
-    stage_id: str
+    pipeline_id: Optional[str] = None
+    stage_id: Optional[str] = None
     lead_id: Optional[str] = None
+    contact_id: Optional[str] = None
     deal_value: float = 0.0
     currency: str = "INR"
     expected_close_date: Optional[str] = None
     status: Optional[str] = "OPEN"
+    custom_data: Optional[dict] = {}
 
 class DealCreate(DealBase):
     pass

@@ -11,6 +11,7 @@ class Organization(TimeStampedBase):
 
     users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="organization", cascade="all, delete-orphan")
+    contacts = relationship("Contact", back_populates="organization", cascade="all, delete-orphan")
     pipelines = relationship("Pipeline", back_populates="organization", cascade="all, delete-orphan")
     deals = relationship("Deal", back_populates="organization", cascade="all, delete-orphan")
     invoices = relationship("Invoice", back_populates="organization", cascade="all, delete-orphan")

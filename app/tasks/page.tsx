@@ -85,7 +85,21 @@ export default function TasksPage() {
   const loadTasks = async () => {
     try {
       const data = await api.getTasks();
-      setTasks(data || []);
+      if (Array.isArray(data)) {
+        // Deduplicate tasks by id to prevent duplicate key console errors
+        const seen = new Set<string>();
+        const uniqueTasks: Task[] = [];
+        for (const t of data) {
+          const key = String(t.id);
+          if (!seen.has(key)) {
+            seen.add(key);
+            uniqueTasks.push(t);
+          }
+        }
+        setTasks(uniqueTasks);
+      } else {
+        setTasks([]);
+      }
     } catch (e) {
       console.error(e);
     }
@@ -109,23 +123,20 @@ export default function TasksPage() {
       related_to: relatedTo.trim() || "Inbound Sales"
     };
 
-    // Optimistic Update
-    const temp: Task = {
-      id: Date.now(),
-      title: title.trim(),
-      due_date: dueDate,
-      priority,
-      status: taskStatus,
-      related_to: relatedTo.trim() || "Inbound Sales",
-      created_at: new Date().toISOString()
-    };
-    setTasks((prev) => [temp, ...prev]);
-
-    await api.createTask(newTask);
     setTitle("");
     setRelatedTo("");
     setShowAddModal(false);
-    toast.success("Task Created", `"${newTask.title}" was added.`);
+
+    try {
+      const created = await api.createTask(newTask);
+      setTasks((prev) => {
+        const withoutDup = prev.filter((t) => String(t.id) !== String(created.id));
+        return [created, ...withoutDup];
+      });
+      toast.success("Task Created", `"${newTask.title}" was added.`);
+    } catch {
+      toast.error("Error", "Could not create task.");
+    }
     loadTasks();
   };
 
@@ -384,13 +395,13 @@ export default function TasksPage() {
                           </td>
                         </tr>
                       ) : (
-                        paginatedTasks.map((task) => {
+                        paginatedTasks.map((task, idx) => {
                           const isSelected = selectedIds.has(task.id);
                           const isCompleted = task.status === "Completed";
 
                           return (
                             <tr
-                              key={task.id}
+                              key={`table-task-${task.id}-${idx}`}
                               className={`hover:bg-slate-50/80 transition-colors cursor-pointer group ${
                                 isSelected ? "bg-red-50/40" : ""
                               }`}
@@ -555,9 +566,9 @@ export default function TasksPage() {
                               + Drop tasks here
                             </div>
                           ) : (
-                            stageTasks.map((task) => (
+                            stageTasks.map((task, idx) => (
                               <div
-                                key={task.id}
+                                key={`kanban-task-${task.id}-${idx}`}
                                 draggable
                                 onDragStart={(e) => e.dataTransfer.setData("taskId", String(task.id))}
                                 className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-xs hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2"

@@ -13,8 +13,8 @@ export interface Lead {
   phone: string;
   email?: string;
   company_name?: string;
-  ad_source: "Meta Ads" | "Google Ads" | "Walk-in" | "Referral" | "Website Form" | "LinkedIn" | "Direct";
-  stage: "New Lead" | "Contacted / Follow-up" | "Consultation Booked" | "Closed / Won" | "Lost";
+  ad_source: "Meta Ads" | "Google Ads" | "Walk-in" | "Referral" | "Website Form" | "LinkedIn" | "Direct" | string;
+  stage: "New Lead" | "Contacted / Follow-up" | "Contacted" | "Qualified" | "Consultation Booked" | "Closed / Won" | "CONVERTED" | "Lost" | string;
   status?: string;
   source?: string;
   deal_value: number;
@@ -31,22 +31,38 @@ export interface Deal {
   company_name: string;
   contact_name: string;
   value: number;
-  stage: "Qualification" | "Needs Analysis" | "Proposal / Quote" | "Negotiation" | "Closed Won" | "Closed Lost";
+  deal_value?: number;
+  currency?: string;
+  stage: "New Deal" | "New" | "Discovery" | "Proposal Sent" | "Negotiation" | "Won" | "Lost" | "Qualification" | "Needs Analysis" | "Proposal / Quote" | "Closed Won" | "Closed Lost" | string;
+  stage_id?: string;
   probability: number;
   close_date: string;
+  expected_close_date?: string;
   created_at: string;
   lead_id?: number | string;
+  contact_id?: number | string;
+  status?: string;
+  custom_data?: Record<string, any>;
 }
 
 export interface Contact {
   id: number | string;
   name: string;
+  full_name?: string;
   email: string;
   phone: string;
   company_name: string;
   job_title?: string;
-  status: "Active" | "Lead" | "Customer";
+  status: "New" | "Contacted" | "Interested" | "Qualified" | "Customer" | "Active" | "Lead" | string;
+  lifecycle_stage?: "New" | "Contacted" | "Interested" | "Qualified" | "Customer" | string;
+  source?: "Meta Ads" | "Google Ads" | "Website" | "Manual" | string;
+  assigned_to?: string;
+  total_deals?: number;
+  lifetime_value?: number;
   created_at: string;
+  custom_data?: Record<string, any>;
+  deals?: any[];
+  activities?: any[];
 }
 
 export interface Account {

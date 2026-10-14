@@ -342,7 +342,26 @@ export const zigmaaApi = {
       if (res.ok) {
         const backendLeads = await res.json();
         if (Array.isArray(backendLeads) && backendLeads.length > 0) {
-          return backendLeads;
+          return backendLeads.map((b: any) => ({
+            id: b.id,
+            name: b.full_name || b.name || "Unnamed Lead",
+            full_name: b.full_name || b.name,
+            phone: b.phone || "",
+            email: b.email || "",
+            company_name: b.company_name || "",
+            ad_source: b.source || b.ad_source || "Manual",
+            source: b.source || b.ad_source || "Manual",
+            stage: b.status || b.stage || "New Lead",
+            status: b.status || b.stage || "New Lead",
+            deal_value: Number(b.deal_value) || 0,
+            assigned_user_id: b.assigned_user_id,
+            notes: b.notes || "",
+            custom_fields: b.custom_fields || {},
+            tags: b.tags || [],
+            created_at: b.created_at || new Date().toISOString(),
+            updated_at: b.updated_at || new Date().toISOString(),
+            activities: b.activities || []
+          }));
         }
       }
     } catch {}
@@ -352,9 +371,9 @@ export const zigmaaApi = {
     if (filters?.search) {
       const q = filters.search.toLowerCase();
       leads = leads.filter(l =>
-        l.name.toLowerCase().includes(q) ||
+        (l.name || l.full_name || "").toLowerCase().includes(q) ||
         (l.email && l.email.toLowerCase().includes(q)) ||
-        l.phone.toLowerCase().includes(q) ||
+        (l.phone && l.phone.toLowerCase().includes(q)) ||
         (l.company_name && l.company_name.toLowerCase().includes(q))
       );
     }
@@ -372,12 +391,39 @@ export const zigmaaApi = {
 
   async createLead(leadData: Partial<Lead>): Promise<Lead> {
     try {
+      const payload = {
+        full_name: leadData.name || leadData.full_name || "Untitled Lead",
+        phone: leadData.phone || "",
+        email: leadData.email || null,
+        company_name: leadData.company_name || null,
+        source: leadData.ad_source || leadData.source || "MANUAL",
+        status: leadData.stage || leadData.status || "NEW",
+        notes: leadData.notes || null,
+        custom_fields: leadData.custom_fields || {}
+      };
       const res = await fetch(`${API_BASE}/leads`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(leadData)
+        body: JSON.stringify(payload)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const b = await res.json();
+        return {
+          id: b.id,
+          name: b.full_name || b.name,
+          full_name: b.full_name,
+          phone: b.phone,
+          email: b.email,
+          company_name: b.company_name,
+          ad_source: b.source,
+          source: b.source,
+          stage: b.status,
+          status: b.status,
+          deal_value: 0,
+          created_at: b.created_at,
+          updated_at: b.updated_at
+        };
+      }
     } catch {}
 
     const leads = getStorage<Lead[]>("zigmaa_leads", INITIAL_LEADS);
@@ -408,6 +454,73 @@ export const zigmaaApi = {
     leads.unshift(newLead);
     setStorage("zigmaa_leads", leads);
     return newLead;
+  },
+
+  async convertLead(leadId: number | string, data: { deal_name?: string; deal_value?: number; pipeline_stage?: string }): Promise<{ success: boolean; message: string; deal_id: string; deal_title: string; contact_id: string; lead_id: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/leads/${leadId}/convert`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        return await res.json();
+      } else {
+        const err = await res.json();
+        throw new Error(err.detail || "Failed to convert lead");
+      }
+    } catch (e: any) {
+      if (e.message && e.message !== "Failed to fetch") {
+        throw e;
+      }
+    }
+
+    // Fallback in localStorage if backend is unreachable
+    const leads = getStorage<Lead[]>("zigmaa_leads", INITIAL_LEADS);
+    const lead = leads.find(l => String(l.id) === String(leadId));
+    if (lead) {
+      lead.stage = "Closed / Won" as any;
+      lead.status = "CONVERTED";
+      setStorage("zigmaa_leads", leads);
+    }
+
+    const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
+    const newDeal: Deal = {
+      id: Date.now(),
+      title: data.deal_name || `${lead?.company_name || lead?.name || "Client"} - Deal`,
+      company_name: lead?.company_name || "Enterprise Client",
+      contact_name: lead?.name || "",
+      value: Number(data.deal_value) || 0,
+      stage: (data.pipeline_stage as any) || "Qualification",
+      probability: 20,
+      close_date: new Date().toISOString().split("T")[0],
+      created_at: new Date().toISOString(),
+      lead_id: leadId
+    };
+    deals.unshift(newDeal);
+    setStorage("zigmaa_deals", deals);
+
+    const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
+    const newContact: Contact = {
+      id: Date.now(),
+      name: lead?.name || "",
+      email: lead?.email || "",
+      phone: lead?.phone || "",
+      company_name: lead?.company_name || "",
+      status: "Customer",
+      created_at: new Date().toISOString()
+    };
+    contacts.unshift(newContact);
+    setStorage("zigmaa_contacts", contacts);
+
+    return {
+      success: true,
+      message: "Lead converted to Deal successfully",
+      deal_id: String(newDeal.id),
+      deal_title: newDeal.title,
+      contact_id: String(newContact.id),
+      lead_id: String(leadId)
+    };
   },
 
   async bulkUploadLeads(rows: any[]): Promise<{ total_ingested: number; records: Lead[] }> {
@@ -501,19 +614,102 @@ export const zigmaaApi = {
   async getDeals(): Promise<Deal[]> {
     try {
       const res = await fetch(`${API_BASE}/deals`, { cache: "no-store" });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const backendDeals = await res.json();
+        if (Array.isArray(backendDeals) && backendDeals.length > 0) {
+          return backendDeals.map((d: any) => ({
+            id: d.id,
+            title: d.title,
+            company_name: (d.custom_data && d.custom_data.company_name) || d.company_name || "Enterprise Account",
+            contact_name: (d.custom_data && d.custom_data.contact_name) || d.contact_name || "",
+            value: Number(d.deal_value || d.value) || 0,
+            deal_value: Number(d.deal_value || d.value) || 0,
+            currency: d.currency || "INR",
+            stage: d.stage || (d.stage_id ? "Discovery" : "New Deal"),
+            stage_id: d.stage_id,
+            probability: Number(d.probability) || 50,
+            close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+            expected_close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+            lead_id: d.lead_id,
+            contact_id: d.contact_id,
+            status: d.status || "OPEN",
+            custom_data: d.custom_data || {},
+            created_at: d.created_at || new Date().toISOString()
+          }));
+        }
+      }
     } catch {}
     return getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
   },
 
+  async getDealsBoard(): Promise<{ pipeline: any; stages: any[] }> {
+    try {
+      const res = await fetch(`${API_BASE}/deals/board`, { cache: "no-store" });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return { pipeline: null, stages: [] };
+  },
+
+  async updateDealStage(id: number | string, stage: string, stageId?: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/deals/${id}/stage`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ stage, stage_id: stageId || stage })
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+
+    const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
+    const index = deals.findIndex(d => String(d.id) === String(id));
+    if (index !== -1) {
+      deals[index] = { ...deals[index], stage: stage as any };
+      setStorage("zigmaa_deals", deals);
+      return deals[index];
+    }
+    return null;
+  },
+
   async createDeal(dealData: Partial<Deal>): Promise<Deal> {
     try {
+      const payload = {
+        title: dealData.title || "New Deal",
+        deal_value: Number(dealData.value || dealData.deal_value) || 0,
+        currency: dealData.currency || "INR",
+        stage_id: dealData.stage_id || dealData.stage || "New Deal",
+        lead_id: dealData.lead_id ? String(dealData.lead_id) : null,
+        contact_id: dealData.contact_id ? String(dealData.contact_id) : null,
+        expected_close_date: dealData.close_date || dealData.expected_close_date,
+        custom_data: {
+          company_name: dealData.company_name,
+          contact_name: dealData.contact_name,
+          ...(dealData.custom_data || {})
+        }
+      };
       const res = await fetch(`${API_BASE}/deals`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dealData)
+        body: JSON.stringify(payload)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        const d = await res.json();
+        return {
+          id: d.id,
+          title: d.title,
+          company_name: dealData.company_name || "Enterprise Account",
+          contact_name: dealData.contact_name || "",
+          value: Number(d.deal_value) || 0,
+          deal_value: Number(d.deal_value) || 0,
+          currency: d.currency || "INR",
+          stage: dealData.stage || "New Deal",
+          probability: Number(dealData.probability) || 50,
+          close_date: d.expected_close_date || new Date().toISOString().split("T")[0],
+          custom_data: d.custom_data || {},
+          created_at: d.created_at
+        };
+      }
     } catch {}
 
     const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
@@ -523,10 +719,11 @@ export const zigmaaApi = {
       company_name: dealData.company_name || "",
       contact_name: dealData.contact_name || "",
       value: Number(dealData.value) || 0,
-      stage: dealData.stage || "Qualification",
+      stage: dealData.stage || "New Deal",
       probability: Number(dealData.probability) || 20,
       close_date: dealData.close_date || new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      custom_data: dealData.custom_data || {}
     };
     deals.unshift(newDeal);
     setStorage("zigmaa_deals", deals);
@@ -534,6 +731,9 @@ export const zigmaaApi = {
   },
 
   async updateDeal(id: number | string, patch: Partial<Deal>): Promise<Deal | null> {
+    if (patch.stage) {
+      await this.updateDealStage(id, patch.stage as string, patch.stage_id);
+    }
     const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
     const index = deals.findIndex(d => String(d.id) === String(id));
     if (index === -1) return null;
@@ -544,6 +744,10 @@ export const zigmaaApi = {
   },
 
   async deleteDeal(id: number | string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/deals/${id}`, { method: "DELETE" });
+      if (res.ok) return true;
+    } catch {}
     const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
     const filtered = deals.filter(d => String(d.id) !== String(id));
     setStorage("zigmaa_deals", filtered);
@@ -552,10 +756,130 @@ export const zigmaaApi = {
 
   // ===== CONTACTS CRUD =====
   async getContacts(): Promise<Contact[]> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts`, { cache: "no-store" });
+      if (res.ok) {
+        const backendContacts = await res.json();
+        if (Array.isArray(backendContacts) && backendContacts.length > 0) {
+          return backendContacts.map((c: any) => ({
+            id: c.id,
+            name: c.full_name || c.name || "Unnamed",
+            email: c.email || "",
+            phone: c.phone || "",
+            company_name: c.company_name || "",
+            job_title: c.job_title || "",
+            status: c.status || c.lifecycle_stage || "New",
+            lifecycle_stage: c.lifecycle_stage || c.status || "New",
+            source: c.source || "Manual",
+            assigned_to: c.assigned_to || "Mohamed Thoufiq",
+            total_deals: c.total_deals || 0,
+            lifetime_value: Number(c.lifetime_value) || 0,
+            custom_data: c.custom_data || {},
+            created_at: c.created_at || new Date().toISOString()
+          }));
+        }
+      }
+    } catch {}
     return getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
   },
 
+  async getContactDetail(id: string | number): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}`, { cache: "no-store" });
+      if (res.ok) {
+        const c = await res.json();
+        return {
+          ...c,
+          name: c.full_name || c.name,
+          lifecycle_stage: c.lifecycle_stage || c.status || "New"
+        };
+      }
+    } catch {}
+    const contacts = await this.getContacts();
+    return contacts.find(c => String(c.id) === String(id)) || null;
+  },
+
+  async getContactAIInsights(id: string | number, refresh: boolean = false): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}/ai-insights?refresh=${refresh}`, {
+        cache: "no-store"
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("AI Insights API fallback", e);
+    }
+
+    // Heuristic fallback if network or server error
+    return {
+      win_percentage: 45,
+      intent_tier: "Medium",
+      key_insight: "Prospective buyer actively exploring business solutions.",
+      conversion_tips: [
+        "Reach out directly via WhatsApp to understand priority requirements",
+        "Send tailored pricing breakdown and customer testimonials"
+      ],
+      risk_warning: "Response speed is key; engagement drops if not contacted promptly.",
+      engine: "Instant Client Heuristic"
+    };
+  },
+
+  async updateContact(id: number | string, data: Partial<Contact>): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+
+    const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
+    const updated = contacts.map(c => String(c.id) === String(id) ? { ...c, ...data } : c);
+    setStorage("zigmaa_contacts", updated);
+    return data;
+  },
+
   async createContact(contactData: Partial<Contact>): Promise<Contact> {
+    try {
+      const payload = {
+        full_name: contactData.name || contactData.full_name || "Unnamed Contact",
+        email: contactData.email || null,
+        phone: contactData.phone || "",
+        company_name: contactData.company_name || null,
+        job_title: contactData.job_title || null,
+        status: contactData.status || contactData.lifecycle_stage || "New",
+        lifecycle_stage: contactData.lifecycle_stage || contactData.status || "New",
+        source: contactData.source || "Manual",
+        custom_data: contactData.custom_data || {}
+      };
+      const res = await fetch(`${API_BASE}/contacts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const c = await res.json();
+        return {
+          id: c.id,
+          name: c.full_name || c.name,
+          email: c.email || "",
+          phone: c.phone || "",
+          company_name: c.company_name || "",
+          job_title: c.job_title || "",
+          status: c.status || "New",
+          lifecycle_stage: c.lifecycle_stage || c.status || "New",
+          source: c.source || "Manual",
+          assigned_to: "Mohamed Thoufiq",
+          total_deals: c.total_deals || 0,
+          lifetime_value: c.lifetime_value || 0,
+          custom_data: c.custom_data || {},
+          created_at: c.created_at
+        };
+      }
+    } catch {}
+
     const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
     const newContact: Contact = {
       id: Date.now(),
@@ -564,7 +888,13 @@ export const zigmaaApi = {
       phone: contactData.phone || "",
       company_name: contactData.company_name || "",
       job_title: contactData.job_title || "",
-      status: contactData.status || "Active",
+      status: contactData.status || contactData.lifecycle_stage || "New",
+      lifecycle_stage: contactData.lifecycle_stage || contactData.status || "New",
+      source: contactData.source || "Manual",
+      assigned_to: "Mohamed Thoufiq",
+      total_deals: 0,
+      lifetime_value: 0,
+      custom_data: contactData.custom_data || {},
       created_at: new Date().toISOString()
     };
     contacts.unshift(newContact);
@@ -573,10 +903,83 @@ export const zigmaaApi = {
   },
 
   async deleteContact(id: number | string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/${id}`, { method: "DELETE" });
+      if (res.ok) return true;
+    } catch {}
+
     const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
     const filtered = contacts.filter(c => String(c.id) !== String(id));
     setStorage("zigmaa_contacts", filtered);
     return true;
+  },
+
+  // ===== CUSTOM FIELDS ENGINE =====
+  async getCustomFields(entityType: "LEAD" | "CONTACT" | "DEAL"): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE}/custom-fields?entity_type=${entityType}`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setStorage(`zigmaa_cf_${entityType.toLowerCase()}`, data);
+        return data;
+      }
+    } catch (e) {
+      console.warn("Failed to fetch custom fields from API, falling back to local cache", e);
+    }
+    return getStorage<any[]>(`zigmaa_cf_${entityType.toLowerCase()}`, []);
+  },
+
+  async createCustomField(field: {
+    entity_type: "LEAD" | "CONTACT" | "DEAL";
+    label: string;
+    field_key: string;
+    field_type: "TEXT" | "NUMBER" | "SELECT" | "DATE" | "BOOLEAN";
+    options?: string[];
+    is_required?: boolean;
+  }): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/custom-fields`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(field)
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const list = getStorage<any[]>(`zigmaa_cf_${field.entity_type.toLowerCase()}`, []);
+        const filtered = list.filter(f => f.id !== created.id && f.field_key !== created.field_key);
+        filtered.push(created);
+        setStorage(`zigmaa_cf_${field.entity_type.toLowerCase()}`, filtered);
+        return created;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Request failed with status ${res.status}`);
+      }
+    } catch (err: any) {
+      console.error("createCustomField error:", err);
+      throw err;
+    }
+  },
+
+  async deleteCustomField(fieldId: string, entityType: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/custom-fields/${fieldId}`, { method: "DELETE" });
+      if (res.ok) {
+        const list = getStorage<any[]>(`zigmaa_cf_${entityType.toLowerCase()}`, []);
+        const filtered = list.filter(f => f.id !== fieldId);
+        setStorage(`zigmaa_cf_${entityType.toLowerCase()}`, filtered);
+        return true;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || `Delete failed with status ${res.status}`);
+      }
+    } catch (err: any) {
+      console.error("deleteCustomField error:", err);
+      // Fallback local delete if network or server error
+      const list = getStorage<any[]>(`zigmaa_cf_${entityType.toLowerCase()}`, []);
+      const filtered = list.filter(f => f.id !== fieldId);
+      setStorage(`zigmaa_cf_${entityType.toLowerCase()}`, filtered);
+      return true;
+    }
   },
 
   // ===== ACCOUNTS CRUD =====
@@ -610,13 +1013,27 @@ export const zigmaaApi = {
 
   // ===== TASKS CRUD =====
   async getTasks(): Promise<Task[]> {
-    return getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
+    const raw = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
+    if (!Array.isArray(raw)) return [];
+    const seen = new Set<string>();
+    const deduplicated: Task[] = [];
+    for (const t of raw) {
+      const key = String(t.id);
+      if (!seen.has(key)) {
+        seen.add(key);
+        deduplicated.push(t);
+      }
+    }
+    if (deduplicated.length !== raw.length) {
+      setStorage("zigmaa_tasks", deduplicated);
+    }
+    return deduplicated;
   },
 
   async createTask(taskData: Partial<Task>): Promise<Task> {
-    const tasks = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
+    const tasks = await this.getTasks();
     const newTask: Task = {
-      id: Date.now(),
+      id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       title: taskData.title || "",
       due_date: taskData.due_date || new Date(Date.now() + 86400000).toISOString().split("T")[0],
       priority: taskData.priority || "Medium",
@@ -752,6 +1169,95 @@ export const zigmaaApi = {
     return true;
   },
 
+  // ===== WORKFLOW AUTOMATIONS ENGINE =====
+  async getWorkflows(module?: string): Promise<any[]> {
+    try {
+      const url = module ? `${API_BASE}/automations?module=${module}` : `${API_BASE}/automations`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        setStorage("zigmaa_workflows", data);
+        return data;
+      }
+    } catch (e) {
+      console.warn("Falling back to cached workflows", e);
+    }
+    return getStorage<any[]>("zigmaa_workflows", []);
+  },
+
+  async createWorkflow(wf: {
+    name: string;
+    module: "CONTACT" | "DEAL";
+    trigger_event: string;
+    conditions?: Record<string, any>;
+    actions?: any[];
+    is_active?: boolean;
+  }): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/automations`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(wf)
+      });
+      if (res.ok) {
+        const created = await res.json();
+        const list = getStorage<any[]>("zigmaa_workflows", []);
+        list.unshift(created);
+        setStorage("zigmaa_workflows", list);
+        return created;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.detail || "Failed to create workflow");
+      }
+    } catch (err: any) {
+      console.error(err);
+      throw err;
+    }
+  },
+
+  async toggleWorkflow(id: string): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/automations/${id}/toggle`, {
+        method: "PATCH"
+      });
+      if (res.ok) return await res.json();
+    } catch {}
+
+    const list = getStorage<any[]>("zigmaa_workflows", []);
+    const updated = list.map(w => w.id === id ? { ...w, is_active: !w.is_active } : w);
+    setStorage("zigmaa_workflows", updated);
+    return { id, is_active: !list.find(w => w.id === id)?.is_active };
+  },
+
+  async deleteWorkflow(id: string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/automations/${id}`, {
+        method: "DELETE"
+      });
+      if (res.ok) {
+        const list = getStorage<any[]>("zigmaa_workflows", []);
+        const filtered = list.filter(w => w.id !== id);
+        setStorage("zigmaa_workflows", filtered);
+        return true;
+      }
+    } catch {}
+
+    const list = getStorage<any[]>("zigmaa_workflows", []);
+    const filtered = list.filter(w => w.id !== id);
+    setStorage("zigmaa_workflows", filtered);
+    return true;
+  },
+
+  async getWorkflowHistory(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE}/automations/history`, { cache: "no-store" });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return [];
+  },
+
   // ===== AUTOMATIONS & COMPATIBILITY =====
   async getAutomations(): Promise<AutomationLog[]> {
     return getStorage<AutomationLog[]>("zigmaa_automations", INITIAL_AUTOMATIONS);
@@ -785,6 +1291,37 @@ export const zigmaaApi = {
     localStorage.removeItem("zigmaa_expenses");
     localStorage.removeItem("zigmaa_invoices");
     localStorage.removeItem("zigmaa_automations");
+  },
+
+  // ===== AI COPILOT / ASSISTANT =====
+  async askCopilot(question: string, history: Array<{ role: string; content: string }> = []): Promise<{ answer: string; model_used?: string; status?: string; error?: string }> {
+    try {
+      const res = await fetch(`${API_BASE}/ai/copilot`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question, history })
+      });
+      if (!res.ok) {
+        let errDetail = "Failed to communicate with AI Copilot";
+        try {
+          const errJson = await res.json();
+          errDetail = errJson.detail || errDetail;
+        } catch {}
+        return {
+          answer: "",
+          status: "error",
+          error: errDetail
+        };
+      }
+      return await res.json();
+    } catch (err: any) {
+      console.error("AI Copilot request error:", err);
+      return {
+        answer: "",
+        status: "error",
+        error: "Backend server unreachable. Please make sure FastAPI backend is running on port 8000."
+      };
+    }
   }
 };
 

@@ -31,6 +31,8 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import FilterSelect from "@/components/common/FilterSelect";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
+import ManageCustomFieldsModal from "@/components/common/ManageCustomFieldsModal";
+import { Sliders, ArrowUpDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { Deal } from "@/lib/mockData";
@@ -50,26 +52,28 @@ const DEALS_MORE_VIEWS = [
 ];
 
 const PIPELINE_STAGES = [
-  "Qualification",
-  "Demo Scheduled",
+  "New Deal",
+  "Discovery",
   "Proposal Sent",
   "Negotiation",
-  "Closed Won"
+  "Won",
+  "Lost"
 ];
 
 const DEAL_STAGES = [
-  { id: "Qualification", label: "Qualification", color: "border-indigo-200 bg-indigo-50/60 text-indigo-700", dot: "bg-indigo-500" },
-  { id: "Demo Scheduled", label: "Demo Scheduled", color: "border-blue-200 bg-blue-50/60 text-blue-700", dot: "bg-blue-500" },
-  { id: "Proposal Sent", label: "Proposal Sent", color: "border-rose-200 bg-rose-50/60 text-rose-700", dot: "bg-rose-500" },
+  { id: "New Deal", label: "New Deal", color: "border-slate-200 bg-slate-50/60 text-slate-700", dot: "bg-slate-500" },
+  { id: "Discovery", label: "Discovery", color: "border-blue-200 bg-blue-50/60 text-blue-700", dot: "bg-blue-500" },
+  { id: "Proposal Sent", label: "Proposal Sent", color: "border-indigo-200 bg-indigo-50/60 text-indigo-700", dot: "bg-indigo-500" },
   { id: "Negotiation", label: "Negotiation", color: "border-amber-200 bg-amber-50/60 text-amber-700", dot: "bg-amber-500" },
-  { id: "Closed Won", label: "Closed Won", color: "border-emerald-200 bg-emerald-50/60 text-emerald-700", dot: "bg-emerald-500" }
+  { id: "Won", label: "Won", color: "border-emerald-200 bg-emerald-50/60 text-emerald-700", dot: "bg-emerald-500" },
+  { id: "Lost", label: "Lost", color: "border-rose-200 bg-rose-50/60 text-rose-700", dot: "bg-rose-500" }
 ];
 
 export default function PipelineDealsPage() {
   const { toast, confirm } = useToast();
   const [deals, setDeals] = useState<Deal[]>([]);
 
-  const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [viewMode, setViewMode] = useState<"table" | "kanban">("kanban");
   const [activeTab, setActiveTab] = useState<string>("All Deals");
   const [selectedStage, setSelectedStage] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
@@ -78,13 +82,18 @@ export default function PipelineDealsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+  const [showCustomFields, setShowCustomFields] = useState(false);
+  const [customFields, setCustomFields] = useState<any[]>([]);
+  const [customData, setCustomData] = useState<Record<string, any>>({});
+  const [sortBy, setSortBy] = useState<"value" | "close_date" | "none">("none");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Form Fields
   const [title, setTitle] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [contactName, setContactName] = useState("");
   const [value, setValue] = useState("");
-  const [stage, setStage] = useState("Qualification");
+  const [stage, setStage] = useState("New Deal");
   const [probability, setProbability] = useState("30");
   const [closeDate, setCloseDate] = useState("");
 
@@ -97,8 +106,16 @@ export default function PipelineDealsPage() {
     }
   };
 
+  const loadCustomFields = async () => {
+    try {
+      const cfs = await api.getCustomFields("DEAL");
+      setCustomFields(cfs || []);
+    } catch {}
+  };
+
   useEffect(() => {
     loadDeals();
+    loadCustomFields();
     const future = new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
     setCloseDate(future);
   }, []);
@@ -114,7 +131,8 @@ export default function PipelineDealsPage() {
       value: Number(value) || 0,
       stage: stage as any,
       probability: Number(probability) || 50,
-      close_date: closeDate || new Date().toISOString().split("T")[0]
+      close_date: closeDate || new Date().toISOString().split("T")[0],
+      custom_data: customData
     };
 
     // Optimistic Update
@@ -127,7 +145,8 @@ export default function PipelineDealsPage() {
       stage: stage as any,
       probability: Number(probability) || 50,
       close_date: closeDate || new Date().toISOString().split("T")[0],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      custom_data: customData
     };
     setDeals((prev) => [temp, ...prev]);
 
@@ -136,6 +155,7 @@ export default function PipelineDealsPage() {
     setCompanyName("");
     setContactName("");
     setValue("");
+    setCustomData({});
     setShowAddModal(false);
     toast.success("Deal Created", `"${newDeal.title}" was added.`);
     loadDeals();
@@ -195,13 +215,13 @@ export default function PipelineDealsPage() {
   // Filtered Deals
   const filteredDeals = useMemo(() => {
 
-    return deals.filter((d) => {
+    const list = deals.filter((d) => {
       // Tab filter
-      if (activeTab === "Open Deals" && d.stage === "Closed Won") return false;
-      if (activeTab === "Won Deals" && d.stage !== "Closed Won") return false;
+      if (activeTab === "Open Deals" && (d.stage === "Closed Won" || d.stage === "Won")) return false;
+      if (activeTab === "Won Deals" && d.stage !== "Closed Won" && d.stage !== "Won") return false;
       if (activeTab === "Closing This Month") {
         const thisMonth = new Date().toISOString().slice(0, 7);
-        if (!(d.close_date || "").startsWith(thisMonth)) return false;
+        if (!(d.close_date || d.expected_close_date || "").startsWith(thisMonth)) return false;
       }
 
       // Stage dropdown filter
@@ -218,7 +238,25 @@ export default function PipelineDealsPage() {
       }
       return true;
     });
-  }, [deals, activeTab, selectedStage, searchQuery]);
+
+    if (sortBy === "value") {
+      return [...list].sort((a, b) => {
+        const va = Number(a.value || a.deal_value || 0);
+        const vb = Number(b.value || b.deal_value || 0);
+        return sortOrder === "asc" ? va - vb : vb - va;
+      });
+    }
+
+    if (sortBy === "close_date") {
+      return [...list].sort((a, b) => {
+        const da = a.close_date || a.expected_close_date || "";
+        const db = b.close_date || b.expected_close_date || "";
+        return sortOrder === "asc" ? da.localeCompare(db) : db.localeCompare(da);
+      });
+    }
+
+    return list;
+  }, [deals, activeTab, selectedStage, searchQuery, sortBy, sortOrder]);
 
   const toggleSelectAll = () => {
     if (selectedIds.size === paginatedDeals.length) {
@@ -309,19 +347,19 @@ export default function PipelineDealsPage() {
                 Export
               </button>
 
+              {/* Manage Custom Fields Button */}
+              <button
+                type="button"
+                onClick={() => setShowCustomFields(true)}
+                className="px-3.5 py-2 bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-sm font-semibold shadow-2xs transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Manage Custom Attributes"
+              >
+                <Sliders className="w-3.5 h-3.5 text-slate-500" />
+                <span>Fields</span>
+              </button>
+
               {/* View Toggle: [ ⊞ Table | ▥ Kanban ] */}
               <div className="flex items-center bg-slate-100/90 border border-slate-200 p-0.5 rounded-xl shadow-2xs">
-                <button
-                  onClick={() => setViewMode("table")}
-                  title="Table View"
-                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
-                    viewMode === "table"
-                      ? "bg-white text-red-600 shadow-2xs font-bold"
-                      : "text-slate-400 hover:text-slate-700"
-                  }`}
-                >
-                  <LayoutGrid className="w-4.5 h-4.5" />
-                </button>
                 <button
                   onClick={() => setViewMode("kanban")}
                   title="Kanban Board View"
@@ -332,6 +370,17 @@ export default function PipelineDealsPage() {
                   }`}
                 >
                   <Columns3 className="w-4.5 h-4.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode("table")}
+                  title="Table View"
+                  className={`p-1.5 rounded-lg transition-all cursor-pointer ${
+                    viewMode === "table"
+                      ? "bg-white text-red-600 shadow-2xs font-bold"
+                      : "text-slate-400 hover:text-slate-700"
+                  }`}
+                >
+                  <LayoutGrid className="w-4.5 h-4.5" />
                 </button>
               </div>
             </div>
@@ -359,19 +408,51 @@ export default function PipelineDealsPage() {
                           </div>
                         </th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">
-                          <span>Deal Owner</span>
-                        </th>
-                        <th className="px-4 py-3.5 border-r border-slate-200/80">
                           <span>Deal Name</span>
                         </th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">
-                          <span>Type</span>
+                          <span>Associated Contact / Company</span>
                         </th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">
                           <span>Stage</span>
                         </th>
-                        <th className="px-4 py-3.5 text-right border-r border-slate-200/80">
-                          <span>Amount</span>
+                        <th 
+                          onClick={() => {
+                            if (sortBy === "value") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("value");
+                              setSortOrder("desc");
+                            }
+                          }}
+                          className="px-4 py-3.5 text-right border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        >
+                          <div className="flex items-center justify-end gap-1">
+                            <span>Amount (₹)</span>
+                            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3.5 text-center border-r border-slate-200/80">
+                          <span>Probability (%)</span>
+                        </th>
+                        <th 
+                          onClick={() => {
+                            if (sortBy === "close_date") {
+                              setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                            } else {
+                              setSortBy("close_date");
+                              setSortOrder("asc");
+                            }
+                          }}
+                          className="px-4 py-3.5 border-r border-slate-200/80 cursor-pointer hover:bg-slate-100 transition-colors select-none"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span>Expected Close Date</span>
+                            <ArrowUpDown className="w-3.5 h-3.5 text-slate-400" />
+                          </div>
+                        </th>
+                        <th className="px-4 py-3.5 border-r border-slate-200/80">
+                          <span>Owner</span>
                         </th>
                         <th className="px-4 py-3.5 text-right">Actions</th>
                       </tr>
@@ -414,57 +495,77 @@ export default function PipelineDealsPage() {
                                 </div>
                               </td>
 
-                              {/* Deal Owner */}
-                              <td className="p-3">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center">
-                                    {(deal.contact_name || deal.title).substring(0, 1).toUpperCase()}
-                                  </div>
-                                  <span className="text-slate-600 text-xs">Primary Sales Rep</span>
-                                </div>
-                              </td>
-
                               {/* Deal Name */}
                               <td className="p-3 font-bold text-slate-900 group-hover:text-red-600 transition-colors">
+                                <span className="block text-sm">{deal.title}</span>
+                              </td>
+
+                              {/* Associated Contact / Company */}
+                              <td className="p-3 text-slate-700">
                                 <div>
-                                  <p>{deal.title}</p>
-                                  <p className="text-[10px] text-slate-400 font-normal">{deal.company_name}</p>
+                                  <span className="font-semibold text-slate-900 block">{deal.company_name || "—"}</span>
+                                  {deal.contact_name && (
+                                    <span className="text-[11px] text-slate-400 block">{deal.contact_name}</span>
+                                  )}
                                 </div>
                               </td>
 
-                              {/* Type */}
-                              <td className="p-3 text-slate-500">
-                                <span className="px-2 py-0.5 rounded bg-slate-100 text-[10px] font-semibold text-slate-600">
-                                  B2B Contract
-                                </span>
-                              </td>
-
-                              {/* Stage */}
+                              {/* Stage (Badge) */}
                               <td className="p-3">
                                 <span
-                                  className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
-                                    deal.stage === "Closed Won"
+                                  className={`px-2.5 py-0.5 rounded-full text-xs font-bold border ${
+                                    deal.stage === "Closed Won" || deal.stage === "Won"
                                       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                       : deal.stage === "Negotiation"
                                       ? "bg-amber-50 text-amber-700 border-amber-200"
-                                      : "bg-red-50 text-red-700 border-red-200"
+                                      : deal.stage === "Proposal Sent"
+                                      ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                      : deal.stage === "Discovery"
+                                      ? "bg-blue-50 text-blue-700 border-blue-200"
+                                      : deal.stage === "Lost" || deal.stage === "Closed Lost"
+                                      ? "bg-rose-50 text-rose-700 border-rose-200"
+                                      : "bg-slate-100 text-slate-700 border-slate-200"
                                   }`}
                                 >
                                   {deal.stage}
                                 </span>
                               </td>
 
-                              {/* Amount */}
-                              <td className="p-3 text-right font-bold text-slate-900">
-                                {formatCurrency(deal.value)}
+                              {/* Amount (₹) */}
+                              <td className="p-3 text-right font-extrabold text-slate-900">
+                                {formatCurrency(deal.value || deal.deal_value || 0)}
+                              </td>
+
+                              {/* Probability (%) */}
+                              <td className="p-3 text-center">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-700">
+                                  {deal.probability || 50}%
+                                </span>
+                              </td>
+
+                              {/* Expected Close Date */}
+                              <td className="p-3 text-xs text-slate-600 font-mono">
+                                {deal.close_date || deal.expected_close_date || "—"}
+                              </td>
+
+                              {/* Owner */}
+                              <td className="p-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                    {(deal.contact_name || deal.company_name || "A").substring(0, 1).toUpperCase()}
+                                  </div>
+                                  <span className="text-slate-700 text-xs font-medium truncate max-w-[120px]">
+                                    {deal.contact_name || "Assigned Agent"}
+                                  </span>
+                                </div>
                               </td>
 
                               {/* Actions */}
-                              <td className="p-3 text-right">
+                              <td className="p-3 text-right" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   onClick={() => handleDelete(deal.id)}
-                                  className="p-1 text-slate-400 hover:text-rose-600 rounded transition-colors"
-                                  title="Delete"
+                                  className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Delete Deal"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
                                 </button>
@@ -586,15 +687,27 @@ export default function PipelineDealsPage() {
                               </div>
 
                               <div className="flex items-center justify-between text-xs pt-1">
-                                <span className="font-bold text-red-600 text-xs">
+                                <span className="font-bold text-red-600 text-sm">
                                   {formatCurrency(deal.value)}
                                 </span>
-                                <span className="text-[10px] text-slate-400">
-                                  Close: {deal.close_date || "Open"}
+                                <span className="text-[11px] text-slate-500 font-medium">
+                                  Due: {deal.close_date || "Open"}
                                 </span>
                               </div>
 
-                              {/* Stage Progress Bar */}
+                              {/* Owner & Stage Progress */}
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
+                                <span className="flex items-center gap-1.5 truncate">
+                                  <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center shrink-0">
+                                    {(deal.contact_name || "A").substring(0, 1).toUpperCase()}
+                                  </span>
+                                  <span className="truncate">{deal.contact_name || "Assigned Agent"}</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-slate-400">
+                                  {deal.probability || 30}%
+                                </span>
+                              </div>
+
                               <div className="w-full bg-slate-100 rounded-full h-1 overflow-hidden">
                                 <div
                                   className="bg-red-600 h-1 rounded-full"
@@ -604,7 +717,7 @@ export default function PipelineDealsPage() {
 
                               <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs">
                                 <div className="flex items-center gap-1">
-                                  {st.id !== "Qualification" && (
+                                  {DEAL_STAGES.findIndex((s) => s.id === st.id) > 0 && (
                                     <button
                                       onClick={() => {
                                         const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
@@ -616,7 +729,7 @@ export default function PipelineDealsPage() {
                                       <ArrowLeft className="w-3 h-3" />
                                     </button>
                                   )}
-                                  {st.id !== "Closed Won" && (
+                                  {DEAL_STAGES.findIndex((s) => s.id === st.id) < DEAL_STAGES.length - 1 && (
                                     <button
                                       onClick={() => {
                                         const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
@@ -712,11 +825,9 @@ export default function PipelineDealsPage() {
                     onChange={(e) => setStage(e.target.value)}
                     className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                   >
-                    <option value="Qualification">Qualification</option>
-                    <option value="Demo Scheduled">Demo Scheduled</option>
-                    <option value="Proposal Sent">Proposal Sent</option>
-                    <option value="Negotiation">Negotiation</option>
-                    <option value="Closed Won">Closed Won</option>
+                    {DEAL_STAGES.map((s) => (
+                      <option key={s.id} value={s.id}>{s.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -744,6 +855,56 @@ export default function PipelineDealsPage() {
                 </div>
               </div>
 
+              {/* Dynamic Custom Fields in Deal Modal */}
+              {customFields.length > 0 && (
+                <div className="space-y-3 pt-2 border-t border-slate-100">
+                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+                    Custom Attributes
+                  </span>
+                  <div className="grid grid-cols-2 gap-3">
+                    {customFields.map((cf) => (
+                      <div key={cf.id}>
+                        <label className="block text-xs font-bold text-slate-700 mb-1">
+                          {cf.label} {cf.is_required && <span className="text-red-500">*</span>}
+                        </label>
+                        {cf.field_type === "SELECT" ? (
+                          <select
+                            value={customData[cf.field_key] || ""}
+                            onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
+                            required={cf.is_required}
+                            className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          >
+                            <option value="">Select option</option>
+                            {(cf.options || []).map((opt: string) => (
+                              <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                          </select>
+                        ) : cf.field_type === "BOOLEAN" ? (
+                          <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!customData[cf.field_key]}
+                              onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.checked })}
+                              className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
+                            />
+                            <span>Yes / Enabled</span>
+                          </label>
+                        ) : (
+                          <input
+                            type={cf.field_type === "NUMBER" ? "number" : cf.field_type === "DATE" ? "date" : "text"}
+                            value={customData[cf.field_key] || ""}
+                            onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
+                            required={cf.is_required}
+                            placeholder={cf.label}
+                            className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
+                          />
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
                 <button
                   type="button"
@@ -763,6 +924,17 @@ export default function PipelineDealsPage() {
           </div>
         </div>
       )}
+
+      {/* Manage Custom Fields Modal */}
+      <ManageCustomFieldsModal
+        entityType="DEAL"
+        isOpen={showCustomFields}
+        onClose={() => setShowCustomFields(false)}
+        onFieldsChanged={() => {
+          loadCustomFields();
+          loadDeals();
+        }}
+      />
     </div>
   );
 }

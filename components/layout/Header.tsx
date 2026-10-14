@@ -18,10 +18,12 @@ import {
   HelpCircle,
   LogOut,
   ChevronDown,
-  Camera
+  Camera,
+  Sparkles
 } from "lucide-react";
 import AddLeadModal from "@/components/leads/AddLeadModal";
 import HelpSupportModal from "@/components/common/HelpSupportModal";
+import AICopilotDrawer from "@/components/ai/AICopilotDrawer";
 import { api } from "@/lib/api";
 
 interface HeaderProps {
@@ -36,6 +38,7 @@ export default function Header({ title }: HeaderProps) {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showAiCopilot, setShowAiCopilot] = useState(false);
   const [activeItem, setActiveItem] = useState("User Activity");
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
 
@@ -146,6 +149,17 @@ export default function Header({ title }: HeaderProps) {
               className="w-full bg-slate-50 text-slate-900 text-sm pl-10 pr-4 py-2 rounded-full border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white placeholder:text-slate-400 font-medium transition-all"
             />
           </form>
+
+          {/* AI Copilot Doubt Clearance Button */}
+          <button
+            onClick={() => setShowAiCopilot(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-red-600 via-rose-600 to-red-500 text-white rounded-full text-xs font-semibold shadow-xs hover:shadow-md hover:brightness-105 active:scale-95 transition-all cursor-pointer border border-red-500/20"
+            title="Ask AI Assistant - Clear Doubts & Explore CRM Features"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-200 animate-pulse" />
+            <span className="hidden sm:inline">Ask AI Copilot</span>
+            <span className="sm:hidden">AI</span>
+          </button>
 
           {/* Utility Action Icons */}
           <div className="flex items-center gap-1.5 text-slate-600 px-1 py-1">
@@ -345,6 +359,7 @@ export default function Header({ title }: HeaderProps) {
 
       {showAddLead && <AddLeadModal isOpen={showAddLead} onClose={() => setShowAddLead(false)} />}
       <HelpSupportModal isOpen={showHelpModal} onClose={() => setShowHelpModal(false)} />
+      <AICopilotDrawer isOpen={showAiCopilot} onClose={() => setShowAiCopilot(false)} />
     </>
   );
 }

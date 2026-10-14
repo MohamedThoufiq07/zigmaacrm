@@ -182,6 +182,21 @@ export default function LeadDetailsDrawer({ lead, onClose, onLeadUpdated }: Prop
             )}
           </div>
 
+          {/* Custom Fields Card */}
+          {currentLead.custom_fields && Object.keys(currentLead.custom_fields).length > 0 && (
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Custom Attributes</h3>
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {Object.entries(currentLead.custom_fields).map(([k, v]) => (
+                  <div key={k} className="bg-white p-2.5 rounded-lg border border-slate-200/80">
+                    <span className="text-slate-500 block text-[10px] font-semibold uppercase">{k.replace(/_/g, " ")}</span>
+                    <span className="font-bold text-slate-900">{typeof v === "boolean" ? (v ? "Yes" : "No") : String(v)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Activity Timeline Section */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">

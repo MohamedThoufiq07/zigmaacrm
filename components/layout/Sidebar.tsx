@@ -113,7 +113,6 @@ export default function Sidebar() {
     {
       title: "SALES",
       items: [
-        { name: "Leads", href: "/leads", icon: BookUser },
         { name: "Contacts", href: "/contacts", icon: User },
         { name: "Deals", href: "/pipeline", icon: Handshake }
       ]

@@ -44,3 +44,18 @@ class BulkUploadResponse(BaseModel):
     duplicate_count: int
     total_processed: int
     message: str
+
+class LeadConvertRequest(BaseModel):
+    deal_name: Optional[str] = None
+    deal_value: Optional[float] = 0.0
+    pipeline_stage: Optional[str] = None  # Stage name or stage id
+    pipeline_id: Optional[str] = None
+    expected_close_date: Optional[str] = None
+
+class LeadConvertResponse(BaseModel):
+    success: bool
+    message: str
+    lead_id: str
+    contact_id: str
+    deal_id: str
+    deal_title: str

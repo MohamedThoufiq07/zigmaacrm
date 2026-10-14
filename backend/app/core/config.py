@@ -1,10 +1,21 @@
 import os
+from pathlib import Path
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings
+
+# Explicitly load .env from backend directory and workspace root
+backend_dir = Path(__file__).resolve().parent.parent.parent
+load_dotenv(backend_dir / ".env")
+load_dotenv(backend_dir.parent / ".env")
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "Zigmaa CRM API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    
+    # AI Keys
+    GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY", "")
+    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
     
     # DB Configuration: Defaults to local PostgreSQL, falls back to SQLite for instant friction-free testing
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")

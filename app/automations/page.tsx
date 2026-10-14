@@ -332,7 +332,7 @@ export default function AutomationsPage() {
                 className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Create Custom Rule</span>
+                <span>Create Custom Rule</span>
               </button>
             </div>
           </div>

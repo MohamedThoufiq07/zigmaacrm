@@ -381,24 +381,35 @@ export default function EventsCalendarPage() {
 
   // Filtered Leads & Deals for dropdown
   const filteredLeadDeals = useMemo(() => {
-    const q = leadDealSearch.toLowerCase();
-    const leadItems = leads
-      .filter((l) => l.name.toLowerCase().includes(q) || (l.company_name && l.company_name.toLowerCase().includes(q)))
-      .map((l) => ({
-        type: "Lead",
-        id: `lead-${l.id}`,
-        title: `${l.name} (${l.company_name || "Lead"})`,
-        name: l.name,
-        email: l.email || ""
-      }));
+    const q = (leadDealSearch || "").toLowerCase();
+    const leadItems = (leads || [])
+      .filter((l) => {
+        const name = (l?.name || l?.full_name || "").toLowerCase();
+        const company = (l?.company_name || "").toLowerCase();
+        return name.includes(q) || company.includes(q);
+      })
+      .map((l) => {
+        const displayName = l?.name || l?.full_name || "Unnamed Lead";
+        return {
+          type: "Lead",
+          id: `lead-${l.id}`,
+          title: `${displayName} (${l?.company_name || "Lead"})`,
+          name: displayName,
+          email: l?.email || ""
+        };
+      });
 
-    const dealItems = deals
-      .filter((d) => d.title.toLowerCase().includes(q) || (d.company_name && d.company_name.toLowerCase().includes(q)))
+    const dealItems = (deals || [])
+      .filter((d) => {
+        const title = (d?.title || "").toLowerCase();
+        const company = (d?.company_name || "").toLowerCase();
+        return title.includes(q) || company.includes(q);
+      })
       .map((d) => ({
         type: "Deal",
         id: `deal-${d.id}`,
-        title: `${d.title} • ${d.company_name || ""}`,
-        name: d.contact_name || "",
+        title: `${d?.title || "Untitled Deal"} • ${d?.company_name || ""}`,
+        name: d?.contact_name || "",
         email: ""
       }));
 
@@ -451,7 +462,7 @@ export default function EventsCalendarPage() {
                 className="flex items-center gap-1.5 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-sm transition-all cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
-                <span>+ Schedule Meeting</span>
+                <span> Schedule Meeting</span>
               </button>
             </div>
           </div>

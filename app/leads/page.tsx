@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Users,
   Search,
@@ -108,7 +109,16 @@ function formatRelativeTime(dateInput?: string | Date): string {
 }
 
 export default function LeadsPage() {
+  const router = useRouter();
   const { toast, confirm } = useToast();
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const search = window.location.search || "";
+      router.replace(`/contacts${search}`);
+    }
+  }, [router]);
+
   const [leads, setLeads] = useState<Lead[]>([]);
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
   const [activeTab, setActiveTab] = useState<string>("All Leads");

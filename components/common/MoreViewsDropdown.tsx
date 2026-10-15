@@ -57,8 +57,13 @@ export default function MoreViewsDropdown({
 
       {/* Popover Dropdown Menu */}
       {isOpen && (
-        <div className="absolute left-0 top-full mt-1.5 w-60 max-h-80 overflow-y-auto bg-white border border-slate-200/90 rounded-2xl shadow-2xl py-2 z-[999] animate-in fade-in zoom-in-95 duration-100">
-          <div className="space-y-0.5">
+        <>
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setIsOpen(false)}
+          />
+          <div className="absolute left-0 top-full mt-1.5 w-64 max-h-80 overflow-y-auto bg-white border border-slate-200/90 rounded-2xl shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+            <div className="space-y-0.5">
             {views.map((view) => {
               const isSelected = activeView === view;
               return (
@@ -85,6 +90,7 @@ export default function MoreViewsDropdown({
             })}
           </div>
         </div>
+      </>
       )}
     </div>
   );

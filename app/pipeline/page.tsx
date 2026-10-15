@@ -336,8 +336,8 @@ export default function PipelineDealsPage() {
                 onClick={() => setShowAddModal(true)}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
+                <Plus className="w-4 h-4" />
                 <span>Add Deal</span>
-                <ChevronDown className="w-4 h-4" />
               </button>
 
               <button

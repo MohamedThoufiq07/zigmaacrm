@@ -1,7 +1,20 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Trash2, Sliders, Check, AlertCircle } from "lucide-react";
+import {
+  X,
+  Plus,
+  Trash2,
+  Sliders,
+  Check,
+  AlertCircle,
+  ChevronDown,
+  Type,
+  Hash,
+  ListFilter,
+  Calendar,
+  CheckSquare
+} from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
 
@@ -22,6 +35,14 @@ export interface CustomFieldDefinition {
   is_required?: boolean;
 }
 
+const FIELD_TYPES = [
+  { id: "TEXT", label: "Text (Single Line)", icon: <Type className="w-4 h-4 text-slate-500" /> },
+  { id: "NUMBER", label: "Number / Metric", icon: <Hash className="w-4 h-4 text-blue-500" /> },
+  { id: "SELECT", label: "Dropdown Selection", icon: <ListFilter className="w-4 h-4 text-purple-500" /> },
+  { id: "DATE", label: "Calendar Date", icon: <Calendar className="w-4 h-4 text-amber-500" /> },
+  { id: "BOOLEAN", label: "Checkbox / Yes-No", icon: <CheckSquare className="w-4 h-4 text-emerald-500" /> }
+];
+
 export default function ManageCustomFieldsModal({
   entityType,
   isOpen,
@@ -36,6 +57,7 @@ export default function ManageCustomFieldsModal({
   const [label, setLabel] = useState("");
   const [fieldKey, setFieldKey] = useState("");
   const [fieldType, setFieldType] = useState<"TEXT" | "NUMBER" | "SELECT" | "DATE" | "BOOLEAN">("TEXT");
+  const [showTypeDropdown, setShowTypeDropdown] = useState(false);
   const [optionsStr, setOptionsStr] = useState("");
   const [isRequired, setIsRequired] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -171,21 +193,69 @@ export default function ManageCustomFieldsModal({
                 />
               </div>
 
-              <div>
+              <div className="relative">
                 <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                   Field Type
                 </label>
-                <select
-                  value={fieldType}
-                  onChange={(e: any) => setFieldType(e.target.value)}
-                  className="w-full bg-white text-slate-900 text-xs px-3 py-2 rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
+                
+                {/* Custom Trigger */}
+                <button
+                  type="button"
+                  onClick={() => setShowTypeDropdown((prev) => !prev)}
+                  className={`w-full h-[38px] px-3.5 bg-white text-slate-900 text-xs rounded-xl border flex items-center justify-between font-semibold cursor-pointer shadow-2xs transition-all ${
+                    showTypeDropdown
+                      ? "border-red-500 ring-2 ring-red-100"
+                      : "border-slate-200 hover:border-slate-300"
+                  }`}
                 >
-                  <option value="TEXT">Text (Single Line)</option>
-                  <option value="NUMBER">Number / Metric</option>
-                  <option value="SELECT">Dropdown Selection</option>
-                  <option value="DATE">Calendar Date</option>
-                  <option value="BOOLEAN">Checkbox / Yes-No</option>
-                </select>
+                  <div className="flex items-center gap-2">
+                    {FIELD_TYPES.find((t) => t.id === fieldType)?.icon}
+                    <span>{FIELD_TYPES.find((t) => t.id === fieldType)?.label}</span>
+                  </div>
+                  <ChevronDown
+                    className={`w-4 h-4 text-slate-400 transition-transform duration-200 ${
+                      showTypeDropdown ? "rotate-180 text-red-600" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Custom Popover Dropdown Menu */}
+                {showTypeDropdown && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowTypeDropdown(false)}
+                    />
+                    <div className="absolute left-0 top-full mt-1.5 w-full bg-white border border-slate-200/90 rounded-2xl shadow-2xl py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100 space-y-0.5">
+                      {FIELD_TYPES.map((type) => {
+                        const isSelected = fieldType === type.id;
+                        return (
+                          <button
+                            key={type.id}
+                            type="button"
+                            onClick={() => {
+                              setFieldType(type.id as any);
+                              setShowTypeDropdown(false);
+                            }}
+                            className={`w-[calc(100%-8px)] mx-1 px-3 py-2 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center justify-between text-left ${
+                              isSelected
+                                ? "bg-red-50 text-red-600 font-bold"
+                                : "text-slate-700 hover:bg-slate-50 hover:text-slate-900"
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              {type.icon}
+                              <span>{type.label}</span>
+                            </div>
+                            {isSelected && (
+                              <Check className="w-4 h-4 text-red-600 shrink-0 ml-2" />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
 

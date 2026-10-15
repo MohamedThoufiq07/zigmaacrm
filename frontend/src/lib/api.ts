@@ -760,18 +760,18 @@ export const zigmaaApi = {
       const res = await fetch(`${API_BASE}/contacts`, { cache: "no-store" });
       if (res.ok) {
         const backendContacts = await res.json();
-        if (Array.isArray(backendContacts) && backendContacts.length > 0) {
+        if (Array.isArray(backendContacts)) {
           return backendContacts.map((c: any) => ({
             id: c.id,
             name: c.full_name || c.name || "Unnamed",
             email: c.email || "",
             phone: c.phone || "",
             company_name: c.company_name || "",
-            job_title: c.job_title || "",
-            status: c.status || c.lifecycle_stage || "New",
-            lifecycle_stage: c.lifecycle_stage || c.status || "New",
-            source: c.source || "Manual",
-            assigned_to: c.assigned_to || "Mohamed Thoufiq",
+            job_title: c.designation || c.job_title || "",
+            status: c.status || c.lifecycle_stage || "NEW",
+            lifecycle_stage: c.lifecycle_stage || c.status || "NEW",
+            source: c.source || "MANUAL",
+            assigned_to: c.assigned_user_name || "Mohamed Thoufiq",
             total_deals: c.total_deals || 0,
             lifetime_value: Number(c.lifetime_value) || 0,
             custom_data: c.custom_data || {},
@@ -779,8 +779,10 @@ export const zigmaaApi = {
           }));
         }
       }
-    } catch {}
-    return getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
+    } catch (e) {
+      console.error("Failed to fetch contacts from API:", e);
+    }
+    return [];
   },
 
   async getContactDetail(id: string | number): Promise<any> {
@@ -841,65 +843,107 @@ export const zigmaaApi = {
     return data;
   },
 
-  async createContact(contactData: Partial<Contact>): Promise<Contact> {
-    try {
-      const payload = {
-        full_name: contactData.name || contactData.full_name || "Unnamed Contact",
-        email: contactData.email || null,
-        phone: contactData.phone || "",
-        company_name: contactData.company_name || null,
-        job_title: contactData.job_title || null,
-        status: contactData.status || contactData.lifecycle_stage || "New",
-        lifecycle_stage: contactData.lifecycle_stage || contactData.status || "New",
-        source: contactData.source || "Manual",
-        custom_data: contactData.custom_data || {}
-      };
-      const res = await fetch(`${API_BASE}/contacts`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if (res.ok) {
-        const c = await res.json();
-        return {
-          id: c.id,
-          name: c.full_name || c.name,
-          email: c.email || "",
-          phone: c.phone || "",
-          company_name: c.company_name || "",
-          job_title: c.job_title || "",
-          status: c.status || "New",
-          lifecycle_stage: c.lifecycle_stage || c.status || "New",
-          source: c.source || "Manual",
-          assigned_to: "Mohamed Thoufiq",
-          total_deals: c.total_deals || 0,
-          lifetime_value: c.lifetime_value || 0,
-          custom_data: c.custom_data || {},
-          created_at: c.created_at
-        };
-      }
-    } catch {}
+  async sendContactEmail(id: number | string, data: { subject: string; body: string }): Promise<any> {
+    const res = await fetch(`${API_BASE}/contacts/${id}/send-email`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data)
+    });
 
-    const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
-    const newContact: Contact = {
-      id: Date.now(),
-      name: contactData.name || "",
-      email: contactData.email || "",
+    if (!res.ok) {
+      let errorMsg = "Failed to send email";
+      try {
+        const errJson = await res.json();
+        errorMsg = errJson.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    return await res.json();
+  },
+
+  async createContact(contactData: Partial<Contact>): Promise<Contact> {
+    const payload = {
+      full_name: contactData.name || contactData.full_name || "Unnamed Contact",
+      email: contactData.email || null,
       phone: contactData.phone || "",
-      company_name: contactData.company_name || "",
-      job_title: contactData.job_title || "",
-      status: contactData.status || contactData.lifecycle_stage || "New",
-      lifecycle_stage: contactData.lifecycle_stage || contactData.status || "New",
-      source: contactData.source || "Manual",
-      assigned_to: "Mohamed Thoufiq",
-      total_deals: 0,
-      lifetime_value: 0,
+      company_name: contactData.company_name || null,
+      designation: contactData.job_title || null,
+      job_title: contactData.job_title || null,
+      status: contactData.status || contactData.lifecycle_stage || "NEW",
+      lifecycle_stage: contactData.lifecycle_stage || contactData.status || "NEW",
+      source: contactData.source || "MANUAL",
       custom_data: contactData.custom_data || {},
-      created_at: new Date().toISOString()
+      assigned_user_name: contactData.assigned_to || "Mohamed Thoufiq"
     };
-    contacts.unshift(newContact);
-    setStorage("zigmaa_contacts", contacts);
-    return newContact;
+    const res = await fetch(`${API_BASE}/contacts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (res.ok) {
+      const c = await res.json();
+      return {
+        id: c.id,
+        name: c.full_name || c.name,
+        email: c.email || "",
+        phone: c.phone || "",
+        company_name: c.company_name || "",
+        job_title: c.designation || c.job_title || "",
+        status: c.status || "NEW",
+        lifecycle_stage: c.lifecycle_stage || c.status || "NEW",
+        source: c.source || "MANUAL",
+        assigned_to: c.assigned_user_name || "Mohamed Thoufiq",
+        total_deals: c.total_deals || 0,
+        lifetime_value: c.lifetime_value || 0,
+        custom_data: c.custom_data || {},
+        created_at: c.created_at
+      };
+    }
+    const errText = await res.text();
+    throw new Error(`Failed to create contact: ${errText || res.statusText}`);
+  },
+
+  async bulkUploadContacts(rows: any[]): Promise<{ total_ingested: number; records: Contact[] }> {
+    const createdList: Contact[] = [];
+    for (let idx = 0; idx < rows.length; idx++) {
+      const r = rows[idx];
+      const contactName =
+        r.name || r.full_name || r["Contact Name"] || r["Name"] || r["Full Name"] || `Contact ${idx + 1}`;
+      const phone =
+        r.phone || r.mobile || r["Phone"] || r["Mobile"] || r["Phone Number"] || r["Mobile Number"] || "";
+      const email =
+        r.email || r["Email"] || r["Email Address"] || "";
+      const company =
+        r.company_name || r.company || r["Company"] || r["Company Name"] || "";
+      const jobTitle =
+        r.job_title || r.designation || r["Job Title"] || r["Designation"] || "";
+      const source =
+        r.source || r.ad_source || r["Source"] || "Excel/CSV Import";
+      const stage =
+        r.stage || r.lifecycle_stage || r.status || r["Lifecycle Stage"] || r["Stage"] || "New";
+
+      try {
+        const created = await this.createContact({
+          name: String(contactName).trim(),
+          phone: String(phone).trim(),
+          email: String(email).trim(),
+          company_name: String(company).trim(),
+          job_title: String(jobTitle).trim(),
+          source: String(source).trim(),
+          status: String(stage).trim() as any,
+          lifecycle_stage: String(stage).trim() as any
+        });
+        createdList.push(created);
+      } catch (e) {
+        console.error("Bulk contact item insert error:", e);
+      }
+    }
+
+    return {
+      total_ingested: createdList.length,
+      records: createdList
+    };
   },
 
   async deleteContact(id: number | string): Promise<boolean> {

@@ -105,7 +105,7 @@ export default function Header({ title }: HeaderProps) {
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/leads?search=${encodeURIComponent(searchQuery.trim())}`);
+      router.push(`/contacts?search=${encodeURIComponent(searchQuery.trim())}`);
     }
   };
 
@@ -164,7 +164,7 @@ export default function Header({ title }: HeaderProps) {
           {/* Utility Action Icons */}
           <div className="flex items-center gap-1.5 text-slate-600 px-1 py-1">
             <Link
-              href="/leads"
+              href="/contacts"
               className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors"
               title="Workspace Records"
             >

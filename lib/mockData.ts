@@ -60,6 +60,7 @@ export interface Contact {
   total_deals?: number;
   lifetime_value?: number;
   created_at: string;
+  updated_at?: string;
   custom_data?: Record<string, any>;
   deals?: any[];
   activities?: any[];

@@ -7,10 +7,7 @@ from app.core.config import settings
 logger = logging.getLogger("zigmaa.database")
 
 # DB Configuration: Preferences settings.DATABASE_URL or environment variable
-db_url = os.getenv(
-    "DATABASE_URL",
-    settings.DATABASE_URL or "postgresql+asyncpg://postgres:thoufiq@localhost:5432/zigmaa_crm"
-)
+db_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
 
 connect_args = {}
 if db_url.startswith("sqlite"):

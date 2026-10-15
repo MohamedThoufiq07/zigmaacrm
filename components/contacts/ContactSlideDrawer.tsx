@@ -24,13 +24,17 @@ import {
   RefreshCw,
   AlertTriangle,
   Lightbulb,
-  TrendingUp
+  TrendingUp,
+  Edit2,
+  Check,
+  Briefcase
 } from "lucide-react";
 import Link from "next/link";
 import { Contact, Deal } from "@/lib/mockData";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/components/common/ToastProvider";
+import SendEmailModal from "@/components/contacts/SendEmailModal";
 
 interface ContactSlideDrawerProps {
   contact: Contact | null;
@@ -38,6 +42,7 @@ interface ContactSlideDrawerProps {
   onClose: () => void;
   onUpdated?: () => void;
   onOpenCreateDeal?: (contact: Contact) => void;
+  initialEditMode?: boolean;
 }
 
 const LIFECYCLE_STEPS = [
@@ -53,12 +58,27 @@ export default function ContactSlideDrawer({
   isOpen,
   onClose,
   onUpdated,
-  onOpenCreateDeal
+  onOpenCreateDeal,
+  initialEditMode = false
 }: ContactSlideDrawerProps) {
   const { toast } = useToast();
   const [detail, setDetail] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"Overview" | "Timeline" | "Activities" | "Notes">("Overview");
+
+  // Inline Editing State (Twozo style)
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    company_name: "",
+    designation: "",
+    source: "Manual",
+    assigned_to: "Mohamed Thoufiq"
+  });
+  const [savingField, setSavingField] = useState(false);
   
   // Note logger state
   const [newNote, setNewNote] = useState("");
@@ -74,6 +94,9 @@ export default function ContactSlideDrawer({
   // AI Insights State
   const [aiInsights, setAiInsights] = useState<any>(null);
   const [loadingAi, setLoadingAi] = useState(false);
+
+  // Send Email Modal State
+  const [showSendEmail, setShowSendEmail] = useState(false);
 
   const fetchAiInsights = async (contactId: string | number, forceRefresh: boolean = false) => {
     setLoadingAi(true);
@@ -92,10 +115,33 @@ export default function ContactSlideDrawer({
       setLoading(true);
       api.getContactDetail(contact.id)
         .then((res) => {
-          setDetail(res || contact);
+          const c = res || contact;
+          setDetail(c);
+          const parts = (c.name || "").trim().split(/\s+/);
+          setEditForm({
+            firstName: parts[0] || "",
+            lastName: parts.slice(1).join(" ") || "",
+            email: c.email || "",
+            phone: c.phone || "",
+            company_name: c.company_name || "",
+            designation: c.designation || c.job_title || "",
+            source: c.source || "Manual",
+            assigned_to: c.assigned_to || (c as any).assigned_user_name || "Mohamed Thoufiq"
+          });
         })
         .catch(() => {
           setDetail(contact);
+          const parts = (contact.name || "").trim().split(/\s+/);
+          setEditForm({
+            firstName: parts[0] || "",
+            lastName: parts.slice(1).join(" ") || "",
+            email: contact.email || "",
+            phone: contact.phone || "",
+            company_name: contact.company_name || "",
+            designation: (contact as any).designation || contact.job_title || "",
+            source: contact.source || "Manual",
+            assigned_to: contact.assigned_to || (contact as any).assigned_user_name || "Mohamed Thoufiq"
+          });
         })
         .finally(() => {
           setLoading(false);
@@ -104,8 +150,53 @@ export default function ContactSlideDrawer({
       setDealTitle(`${contact.company_name || contact.name} - Deal`);
       setDealValue("");
       fetchAiInsights(contact.id, false);
+      if (initialEditMode) {
+        setActiveTab("Overview");
+        setEditingField("firstName");
+        setTimeout(() => {
+          const el = document.getElementById("basic-information-section");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "center" });
+          }
+        }, 150);
+      } else {
+        setEditingField(null);
+      }
     }
-  }, [isOpen, contact]);
+  }, [isOpen, contact, initialEditMode]);
+
+  const handleSaveField = async (field: string) => {
+    if (!currentContact) return;
+    setSavingField(true);
+    try {
+      const fullName = `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim() || currentContact.name;
+      const payload: any = {
+        name: fullName,
+        email: editForm.email.trim(),
+        phone: editForm.phone.trim(),
+        company_name: editForm.company_name.trim(),
+        designation: editForm.designation.trim(),
+        job_title: editForm.designation.trim(),
+        source: editForm.source.trim(),
+        assigned_to: editForm.assigned_to.trim(),
+        assigned_user_name: editForm.assigned_to.trim()
+      };
+
+      const updated = await api.updateContact(currentContact.id, payload);
+      setDetail((prev: any) => ({
+        ...prev,
+        ...payload,
+        ...(updated || {})
+      }));
+      setEditingField(null);
+      toast.success("Contact Updated", `${field} saved successfully.`);
+      if (onUpdated) onUpdated();
+    } catch (err: any) {
+      toast.error("Update Failed", err.message || "Could not save changes.");
+    } finally {
+      setSavingField(false);
+    }
+  };
 
   if (!isOpen || !contact) return null;
 
@@ -262,6 +353,17 @@ export default function ContactSlideDrawer({
               </a>
             )}
 
+            {/* In-app Send Email Action Button */}
+            <button
+              type="button"
+              onClick={() => setShowSendEmail(true)}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              title="Compose & Send Email"
+            >
+              <Mail className="w-3.5 h-3.5 text-slate-500" />
+              <span>Send Email</span>
+            </button>
+
             <button
               onClick={() => setShowQuickDeal(true)}
               className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-xs ml-auto cursor-pointer"
@@ -351,10 +453,18 @@ export default function ContactSlideDrawer({
                 </div>
 
                 {loadingAi ? (
-                  <div className="py-6 text-center space-y-2">
-                    <Sparkles className="w-6 h-6 text-red-500 animate-pulse mx-auto" />
-                    <p className="text-xs font-bold text-slate-700">Synthesizing prospect notes & engagement...</p>
-                    <p className="text-[11px] text-slate-400">Evaluating deal momentum and intent tier</p>
+                  <div className="py-4 space-y-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-xl bg-red-100/70 animate-pulse flex items-center justify-center">
+                        <Sparkles className="w-4 h-4 text-red-500 animate-spin" />
+                      </div>
+                      <div className="space-y-1.5 flex-1">
+                        <div className="h-3 w-48 bg-slate-200 rounded animate-pulse" />
+                        <div className="h-2 w-32 bg-slate-100 rounded animate-pulse" />
+                      </div>
+                    </div>
+                    <div className="h-10 bg-white/80 rounded-xl border border-slate-200/60 animate-pulse" />
+                    <div className="h-14 bg-white/80 rounded-xl border border-slate-200/60 animate-pulse" />
                   </div>
                 ) : aiInsights ? (
                   <div className="space-y-4">
@@ -479,52 +589,423 @@ export default function ContactSlideDrawer({
                 </div>
               </div>
 
-              {/* Basic Information Card */}
-              <div className="p-5 rounded-2xl bg-white border border-slate-200 space-y-3.5 shadow-2xs">
-                <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Contact Information</h3>
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold">Mobile Number</span>
-                    <a href={`tel:${currentContact.phone}`} className="font-bold text-slate-900 hover:text-red-600 flex items-center gap-1.5 mt-0.5">
-                      <Phone className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{currentContact.phone || "—"}</span>
-                    </a>
-                  </div>
+              {/* Basic Information Card (Twozo style with inline edit pens) */}
+              <div id="basic-information-section" className="p-5 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-2xs">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-700">Basic Information</h3>
+                  <span className="text-[11px] text-slate-400">Click pencil to edit any field</span>
+                </div>
 
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold">Email Address</span>
-                    {currentContact.email ? (
-                      <a href={`mailto:${currentContact.email}`} className="font-bold text-slate-900 hover:text-red-600 flex items-center gap-1.5 mt-0.5 truncate">
-                        <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="truncate">{currentContact.email}</span>
-                      </a>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
+                  {/* First Name */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "firstName" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">First Name</span>
+                      {editingField !== "firstName" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("firstName")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit First Name"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "firstName" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.firstName}
+                          onChange={(e) => setEditForm({ ...editForm, firstName: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("First Name")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     ) : (
-                      <span className="text-slate-500">—</span>
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {editForm.firstName || "—"}
+                      </p>
                     )}
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold">Company</span>
-                    <span className="font-bold text-slate-900 flex items-center gap-1.5 mt-0.5">
-                      <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{currentContact.company_name || "—"}</span>
-                    </span>
+                  {/* Last Name */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "lastName" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Last Name</span>
+                      {editingField !== "lastName" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("lastName")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Last Name"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "lastName" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.lastName}
+                          onChange={(e) => setEditForm({ ...editForm, lastName: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Last Name")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-slate-900 text-xs truncate">
+                        {editForm.lastName || "—"}
+                      </p>
+                    )}
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold">Lead Source</span>
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200 mt-0.5">
-                      <Tag className="w-3 h-3 text-slate-500" />
-                      <span>{currentContact.source || "Manual"}</span>
-                    </span>
+                  {/* Emails */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "email" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Emails</span>
+                      {editingField !== "email" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("email")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Email"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "email" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="email"
+                          autoFocus
+                          value={editForm.email}
+                          onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Email")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-red-600 text-xs truncate">
+                        {editForm.email || "—"}
+                      </p>
+                    )}
                   </div>
 
-                  <div>
-                    <span className="text-slate-400 block text-[10px] font-semibold">Created Date</span>
-                    <span className="font-semibold text-slate-900 flex items-center gap-1.5 mt-0.5">
-                      <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                      <span>{currentContact.created_at ? formatDate(currentContact.created_at) : "—"}</span>
-                    </span>
+                  {/* Phones */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "phone" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Phones</span>
+                      {editingField !== "phone" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("phone")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Phone"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "phone" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.phone}
+                          onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500 font-mono"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Phone")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-slate-900 text-xs font-mono truncate">
+                        {editForm.phone || "—"}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Company */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "company_name" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Company</span>
+                      {editingField !== "company_name" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("company_name")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Company"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "company_name" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.company_name}
+                          onChange={(e) => setEditForm({ ...editForm, company_name: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Company")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-slate-800 text-xs truncate">
+                        {editForm.company_name || <span className="text-slate-400 font-normal">Click to add</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Designation */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "designation" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Designation</span>
+                      {editingField !== "designation" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("designation")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Designation"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "designation" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.designation}
+                          onChange={(e) => setEditForm({ ...editForm, designation: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Designation")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="font-bold text-slate-800 text-xs truncate">
+                        {editForm.designation || <span className="text-slate-400 font-normal">Click to add</span>}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Sales Owner */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "assigned_to" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Sales Owner</span>
+                      {editingField !== "assigned_to" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("assigned_to")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Sales Owner"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "assigned_to" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <input
+                          type="text"
+                          autoFocus
+                          value={editForm.assigned_to}
+                          onChange={(e) => setEditForm({ ...editForm, assigned_to: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        />
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Sales Owner")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <div className="w-4 h-4 rounded-full bg-slate-200 text-slate-600 text-[9px] font-bold flex items-center justify-center shrink-0">
+                          {(editForm.assigned_to || "M").substring(0, 1).toUpperCase()}
+                        </div>
+                        <p className="font-bold text-slate-800 text-xs truncate">
+                          {editForm.assigned_to || "Mohamed Thoufiq"}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Lead Source */}
+                  <div className={`p-3 rounded-xl border transition-all ${editingField === "source" ? "bg-red-50/40 border-red-300 ring-2 ring-red-500/20" : "bg-slate-50/70 border-slate-200/80 hover:bg-slate-100/60 group"}`}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[11px] font-semibold text-slate-500">Lead Source</span>
+                      {editingField !== "source" && (
+                        <button
+                          type="button"
+                          onClick={() => setEditingField("source")}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-600 transition-opacity cursor-pointer"
+                          title="Edit Lead Source"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                    {editingField === "source" ? (
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <select
+                          autoFocus
+                          value={editForm.source}
+                          onChange={(e) => setEditForm({ ...editForm, source: e.target.value })}
+                          className="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs font-bold text-slate-900 focus:outline-none focus:border-red-500"
+                        >
+                          <option value="Manual">Manual</option>
+                          <option value="Meta Ads">Meta Ads</option>
+                          <option value="Google Ads">Google Ads</option>
+                          <option value="Website Form">Website Form</option>
+                          <option value="Referral">Referral</option>
+                          <option value="Cold Outreach">Cold Outreach</option>
+                          <option value="WhatsApp">WhatsApp</option>
+                          <option value="Instagram">Instagram</option>
+                          <option value="LinkedIn Ads">LinkedIn Ads</option>
+                          <option value="YouTube">YouTube</option>
+                          <option value="Advertisement">Advertisement</option>
+                        </select>
+                        <button
+                          type="button"
+                          disabled={savingField}
+                          onClick={() => handleSaveField("Lead Source")}
+                          className="p-1 rounded bg-red-600 text-white hover:bg-red-700 cursor-pointer disabled:opacity-50"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditingField(null)}
+                          className="p-1 rounded bg-slate-200 text-slate-600 hover:bg-slate-300 cursor-pointer"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="mt-0.5">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                          <Tag className="w-3 h-3 text-slate-500" />
+                          <span>{editForm.source || "Manual"}</span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Additional Metadata Strip */}
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500 flex-wrap gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <UserCheck className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Sales Owner: <strong className="text-slate-700 font-semibold">{currentContact.assigned_to || editForm.assigned_to || "Mohamed Thoufiq"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Tag className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Source: <strong className="text-slate-700 font-semibold">{currentContact.source || editForm.source || "Manual"}</strong></span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                    <span>Created: <strong className="text-slate-700 font-semibold">{currentContact.created_at ? formatDate(currentContact.created_at) : "—"}</strong></span>
                   </div>
                 </div>
               </div>
@@ -757,6 +1238,26 @@ export default function ContactSlideDrawer({
           </div>
         </div>
       )}
+
+      {/* In-app Send Email Modal */}
+      <SendEmailModal
+        isOpen={showSendEmail}
+        onClose={() => setShowSendEmail(false)}
+        contact={{
+          id: currentContact.id,
+          name: currentContact.name,
+          email: currentContact.email
+        }}
+        onSent={(newActivity) => {
+          if (newActivity) {
+            setDetail((prev: any) => ({
+              ...prev,
+              activities: [newActivity, ...(prev?.activities || [])]
+            }));
+          }
+          if (onUpdated) onUpdated();
+        }}
+      />
 
     </div>
   );

@@ -7,18 +7,20 @@ class ContactBase(BaseModel):
     email: Optional[str] = None
     phone: str
     company_name: Optional[str] = None
+    designation: Optional[str] = None
     job_title: Optional[str] = None
-    status: Optional[str] = "New"
-    lifecycle_stage: Optional[str] = "New"
-    source: Optional[str] = "Manual"
+    status: Optional[str] = "NEW"
+    lifecycle_stage: Optional[str] = "NEW"
+    source: Optional[str] = "MANUAL"
     custom_data: Optional[Dict[str, Any]] = {}
+    assigned_user_name: Optional[str] = "Mohamed Thoufiq"
 
 class ContactCreate(ContactBase):
     pass
 
 class ContactOut(ContactBase):
     id: str
-    organization_id: str
+    organization_id: Optional[str] = None
     assigned_user_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime

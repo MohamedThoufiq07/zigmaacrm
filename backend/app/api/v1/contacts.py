@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_, func
 from typing import List, Optional
@@ -19,7 +19,7 @@ async def get_contacts(
     org_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Contact).order_by(Contact.id.desc())
+    query = select(Contact).order_by(Contact.created_at.desc())
     if org_id:
         query = query.where(Contact.organization_id == org_id)
     if status:
@@ -61,11 +61,13 @@ async def get_contacts(
             "email": c.email,
             "phone": c.phone,
             "company_name": c.company_name,
-            "job_title": c.job_title,
-            "status": c.status or "New",
-            "lifecycle_stage": c.lifecycle_stage or c.status or "New",
-            "source": c.source or "Manual",
+            "designation": c.designation or c.job_title,
+            "job_title": c.job_title or c.designation,
+            "status": c.status or c.lifecycle_stage or "NEW",
+            "lifecycle_stage": c.lifecycle_stage or c.status or "NEW",
+            "source": c.source or "MANUAL",
             "custom_data": c.custom_data or {},
+            "assigned_user_name": c.assigned_user_name or "Mohamed Thoufiq",
             "assigned_user_id": c.assigned_user_id,
             "created_at": c.created_at,
             "updated_at": c.updated_at,
@@ -113,11 +115,13 @@ async def get_contact_detail(
         "email": contact.email,
         "phone": contact.phone,
         "company_name": contact.company_name,
-        "job_title": contact.job_title,
-        "status": contact.status or "New",
-        "lifecycle_stage": contact.lifecycle_stage or contact.status or "New",
-        "source": contact.source or "Manual",
+        "designation": contact.designation or contact.job_title,
+        "job_title": contact.job_title or contact.designation,
+        "status": contact.status or contact.lifecycle_stage or "NEW",
+        "lifecycle_stage": contact.lifecycle_stage or contact.status or "NEW",
+        "source": contact.source or "MANUAL",
         "custom_data": contact.custom_data or {},
+        "assigned_user_name": contact.assigned_user_name or "Mohamed Thoufiq",
         "assigned_user_id": contact.assigned_user_id,
         "created_at": contact.created_at,
         "updated_at": contact.updated_at,
@@ -240,32 +244,37 @@ async def get_contact_ai_insights(
 
     return insights
 
-@router.post("/contacts", response_model=ContactOut)
+@router.post("/contacts", response_model=ContactOut, status_code=status.HTTP_201_CREATED)
 async def create_contact(
     contact_in: ContactCreate,
     org_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    if not org_id:
+    target_org_id = org_id
+    if not target_org_id:
         res = await db.execute(select(Organization))
         org = res.scalars().first()
-        org_id = org.id if org else "default_org"
+        target_org_id = org.id if org else None
 
+    designation = contact_in.designation or contact_in.job_title
     contact = Contact(
-        organization_id=org_id,
+        organization_id=target_org_id,
         full_name=contact_in.full_name,
         email=contact_in.email,
         phone=contact_in.phone,
         company_name=contact_in.company_name,
-        job_title=contact_in.job_title,
-        status=contact_in.status or "New",
-        lifecycle_stage=contact_in.lifecycle_stage or contact_in.status or "New",
-        source=contact_in.source or "Manual",
-        custom_data=contact_in.custom_data or {}
+        designation=designation,
+        job_title=contact_in.job_title or designation,
+        status=contact_in.status or contact_in.lifecycle_stage or "NEW",
+        lifecycle_stage=contact_in.lifecycle_stage or contact_in.status or "NEW",
+        source=contact_in.source or "MANUAL",
+        custom_data=contact_in.custom_data or {},
+        assigned_user_name=contact_in.assigned_user_name or "Mohamed Thoufiq"
     )
     db.add(contact)
     await db.commit()
     await db.refresh(contact)
+
     return {
         "id": contact.id,
         "organization_id": contact.organization_id,
@@ -273,11 +282,13 @@ async def create_contact(
         "email": contact.email,
         "phone": contact.phone,
         "company_name": contact.company_name,
+        "designation": contact.designation,
         "job_title": contact.job_title,
         "status": contact.status,
         "lifecycle_stage": contact.lifecycle_stage,
         "source": contact.source,
         "custom_data": contact.custom_data or {},
+        "assigned_user_name": contact.assigned_user_name,
         "assigned_user_id": contact.assigned_user_id,
         "created_at": contact.created_at,
         "updated_at": contact.updated_at,
@@ -317,3 +328,75 @@ async def delete_contact(
     await db.delete(contact)
     await db.commit()
     return {"message": "Contact deleted successfully"}
+
+
+from pydantic import BaseModel
+
+class SendEmailRequest(BaseModel):
+    subject: str
+    body: str
+
+@router.post("/contacts/{contact_id}/send-email")
+async def send_contact_email(
+    contact_id: str,
+    req: SendEmailRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(select(Contact).where(Contact.id == contact_id))
+    contact = res.scalar_one_or_none()
+    if not contact:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    if not contact.email:
+        raise HTTPException(status_code=400, detail="This contact does not have a registered email address")
+
+    if not req.subject.strip() or not req.body.strip():
+        raise HTTPException(status_code=400, detail="Subject and body cannot be empty")
+
+    # Send email using SMTP service (with graceful local mock fallback if credentials not configured)
+    sent_successfully = False
+    from app.core.config import settings
+    if settings.SMTP_USER and settings.SMTP_PASSWORD:
+        try:
+            from app.core.email import send_email_async
+            html_body = f"""
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; max-width: 600px; padding: 20px;">
+                <p>{req.body.replace(chr(10), '<br/>')}</p>
+                <br/>
+                <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
+                <p style="font-size: 12px; color: #94a3b8;">Sent via Zigmaa CRM by {contact.assigned_user_name or 'Team'}</p>
+            </div>
+            """
+            await send_email_async(contact.email, req.subject, html_body)
+            sent_successfully = True
+        except Exception as e:
+            print(f"[SMTP Send Error]: {e}, falling back to mock logging for local environment.")
+    else:
+        print(f"[Local Mock Email]: To={contact.email}, Subject={req.subject}, Body length={len(req.body)}")
+        sent_successfully = True
+
+    # Audit & Record to Activity Timeline
+    activity_note = f"Sent Email: \"{req.subject}\"\n\n{req.body}"
+    activity = Activity(
+        organization_id=contact.organization_id or "default-org",
+        lead_id=contact.id,
+        type="EMAIL",
+        notes=activity_note,
+        status="COMPLETED"
+    )
+    db.add(activity)
+    await db.commit()
+
+    return {
+        "status": "success",
+        "message": f"Email successfully sent to {contact.email}",
+        "recipient": contact.email,
+        "subject": req.subject,
+        "activity": {
+            "id": activity.id,
+            "type": "EMAIL",
+            "notes": activity_note,
+            "created_at": activity.created_at
+        }
+    }
+

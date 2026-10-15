@@ -22,15 +22,21 @@ async def run_seed():
     print("🚀 Initializing Zigmaa CRM Production Schema...")
     try:
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
     except Exception as e:
         print(f"⚠️ PostgreSQL connection failed ({e}). Switching to local SQLite DB engine...")
         engine = create_async_engine("sqlite+aiosqlite:///./zigmaa_crm.db", connect_args={"check_same_thread": False})
         session_factory = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.drop_all)
             await conn.run_sync(Base.metadata.create_all)
+
+    # Check if data already exists to prevent wiping user data on restarts
+    from sqlalchemy import select
+    async with session_factory() as check_session:
+        existing_org = await check_session.execute(select(Organization))
+        if existing_org.scalars().first():
+            print("✨ Existing database records preserved. Skipping re-seed.")
+            return
 
     print("🌱 Populating seed data for Organization 'Zigmaa Global'...")
     async with session_factory() as session:

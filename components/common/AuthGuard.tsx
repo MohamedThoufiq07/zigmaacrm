@@ -19,7 +19,27 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
     const token = typeof window !== "undefined" ? localStorage.getItem("zigmaa_token") : null;
     const user = api.getCurrentUser();
 
-    if (!token || !user) {
+    // Validate token expiration if token exists
+    let isTokenExpired = false;
+    if (token) {
+      try {
+        const payloadBase64 = token.split(".")[1];
+        if (payloadBase64) {
+          const payloadJson = JSON.parse(atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/")));
+          if (payloadJson.exp && Date.now() >= payloadJson.exp * 1000) {
+            isTokenExpired = true;
+          }
+        }
+      } catch (e) {
+        // If decoding fails, treat token as invalid
+        isTokenExpired = true;
+      }
+    }
+
+    if (!token || !user || isTokenExpired) {
+      if (isTokenExpired) {
+        api.logout();
+      }
       setAuthorized(false);
       router.replace("/login");
     } else {

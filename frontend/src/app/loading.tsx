@@ -1,3 +1,5 @@
-import Loading from "../../../app/loading";
+import LogoLoader from "@/components/common/LogoLoader";
 
-export default Loading;
+export default function Loading() {
+  return <LogoLoader fullScreen size="lg" text="Loading Zigmaa CRM..." />;
+}

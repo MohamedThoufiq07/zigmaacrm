@@ -2213,4 +2213,5 @@ export const zigmaaApi = {
 };
 
 export default zigmaaApi;
+export const api = zigmaaApi;
 export { formatGoogleCalendarUrl, downloadIcsFile };

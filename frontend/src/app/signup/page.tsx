@@ -1,1 +1,5 @@
-export { default } from "@/app/signup/page";
+import LoginPage from "../login/page";
+
+export default function SignUpPage() {
+  return <LoginPage />;
+}

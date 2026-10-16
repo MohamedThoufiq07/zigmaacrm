@@ -1,1 +1,2 @@
-export { default } from "@/app/deals/page";
+import PipelinePage from "../pipeline/page";
+export default PipelinePage;

@@ -1,3 +1,3 @@
-import EventsCalendarPage from "../../../../app/calendar/page";
+import EventsCalendarPage from "../events/page";
 
 export default EventsCalendarPage;

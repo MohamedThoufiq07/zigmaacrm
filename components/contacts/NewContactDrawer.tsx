@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X, User, Building2, Tag, ShieldCheck, Phone, Mail, Sliders } from "lucide-react";
 import { Contact } from "@/lib/mockData";
+import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
 
 interface NewContactDrawerProps {
@@ -59,6 +60,17 @@ export default function NewContactDrawer({
     currentUser?.full_name || "Mohamed Thoufiq"
   );
   const [customData, setCustomData] = useState<Record<string, any>>({});
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getTeamMembers().then((members) => {
+        if (Array.isArray(members) && members.length > 0) {
+          setTeamMembers(members);
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -318,13 +330,30 @@ export default function NewContactDrawer({
               </label>
               <div className="relative">
                 <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                <input
-                  type="text"
-                  value={assignedOwner}
-                  onChange={(e) => setAssignedOwner(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs pl-9 pr-3.5 py-2.5 text-slate-900 font-medium outline-none"
-                  placeholder="Mohamed Thoufiq"
-                />
+                {teamMembers.length > 0 ? (
+                  <select
+                    value={assignedOwner}
+                    onChange={(e) => setAssignedOwner(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs pl-9 pr-3.5 py-2.5 text-slate-900 font-medium outline-none cursor-pointer"
+                  >
+                    {teamMembers.map((m) => (
+                      <option key={m.id} value={m.full_name}>
+                        {m.full_name} ({m.role === "ADMIN" ? "Admin" : m.role === "MANAGER" ? "Manager" : "Sales Rep"})
+                      </option>
+                    ))}
+                    {!teamMembers.some((m) => m.full_name === assignedOwner) && (
+                      <option value={assignedOwner}>{assignedOwner}</option>
+                    )}
+                  </select>
+                ) : (
+                  <input
+                    type="text"
+                    value={assignedOwner}
+                    onChange={(e) => setAssignedOwner(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs pl-9 pr-3.5 py-2.5 text-slate-900 font-medium outline-none"
+                    placeholder="Mohamed Thoufiq"
+                  />
+                )}
               </div>
             </div>
           </div>

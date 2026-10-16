@@ -3,6 +3,7 @@ from typing import Optional
 from datetime import datetime
 
 class ActivityCreate(BaseModel):
+    contact_id: Optional[str] = None
     lead_id: Optional[str] = None
     deal_id: Optional[str] = None
     type: str  # CALL, WHATSAPP, EMAIL, NOTE, STAGE_CHANGE

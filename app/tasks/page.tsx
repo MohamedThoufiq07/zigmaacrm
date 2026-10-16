@@ -29,6 +29,7 @@ import FilterSelect from "@/components/common/FilterSelect";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import NewTaskDrawer from "@/components/tasks/NewTaskDrawer";
 import ContactSlideDrawer from "@/components/contacts/ContactSlideDrawer";
+import CallDialerModal from "@/components/common/CallDialerModal";
 import {
   Phone,
   MessageSquare,
@@ -74,6 +75,7 @@ export default function TasksPage() {
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+  const [callModalTask, setCallModalTask] = useState<Task | null>(null);
 
   const loadTasks = async () => {
     try {
@@ -243,12 +245,12 @@ export default function TasksPage() {
   const paginatedTasks = filteredTasks.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
           {/* Controls: ONE Straight Row Above Table (Tabs on Left | Actions on Right) */}
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
             {/* Left: Navigation Tabs + More Views (···) */}
@@ -560,8 +562,8 @@ export default function TasksPage() {
                                     <>
                                       <a
                                         href={`tel:${task.contact_phone}`}
-                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                        title={`Call ${task.contact_name || ""}`}
+                                        className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                        title={`Call ${task.contact_name || task.contact_phone}`}
                                       >
                                         <Phone className="w-3.5 h-3.5" />
                                       </a>
@@ -633,6 +635,20 @@ export default function TasksPage() {
         isOpen={!!selectedContactForDrawer}
         onClose={() => setSelectedContactForDrawer(null)}
       />
+
+      {/* In-app Call Dialer Modal */}
+      {callModalTask && (
+        <CallDialerModal
+          isOpen={Boolean(callModalTask)}
+          onClose={() => setCallModalTask(null)}
+          contact={{
+            id: callModalTask.contact_id || callModalTask.id,
+            name: callModalTask.contact_name,
+            phone: callModalTask.contact_phone
+          }}
+          onCallLogged={loadTasks}
+        />
+      )}
     </div>
   );
 }

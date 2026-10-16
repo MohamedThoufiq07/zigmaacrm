@@ -181,16 +181,16 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-6 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-6 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
           {/* Executive Header Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-1">
             <div>
-              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
                 <span>Executive Dashboard</span>
                 <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
                   Live PostgreSQL

@@ -43,6 +43,7 @@ import EditLeadModal from "@/components/leads/EditLeadModal";
 import ConvertToDealModal from "@/components/leads/ConvertToDealModal";
 import ManageCustomFieldsModal from "@/components/common/ManageCustomFieldsModal";
 import FilterSelect from "@/components/common/FilterSelect";
+import CallDialerModal from "@/components/common/CallDialerModal";
 import { Sliders } from "lucide-react";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import { api } from "@/lib/api";
@@ -133,6 +134,7 @@ export default function LeadsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
+  const [callModalLead, setCallModalLead] = useState<Lead | null>(null);
 
   const fetchLeads = async () => {
     try {
@@ -274,12 +276,12 @@ export default function LeadsPage() {
   const paginatedLeads = filteredLeads.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
           {/* Controls: ONE Straight Row Above Table (Tabs on Left | Actions on Right) */}
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
             {/* Left: Navigation Tabs + More Views (···) */}
@@ -605,8 +607,16 @@ export default function LeadsPage() {
                                   {lead.phone && (
                                     <a
                                       href={`tel:${lead.phone}`}
-                                      className="p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors cursor-pointer"
-                                      title="Call Lead"
+                                      onClick={() => {
+                                        api.createActivity({
+                                          lead_id: String(lead.id),
+                                          type: "CALL",
+                                          notes: `Call Clicked: Outbound call triggered for ${lead.name || lead.phone}`,
+                                          status: "COMPLETED"
+                                        }).catch(() => {});
+                                      }}
+                                      className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors cursor-pointer"
+                                      title={`Call ${lead.phone}`}
                                     >
                                       <Phone className="w-3.5 h-3.5" />
                                     </a>
@@ -738,6 +748,22 @@ export default function LeadsPage() {
         onClose={() => setShowCustomFields(false)}
         onFieldsChanged={fetchLeads}
       />
+
+      {/* In-app Call Dialer Modal */}
+      {callModalLead && (
+        <CallDialerModal
+          isOpen={Boolean(callModalLead)}
+          onClose={() => setCallModalLead(null)}
+          contact={{
+            id: callModalLead.id,
+            name: callModalLead.name || (callModalLead as any).full_name,
+            phone: callModalLead.phone,
+            company_name: callModalLead.company_name,
+            email: callModalLead.email
+          }}
+          onCallLogged={fetchLeads}
+        />
+      )}
     </div>
   );
 }

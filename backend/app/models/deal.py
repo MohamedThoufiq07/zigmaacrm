@@ -15,6 +15,8 @@ class Deal(TimeStampedBase):
     currency = Column(String(10), default="INR")  # INR, USD
     expected_close_date = Column(String(50), nullable=True)
     assigned_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    owner_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    owner_name = Column(String(255), nullable=True)
     status = Column(String(50), default="OPEN")  # OPEN, WON, LOST
     custom_data = Column(JSON, default=dict)
 

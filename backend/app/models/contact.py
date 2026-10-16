@@ -13,7 +13,7 @@ class Contact(TimeStampedBase):
     id = Column(String(36), primary_key=True, default=generate_uuid)
     organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=True, index=True)
     full_name = Column(String(255), nullable=False)
-    phone = Column(String(50), nullable=False, index=True)
+    phone = Column(String(50), nullable=True, default="", index=True)
     email = Column(String(255), nullable=True, index=True)
     company_name = Column(String(255), nullable=True)
     designation = Column(String(255), nullable=True)
@@ -24,6 +24,8 @@ class Contact(TimeStampedBase):
     custom_data = Column(JsonType, default=dict)
     assigned_user_name = Column(String(255), default="Mohamed Thoufiq")
     assigned_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
+    owner_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    owner_name = Column(String(255), default="Mohamed Thoufiq")
 
     organization = relationship("Organization", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")

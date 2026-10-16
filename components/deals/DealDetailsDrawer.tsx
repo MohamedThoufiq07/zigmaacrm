@@ -17,7 +17,9 @@ import {
   FileText,
   Plus,
   Download,
-  Printer
+  Printer,
+  Share2,
+  Mail
 } from "lucide-react";
 import { Deal, Invoice } from "@/lib/mockData";
 import { formatCurrency, formatDate } from "@/lib/utils";
@@ -260,51 +262,77 @@ export default function DealDetailsDrawer({
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs transition-all cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>+ Create Quote</span>
+                <span>+ Create Quotation</span>
               </button>
             </div>
 
             {dealQuotes.length > 0 ? (
               <div className="space-y-2 pt-1">
-                {dealQuotes.map((q) => (
-                  <div
-                    key={q.id}
-                    className="p-3 bg-slate-50 hover:bg-red-50/40 rounded-xl border border-slate-200/80 flex items-center justify-between transition-colors"
-                  >
-                    <div className="truncate pr-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono font-bold text-slate-900 text-xs">
-                          {q.invoice_number || q.bill_number}
-                        </span>
-                        <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
-                          {q.type || "QUOTE"}
+                {dealQuotes.map((q) => {
+                  const rawPhone = (q.client_phone || q.phone || deal.contact_phone || "").replace(/\D/g, "");
+                  const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+                  const waMsg = `Hello ${q.client_name || deal.contact_name || "Client"},\n\nHere is your official Quotation ${q.invoice_number || q.bill_number} for ₹${(q.total_amount || 0).toLocaleString("en-IN")}.\n\nPlease let us know your approval.`;
+                  const waUrl = `https://wa.me/${targetPhone}?text=${encodeURIComponent(waMsg)}`;
+
+                  const targetEmail = q.client_email || q.email || deal.contact_email || "";
+                  const mailtoUrl = `mailto:${targetEmail}?subject=${encodeURIComponent(`Quotation ${q.invoice_number || q.bill_number} for ${deal.title}`)}&body=${encodeURIComponent(`Dear Client,\n\nPlease find attached the quotation ${q.invoice_number || q.bill_number} amounting to ₹${(q.total_amount || 0).toLocaleString("en-IN")}.\n\nBest regards,\nSales Operations`)}`;
+
+                  return (
+                    <div
+                      key={q.id}
+                      className="p-3 bg-slate-50 hover:bg-red-50/40 rounded-xl border border-slate-200/80 flex items-center justify-between transition-colors"
+                    >
+                      <div className="truncate pr-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-bold text-slate-900 text-xs">
+                            {q.invoice_number || q.bill_number}
+                          </span>
+                          <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white border border-slate-200 text-slate-600">
+                            {q.type || "QUOTE"}
+                          </span>
+                        </div>
+                        <span className="text-[11px] text-slate-500 block truncate mt-0.5">
+                          {formatCurrency(q.total_amount)} • {q.issue_date || "Recent"}
                         </span>
                       </div>
-                      <span className="text-[11px] text-slate-500 block truncate mt-0.5">
-                        {formatCurrency(q.total_amount)} • {q.issue_date || "Recent"}
-                      </span>
-                    </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => setPreviewInvoice(q)}
-                        className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
-                        title="View and Print Quote"
-                      >
-                        <Printer className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => window.open(`http://localhost:8000/api/v1/invoices/${q.id}/pdf`, "_blank")}
-                        className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 text-slate-700 transition-colors cursor-pointer"
-                        title="Download PDF"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => setPreviewInvoice(q)}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 transition-colors cursor-pointer"
+                          title="View and Print Quotation"
+                        >
+                          <Printer className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(waUrl, "_blank", "noopener,noreferrer")}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-emerald-50 hover:text-emerald-600 text-slate-700 transition-colors cursor-pointer"
+                          title="Share to WhatsApp"
+                        >
+                          <Share2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.location.href = mailtoUrl}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-blue-50 hover:text-blue-600 text-slate-700 transition-colors cursor-pointer"
+                          title="Send via Email"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => window.open(`http://localhost:8000/api/v1/invoices/${q.id}/pdf`, "_blank")}
+                          className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-red-50 hover:text-red-600 text-slate-700 transition-colors cursor-pointer"
+                          title="Download PDF"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="p-3 text-center bg-slate-50 rounded-xl border border-dashed border-slate-200 text-slate-400 text-xs">

@@ -37,6 +37,7 @@ import BulkUploadContactsModal from "@/components/contacts/BulkUploadContactsMod
 import ManageCustomFieldsModal from "@/components/common/ManageCustomFieldsModal";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import FilterSelect from "@/components/common/FilterSelect";
+import CallDialerModal from "@/components/common/CallDialerModal";
 import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Contact } from "@/lib/mockData";
@@ -129,6 +130,9 @@ export default function ContactsPage() {
   const [dealStage, setDealStage] = useState("Discovery");
   const [savingDeal, setSavingDeal] = useState(false);
 
+  // In-App Phone Call Dialer Modal
+  const [callModalContact, setCallModalContact] = useState<Contact | null>(null);
+
   const loadContacts = async () => {
     try {
       const data = await api.getContacts();
@@ -158,6 +162,9 @@ export default function ContactsPage() {
       const q = params.get("search");
       if (q) {
         setSearchQuery(q);
+      }
+      if (params.get("new") === "true" || params.get("add") === "true") {
+        setShowAddDrawer(true);
       }
     }
   }, []);
@@ -379,6 +386,19 @@ export default function ContactsPage() {
     });
   }, [contacts, activeTab, selectedSource, searchQuery, currentUser]);
 
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__ZIGMAA_PAGE_STATE = {
+        page: "/contacts",
+        activeTab,
+        totalRecords: contacts.length,
+        visibleCount: filteredContacts.length,
+        selectedSource,
+        sampleNames: filteredContacts.slice(0, 5).map((c) => c.name).filter(Boolean)
+      };
+    }
+  }, [activeTab, contacts.length, filteredContacts, selectedSource]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === paginatedContacts.length) {
       setSelectedIds(new Set());
@@ -469,12 +489,12 @@ export default function ContactsPage() {
   };
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC] overflow-hidden p-4 lg:p-6 pb-2">
+        <main className="flex-1 flex flex-col min-h-0 bg-[#F8FAFC] dark:bg-[#0b0f19] overflow-hidden p-4 lg:p-6 pb-2">
           {/* Controls: ONE Clean Row Above Table (Matches second image: Tabs on Left | Actions on Right in a single row) */}
           <div className="flex items-center justify-between gap-3 pb-3 shrink-0">
             {/* Left: Navigation Tabs + More Views (···) */}
@@ -1205,13 +1225,41 @@ export default function ContactsPage() {
                           {/* Phones (Strict single line, clean straight alignment) */}
                           <td className="py-3.5 px-4 border-b border-slate-100 min-w-[150px] text-slate-700 text-[13px]" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-2 font-sans whitespace-nowrap">
-                              <span className="font-mono tracking-tight select-text">{contact.phone || "—"}</span>
+                              {contact.phone ? (
+                                <a
+                                  href={`tel:${contact.phone}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    api.createActivity({
+                                      contact_id: String(contact.id),
+                                      type: "CALL",
+                                      notes: `Call Clicked: Outbound call triggered for ${contact.name || contact.phone}`,
+                                      status: "COMPLETED"
+                                    }).catch(() => {});
+                                  }}
+                                  className="font-mono tracking-tight select-text text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
+                                  title={`Call ${contact.phone}`}
+                                >
+                                  {contact.phone}
+                                </a>
+                              ) : (
+                                <span className="font-mono tracking-tight text-slate-400 select-text">—</span>
+                              )}
                               {contact.phone && (
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                   <a
                                     href={`tel:${contact.phone}`}
-                                    className="p-1 rounded text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                    title="Call"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      api.createActivity({
+                                        contact_id: String(contact.id),
+                                        type: "CALL",
+                                        notes: `Call Clicked: Outbound call triggered for ${contact.name || contact.phone}`,
+                                        status: "COMPLETED"
+                                      }).catch(() => {});
+                                    }}
+                                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                    title="Call Contact"
                                   >
                                     <Phone className="w-3 h-3" />
                                   </a>
@@ -1458,7 +1506,6 @@ export default function ContactsPage() {
         onClose={() => setShowBulkUpload(false)}
         onSuccess={() => {
           loadContacts();
-          toast.success("Import Complete", "Contacts imported successfully.");
         }}
       />
 
@@ -1576,6 +1623,15 @@ export default function ContactsPage() {
           loadContacts();
         }}
       />
+      {/* IN-APP PHONE CALL DIALER MODAL */}
+      {callModalContact && (
+        <CallDialerModal
+          isOpen={Boolean(callModalContact)}
+          onClose={() => setCallModalContact(null)}
+          contact={callModalContact}
+          onCallLogged={() => loadContacts()}
+        />
+      )}
     </div>
   );
 }

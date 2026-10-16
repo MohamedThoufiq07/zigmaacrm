@@ -6,10 +6,12 @@ from sqlalchemy import select
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.models.organization_user import User, Organization
+from app.models.organization_setting import OrganizationSetting
 from app.models.otp import PasswordResetOTP
 from app.core.email import send_otp_email
+from app.api.deps import get_current_user
 from app.schemas.auth_schema import (
-    UserLogin, UserCreate, GoogleLoginSchema, TokenResponse, UserOut,
+    UserLogin, UserCreate, SignupRequest, GoogleLoginSchema, TokenResponse, UserOut,
     SendOtpRequest, VerifyOtpRequest, ResetPasswordRequest, SimpleMessageResponse,
     ChangePasswordRequest, UpdateProfileRequest
 )
@@ -29,15 +31,43 @@ async def google_login(payload: GoogleLoginSchema, db: AsyncSession = Depends(ge
         )
 
     token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserOut.model_validate(user)
+        user=user_out
+    )
+
+async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
+    company_name = None
+    if user.organization_id:
+        org_set_res = await db.execute(
+            select(OrganizationSetting).where(OrganizationSetting.organization_id == user.organization_id)
+        )
+        org_set = org_set_res.scalars().first()
+        if org_set and org_set.company_name:
+            company_name = org_set.company_name
+        else:
+            org_res = await db.execute(select(Organization).where(Organization.id == user.organization_id))
+            org = org_res.scalar_one_or_none()
+            if org:
+                company_name = org.name
+
+    return UserOut(
+        id=user.id,
+        organization_id=user.organization_id or "",
+        email=user.email,
+        full_name=user.full_name,
+        role=user.role,
+        is_active=user.is_active,
+        company_name=company_name or "Zigmaa Workspace",
+        organization_name=company_name or "Zigmaa Workspace"
     )
 
 @router.post("/login", response_model=TokenResponse)
 async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == login_in.email))
+    clean_email = login_in.email.lower().strip()
+    result = await db.execute(select(User).where(User.email == clean_email))
     user = result.scalar_one_or_none()
     if not user or not verify_password(login_in.password, user.hashed_password):
         raise HTTPException(
@@ -46,43 +76,76 @@ async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
         )
     
     token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserOut.model_validate(user)
+        user=user_out
     )
 
+@router.post("/signup", response_model=TokenResponse)
 @router.post("/register", response_model=TokenResponse)
-async def register(user_in: UserCreate, db: AsyncSession = Depends(get_db)):
+async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
+    clean_email = user_in.email.lower().strip()
     # Check email
-    result = await db.execute(select(User).where(User.email == user_in.email))
+    result = await db.execute(select(User).where(User.email == clean_email))
     if result.scalar_one_or_none():
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"An account with email {clean_email} already exists. Please sign in."
+        )
 
-    # Create Org
-    org_slug = user_in.organization_name.lower().replace(" ", "-") if user_in.organization_name else "zigmaa"
-    org = Organization(name=user_in.organization_name or "Zigmaa Org", slug=f"{org_slug}-{abs(hash(user_in.email)) % 1000}")
+    # Determine company/workspace name
+    workspace_name = (user_in.company_name or user_in.organization_name or f"{user_in.full_name.strip()}'s Workspace").strip()
+    org_slug = workspace_name.lower().replace(" ", "-")
+    org = Organization(
+        name=workspace_name,
+        slug=f"{org_slug}-{secrets.token_hex(3)}"
+    )
     db.add(org)
     await db.flush()
 
-    # Create User
+    # Create User with ADMIN role (Workspace Owner)
     user = User(
         organization_id=org.id,
-        email=user_in.email,
+        email=clean_email,
         hashed_password=get_password_hash(user_in.password),
-        full_name=user_in.full_name,
-        role=user_in.role or "ADMIN"
+        full_name=user_in.full_name.strip(),
+        role="ADMIN",
+        is_active=True
     )
     db.add(user)
+    await db.flush()
+
+    # Automatically set up initial organization_settings for that workspace
+    initial_settings = OrganizationSetting(
+        organization_id=org.id,
+        company_name=workspace_name,
+        email=clean_email,
+        signatory_name=user_in.full_name.strip(),
+        signatory_designation="Authorized Signatory"
+    )
+    db.add(initial_settings)
+
     await db.commit()
     await db.refresh(user)
 
     token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
         token_type="bearer",
-        user=UserOut.model_validate(user)
+        user=user_out
     )
+
+@router.get("/me", response_model=UserOut)
+async def get_me(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    if not current_user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session")
+    return await _build_user_out(current_user, db)
 
 @router.post("/send-otp", response_model=SimpleMessageResponse)
 @router.post("/forgot-password", response_model=SimpleMessageResponse)

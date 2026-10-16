@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, desc
+from sqlalchemy import select, func, desc, or_
 from typing import Optional, Dict, Any, List
 from datetime import datetime, date, timedelta
 
@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.task import Task
+from app.models.organization_user import User
+from app.api.deps import get_current_user
 from app.models.lead_pipeline import Pipeline, PipelineStage
 
 router = APIRouter()
@@ -15,7 +17,8 @@ router = APIRouter()
 @router.get("/metrics")
 async def get_dashboard_metrics(
     range_type: str = Query("Last 30 Days"),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     now = datetime.utcnow()
     today_start = datetime(now.year, now.month, now.day)
@@ -34,8 +37,19 @@ async def get_dashboard_metrics(
     elif range_type == "This Month":
         filter_start = datetime(now.year, now.month, 1)
 
+    is_rep = (current_user.role == "SALES_REP")
+
+    contact_rep_filter = or_(
+        Contact.owner_id == current_user.id,
+        Contact.assigned_user_id == current_user.id,
+        Contact.owner_name.ilike(f"%{current_user.full_name}%"),
+        Contact.assigned_user_name.ilike(f"%{current_user.full_name}%")
+    ) if is_rep else None
+
     # 1. Total Leads
     contact_query = select(Contact)
+    if is_rep:
+        contact_query = contact_query.where(contact_rep_filter)
     if filter_start and range_type != "All Time":
         contact_query = contact_query.where(Contact.created_at >= filter_start)
     
@@ -44,17 +58,28 @@ async def get_dashboard_metrics(
     total_leads = len(contacts)
 
     # All-time contacts count for baseline
-    all_contacts_res = await db.execute(select(func.count(Contact.id)))
+    all_contacts_query = select(func.count(Contact.id))
+    if is_rep:
+        all_contacts_query = all_contacts_query.where(contact_rep_filter)
+    all_contacts_res = await db.execute(all_contacts_query)
     all_time_leads = all_contacts_res.scalar() or 0
 
     # Leads created today
-    today_leads_res = await db.execute(
-        select(func.count(Contact.id)).where(Contact.created_at >= today_start)
-    )
+    today_leads_query = select(func.count(Contact.id)).where(Contact.created_at >= today_start)
+    if is_rep:
+        today_leads_query = today_leads_query.where(contact_rep_filter)
+    today_leads_res = await db.execute(today_leads_query)
     today_leads = today_leads_res.scalar() or 0
 
     # 2. Deals and Pipeline calculations
     deals_query = select(Deal)
+    if is_rep:
+        deal_rep_filter = or_(
+            Deal.owner_id == current_user.id,
+            Deal.assigned_user_id == current_user.id,
+            Deal.owner_name.ilike(f"%{current_user.full_name}%")
+        )
+        deals_query = deals_query.where(deal_rep_filter)
     if filter_start and range_type != "All Time":
         deals_query = deals_query.where(Deal.created_at >= filter_start)
     deals_res = await db.execute(deals_query)
@@ -121,9 +146,15 @@ async def get_dashboard_metrics(
         conversion_rate = round((won_deals_count / len(deals)) * 100, 1)
 
     # 3. Tasks / Pending Follow-ups (status == PENDING and due_date <= today)
-    all_pending_tasks_res = await db.execute(
-        select(Task).where(Task.status.ilike("PENDING"))
-    )
+    tasks_query = select(Task).where(Task.status.ilike("PENDING"))
+    if is_rep:
+        task_rep_filter = or_(
+            Task.owner_id == current_user.id,
+            Task.owner_name.ilike(f"%{current_user.full_name}%"),
+            Task.assigned_to.ilike(f"%{current_user.full_name}%")
+        )
+        tasks_query = tasks_query.where(task_rep_filter)
+    all_pending_tasks_res = await db.execute(tasks_query)
     all_pending_tasks = all_pending_tasks_res.scalars().all()
     
     pending_followups = 0
@@ -196,8 +227,11 @@ async def get_dashboard_metrics(
             })
 
     # 5. Recent Leads (top 5 latest contacts)
+    recent_leads_query = select(Contact)
+    if is_rep:
+        recent_leads_query = recent_leads_query.where(contact_rep_filter)
     recent_leads_res = await db.execute(
-        select(Contact).order_by(Contact.created_at.desc()).limit(6)
+        recent_leads_query.order_by(Contact.created_at.desc()).limit(6)
     )
     recent_contacts = recent_leads_res.scalars().all()
     recent_leads = [

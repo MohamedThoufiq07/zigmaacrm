@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @source "../app";
 @source "../components";
 @source "../lib";
@@ -8,6 +9,12 @@
   --background: #f8fafc;
   --foreground: #0f172a;
   color-scheme: light;
+}
+
+.dark {
+  --background: #0b0f19;
+  --foreground: #f1f5f9;
+  color-scheme: dark;
 }
 
 * {
@@ -25,12 +32,13 @@ button:focus:not(:focus-visible) {
 }
 
 html, body {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+  background-color: var(--background) !important;
+  color: var(--foreground) !important;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
   margin: 0;
   padding: 0;
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom scrollbars for clean UI */
@@ -47,6 +55,16 @@ html, body {
 }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+.dark .custom-scrollbar::-webkit-scrollbar-track {
+  background: #0b0f19;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #1e293b;
+}
+.dark .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #334155;
 }
 
 /* Hide scrollbar completely */
@@ -121,3 +139,224 @@ main {
   animation: progressSlide 1.6s cubic-bezier(0.65, 0, 0.35, 1) infinite;
 }
 
+/* ==========================================================================
+   PERFECT DARK MODE THEME SYSTEM (DEEP SLEEK PALETTE)
+   ========================================================================== */
+.dark {
+  /* 1. Main Canvas & Screen Backgrounds - Absolute Darkness */
+  header {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+  }
+
+  main,
+  [class*="bg-[#F8FAFC]"],
+  [class*="bg-[#f8fafc]"],
+  .bg-\[\#F8FAFC\],
+  .bg-\[\#f8fafc\] {
+    background-color: #0b0f19 !important;
+  }
+
+  /* 2. Surfaces & Containers */
+  .bg-white {
+    background-color: #111827 !important;
+  }
+  .bg-slate-50,
+  .bg-slate-50\/90,
+  .bg-slate-50\/80,
+  .bg-slate-50\/60,
+  .bg-slate-50\/40,
+  .bg-slate-50\/30 {
+    background-color: #0b0f19 !important;
+  }
+  .bg-slate-100,
+  .bg-slate-100\/90,
+  .bg-slate-100\/80,
+  .bg-slate-100\/70,
+  .bg-slate-100\/60 {
+    background-color: #1e293b !important;
+  }
+  .bg-slate-200,
+  .bg-slate-200\/80,
+  .bg-slate-200\/60 {
+    background-color: #334155 !important;
+  }
+
+  /* 3. Borders */
+  .border-slate-200,
+  .border-slate-200\/90,
+  .border-slate-200\/80,
+  .border-slate-200\/70,
+  .border-slate-200\/60,
+  .border-slate-100 {
+    border-color: #1e293b !important;
+  }
+  .border-slate-300 {
+    border-color: #334155 !important;
+  }
+
+  /* 4. Typography */
+  .text-slate-900 {
+    color: #f8fafc !important;
+  }
+  .text-slate-800 {
+    color: #f1f5f9 !important;
+  }
+  .text-slate-700 {
+    color: #e2e8f0 !important;
+  }
+  .text-slate-600 {
+    color: #cbd5e1 !important;
+  }
+  .text-slate-500 {
+    color: #94a3b8 !important;
+  }
+  .text-slate-400 {
+    color: #64748b !important;
+  }
+
+  /* 5. Tables & Directory */
+  table {
+    border-color: #1e293b !important;
+  }
+  thead,
+  thead th,
+  thead tr {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+    color: #94a3b8 !important;
+  }
+  tbody td {
+    border-color: #1e293b !important;
+    color: #e2e8f0 !important;
+  }
+  tbody tr:hover td {
+    background-color: rgba(30, 41, 59, 0.45) !important;
+  }
+
+  /* 6. Form Controls & Inputs */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="color"]),
+  select,
+  textarea {
+    background-color: #1e293b !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+  }
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b !important;
+  }
+
+  /* 7. Hover States */
+  .hover\:bg-slate-50:hover {
+    background-color: #1e293b !important;
+  }
+  .hover\:bg-slate-100:hover {
+    background-color: #1e293b !important;
+  }
+  .hover\:text-slate-900:hover,
+  .hover\:text-slate-800:hover {
+    color: #ffffff !important;
+  }
+
+  /* 8. Kanban Board Contrast Layers */
+  .w-\[280px\].bg-white,
+  .w-\[280px\] {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+  }
+  .w-\[280px\] .border-b.bg-white,
+  .w-\[280px\] > div:first-child {
+    background-color: #0f172a !important;
+    border-color: #1e293b !important;
+  }
+
+  /* Deal Cards inside Kanban Column */
+  .w-\[280px\] [draggable],
+  .w-\[280px\] .bg-white.group,
+  [draggable].bg-white {
+    background-color: #1a2234 !important;
+    border-color: #2b3952 !important;
+  }
+  .w-\[280px\] [draggable]:hover,
+  [draggable].bg-white:hover {
+    background-color: #212d45 !important;
+    border-color: #3e5072 !important;
+  }
+
+  /* Kanban Dropzone */
+  .border-dashed {
+    border-color: #26334d !important;
+    background-color: rgba(15, 23, 42, 0.4) !important;
+    color: #64748b !important;
+  }
+
+  /* 9. Dropdowns, Modals, Drawers & Shadows */
+  .shadow-2xl,
+  .shadow-xl,
+  .shadow-lg,
+  .shadow-md {
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7), 0 8px 10px -6px rgba(0, 0, 0, 0.6) !important;
+  }
+
+  /* 10. Status Badges in Dark Mode (High-contrast, sleek translucent glow) */
+  .bg-red-50 {
+    background-color: rgba(239, 68, 68, 0.16) !important;
+  }
+  .text-red-700, .text-red-800 {
+    color: #f87171 !important;
+  }
+  .border-red-200, .border-red-200\/80 {
+    border-color: rgba(239, 68, 68, 0.35) !important;
+  }
+
+  .bg-emerald-50 {
+    background-color: rgba(16, 185, 129, 0.16) !important;
+  }
+  .text-emerald-700, .text-emerald-800 {
+    color: #34d399 !important;
+  }
+  .border-emerald-200 {
+    border-color: rgba(16, 185, 129, 0.35) !important;
+  }
+
+  .bg-blue-50 {
+    background-color: rgba(59, 130, 246, 0.16) !important;
+  }
+  .text-blue-700, .text-blue-800 {
+    color: #60a5fa !important;
+  }
+  .border-blue-200 {
+    border-color: rgba(59, 130, 246, 0.35) !important;
+  }
+
+  .bg-amber-50 {
+    background-color: rgba(245, 158, 11, 0.16) !important;
+  }
+  .text-amber-700, .text-amber-800 {
+    color: #fbbf24 !important;
+  }
+  .border-amber-200 {
+    border-color: rgba(245, 158, 11, 0.35) !important;
+  }
+
+  .bg-purple-50 {
+    background-color: rgba(168, 85, 247, 0.16) !important;
+  }
+  .text-purple-700, .text-purple-800 {
+    color: #c084fc !important;
+  }
+  .border-purple-200 {
+    border-color: rgba(168, 85, 247, 0.35) !important;
+  }
+
+  .bg-indigo-50 {
+    background-color: rgba(99, 102, 241, 0.16) !important;
+  }
+  .text-indigo-700, .text-indigo-800 {
+    color: #818cf8 !important;
+  }
+  .border-indigo-200 {
+    border-color: rgba(99, 102, 241, 0.35) !important;
+  }
+}

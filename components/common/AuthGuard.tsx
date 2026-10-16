@@ -4,17 +4,15 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { api } from "@/lib/api";
 
+const PUBLIC_PATHS = ["/login", "/signup", "/invite/accept", "/forgot-password", "/privacy-policy"];
+
 export default function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState<boolean>(false);
 
   useEffect(() => {
-    // If user is on the login page, no auth check needed
-    if (pathname === "/login") {
-      setAuthorized(true);
-      return;
-    }
+    const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname?.startsWith("/invite/"));
 
     const token = typeof window !== "undefined" ? localStorage.getItem("zigmaa_token") : null;
     const user = api.getCurrentUser();
@@ -31,24 +29,41 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
           }
         }
       } catch (e) {
-        // If decoding fails, treat token as invalid
         isTokenExpired = true;
       }
     }
 
-    if (!token || !user || isTokenExpired) {
-      if (isTokenExpired) {
-        api.logout();
+    const hasValidSession = Boolean(token && user && !isTokenExpired);
+
+    if (hasValidSession) {
+      // If user is already authenticated and visits login or signup, redirect to dashboard
+      if (pathname === "/login" || pathname === "/signup") {
+        router.replace("/");
+        return;
       }
-      setAuthorized(false);
-      router.replace("/login");
-    } else {
       setAuthorized(true);
+      return;
     }
+
+    // Not authenticated
+    if (isTokenExpired) {
+      api.logout();
+    }
+
+    if (isPublic) {
+      setAuthorized(true);
+      return;
+    }
+
+    // Protected route without valid session -> redirect to login
+    setAuthorized(false);
+    router.replace("/login");
   }, [pathname, router]);
 
+  const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname?.startsWith("/invite/"));
+
   // If user is trying to access protected routes without valid session, prevent flash of content
-  if (!authorized && pathname !== "/login") {
+  if (!authorized && !isPublic) {
     return (
       <div className="min-h-screen w-screen flex items-center justify-center bg-slate-900 text-white">
         <div className="flex flex-col items-center gap-3">
@@ -61,3 +76,4 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
 
   return <>{children}</>;
 }
+

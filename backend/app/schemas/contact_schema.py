@@ -3,9 +3,9 @@ from typing import Optional, Dict, Any
 from datetime import datetime
 
 class ContactBase(BaseModel):
-    full_name: str
+    full_name: Optional[str] = "Unnamed Contact"
     email: Optional[str] = None
-    phone: str
+    phone: Optional[str] = ""
     company_name: Optional[str] = None
     designation: Optional[str] = None
     job_title: Optional[str] = None

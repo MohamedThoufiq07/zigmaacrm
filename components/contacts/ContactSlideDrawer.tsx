@@ -35,6 +35,7 @@ import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { useToast } from "@/components/common/ToastProvider";
 import SendEmailModal from "@/components/contacts/SendEmailModal";
+import CallDialerModal from "@/components/common/CallDialerModal";
 
 interface ContactSlideDrawerProps {
   contact: Contact | null;
@@ -97,6 +98,9 @@ export default function ContactSlideDrawer({
 
   // Send Email Modal State
   const [showSendEmail, setShowSendEmail] = useState(false);
+
+  // In-app Phone Call Dialer Modal State
+  const [showCallModal, setShowCallModal] = useState(false);
 
   const fetchAiInsights = async (contactId: string | number, forceRefresh: boolean = false) => {
     setLoadingAi(true);
@@ -161,6 +165,28 @@ export default function ContactSlideDrawer({
         }, 150);
       } else {
         setEditingField(null);
+      }
+
+      if (typeof window !== "undefined") {
+        (window as any).__ZIGMAA_ACTIVE_DRAWER = {
+          type: "contact",
+          id: contact.id,
+          name: contact.name,
+          email: contact.email,
+          phone: contact.phone,
+          company: contact.company_name,
+          stage: contact.lifecycle_stage || contact.status || "New"
+        };
+      }
+
+      return () => {
+        if (typeof window !== "undefined") {
+          (window as any).__ZIGMAA_ACTIVE_DRAWER = null;
+        }
+      };
+    } else {
+      if (typeof window !== "undefined") {
+        (window as any).__ZIGMAA_ACTIVE_DRAWER = null;
       }
     }
   }, [isOpen, contact, initialEditMode]);
@@ -334,7 +360,16 @@ export default function ContactSlideDrawer({
             {currentContact.phone && (
               <a
                 href={`tel:${currentContact.phone}`}
-                className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs"
+                onClick={() => {
+                  api.createActivity({
+                    contact_id: String(currentContact.id),
+                    type: "CALL",
+                    notes: `Call Clicked: Outbound call triggered for ${currentContact.name || currentContact.phone}`,
+                    status: "COMPLETED"
+                  }).catch(() => {});
+                }}
+                className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-slate-100 hover:border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                title={`Call ${currentContact.phone}`}
               >
                 <Phone className="w-3.5 h-3.5 text-slate-500" />
                 <span>Call</span>
@@ -779,9 +814,44 @@ export default function ContactSlideDrawer({
                         </button>
                       </div>
                     ) : (
-                      <p className="font-bold text-slate-900 text-xs font-mono truncate">
-                        {editForm.phone || "—"}
-                      </p>
+                      <div className="flex items-center justify-between gap-1">
+                        {editForm.phone ? (
+                          <a
+                            href={`tel:${editForm.phone}`}
+                            onClick={() => {
+                              api.createActivity({
+                                contact_id: String(currentContact.id),
+                                type: "CALL",
+                                notes: `Call Clicked: Outbound call triggered for ${currentContact.name || editForm.phone}`,
+                                status: "COMPLETED"
+                              }).catch(() => {});
+                            }}
+                            className="font-bold text-blue-600 hover:text-blue-800 hover:underline text-xs font-mono truncate"
+                            title={`Call ${editForm.phone}`}
+                          >
+                            {editForm.phone}
+                          </a>
+                        ) : (
+                          <p className="font-bold text-slate-900 text-xs font-mono truncate">—</p>
+                        )}
+                        {editForm.phone && (
+                          <a
+                            href={`tel:${editForm.phone}`}
+                            onClick={() => {
+                              api.createActivity({
+                                contact_id: String(currentContact.id),
+                                type: "CALL",
+                                notes: `Call Clicked: Outbound call triggered for ${currentContact.name || editForm.phone}`,
+                                status: "COMPLETED"
+                              }).catch(() => {});
+                            }}
+                            className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-md transition-colors cursor-pointer"
+                            title={`Call ${editForm.phone}`}
+                          >
+                            <Phone className="w-3 h-3" />
+                          </a>
+                        )}
+                      </div>
                     )}
                   </div>
 
@@ -1254,6 +1324,27 @@ export default function ContactSlideDrawer({
               ...prev,
               activities: [newActivity, ...(prev?.activities || [])]
             }));
+          }
+          if (onUpdated) onUpdated();
+        }}
+      />
+
+      {/* In-app Call Dialer Modal */}
+      <CallDialerModal
+        isOpen={showCallModal}
+        onClose={() => setShowCallModal(false)}
+        contact={{
+          id: currentContact.id,
+          name: currentContact.name,
+          phone: currentContact.phone,
+          company_name: currentContact.company_name,
+          email: currentContact.email
+        }}
+        onCallLogged={() => {
+          if (currentContact?.id) {
+            api.getContactDetail(currentContact.id).then((res) => {
+              if (res) setDetail(res);
+            }).catch(() => {});
           }
           if (onUpdated) onUpdated();
         }}

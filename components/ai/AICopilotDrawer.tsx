@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { usePathname } from "next/navigation";
 import {
   Sparkles,
   X,
@@ -16,7 +17,8 @@ import {
   RotateCcw,
   CheckCircle2,
   ChevronRight,
-  Loader2
+  Loader2,
+  Eye
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -71,24 +73,113 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
   ]);
+  const pathname = usePathname() || (typeof window !== "undefined" ? window.location.pathname : "/");
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [activeContext, setActiveContext] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Aggregates real-time UI state without giving any mutation access
+  const collectActiveUIContext = () => {
+    let role = "ADMIN";
+    try {
+      if (typeof window !== "undefined") {
+        role = localStorage.getItem("zigmaa_active_role") || "ADMIN";
+      }
+    } catch {}
+
+    let pageState: any = null;
+    let activeDrawer: any = null;
+    if (typeof window !== "undefined") {
+      pageState = (window as any).__ZIGMAA_PAGE_STATE || null;
+      activeDrawer = (window as any).__ZIGMAA_ACTIVE_DRAWER || null;
+    }
+
+    // Determine active tab/filter
+    let activeTabName = "Overview";
+    if (pageState?.activeTab) {
+      activeTabName = pageState.activeTab;
+    } else if (pathname.includes("/contacts")) {
+      activeTabName = "All Contacts";
+    } else if (pathname.includes("/deals") || pathname.includes("/pipeline")) {
+      activeTabName = "All Deals";
+    } else if (pathname.includes("/tasks")) {
+      activeTabName = "All Tasks";
+    } else if (pathname.includes("/automations")) {
+      activeTabName = "Workflows";
+    }
+
+    // Determine currently selected drawer item
+    let openDrawerItem = null;
+    if (activeDrawer) {
+      openDrawerItem = {
+        name: activeDrawer.name || activeDrawer.title || "Selected Record",
+        type: activeDrawer.type || "contact",
+        stage: activeDrawer.stage || "New",
+        company: activeDrawer.company || "",
+        phone: activeDrawer.phone,
+        email: activeDrawer.email,
+        value: activeDrawer.value
+      };
+    }
+
+    const summaryNumbers = pageState
+      ? {
+          visibleCount: pageState.visibleCount ?? pageState.totalRecords ?? 0,
+          totalRecords: pageState.totalRecords ?? 0,
+          sampleNames: pageState.sampleNames || []
+        }
+      : null;
+
+    return {
+      page: pathname,
+      active_tab: activeTabName,
+      active_item: openDrawerItem,
+      visible_summary: summaryNumbers,
+      user_role: role
+    };
+  };
+
   useEffect(() => {
     if (isOpen) {
+      setActiveContext(collectActiveUIContext());
       setTimeout(() => {
         inputRef.current?.focus();
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
       }, 150);
     }
-  }, [isOpen]);
+  }, [isOpen, pathname]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  // Dynamic quick prompts adapted to current screen and active drawer
+  const contextualPrompts = useMemo(() => {
+    const list = [...QUICK_PROMPTS];
+    if (activeContext?.active_item?.name) {
+      list.unshift({
+        icon: Users,
+        label: `Help me with ${activeContext.active_item.name}`,
+        prompt: `Help me with this client (${activeContext.active_item.name}). Based on what you see, what should my next steps be?`
+      });
+    } else if (pathname.includes("/contacts")) {
+      list.unshift({
+        icon: Users,
+        label: "What should I focus on?",
+        prompt: "What should I focus on in my active Contacts table view right now?"
+      });
+    } else if (pathname.includes("/deals") || pathname.includes("/pipeline")) {
+      list.unshift({
+        icon: Kanban,
+        label: "Review my pipeline deals",
+        prompt: "Review my current Deals pipeline and recommend which deals need immediate follow-up to close."
+      });
+    }
+    return list;
+  }, [activeContext, pathname]);
 
   if (!isOpen) return null;
 
@@ -116,7 +207,11 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
         .slice(-6)
         .map((m) => ({ role: m.role, content: m.content }));
 
-      const res = await api.askCopilot(question, history);
+      // Aggregate real-time UI context
+      const liveUiContext = collectActiveUIContext();
+      setActiveContext(liveUiContext);
+
+      const res = await api.askCopilot(question, history, liveUiContext);
 
       if (res.status === "error" || res.error || !res.answer) {
         const errorText = res.error || "Gemini API Key missing or invalid. Please check your .env";
@@ -269,6 +364,36 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
           </div>
         </div>
 
+        {/* Real-time Screen Sight Banner */}
+        <div className="px-4 py-2 bg-gradient-to-r from-slate-50 via-slate-100/70 to-slate-50 border-b border-slate-200/80 flex items-center justify-between text-[11px] text-slate-600 shrink-0">
+          <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
+            <span className="relative flex h-2 w-2 shrink-0">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+            </span>
+            <span className="font-semibold text-slate-700 flex items-center gap-1">
+              <Eye className="w-3 h-3 text-slate-500" />
+              Live Sight:
+            </span>
+            <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800 text-[10px] font-semibold">
+              {pathname}
+            </span>
+            {activeContext?.active_tab && (
+              <span className="text-slate-500 font-medium">({activeContext.active_tab})</span>
+            )}
+          </div>
+          {activeContext?.active_item?.name ? (
+            <span className="bg-red-50 text-red-700 border border-red-200 font-semibold px-2 py-0.5 rounded-full text-[10px] shrink-0 truncate max-w-[160px] flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
+              {activeContext.active_item.name}
+            </span>
+          ) : (
+            <span className="text-[10px] text-slate-400 font-medium shrink-0">
+              Read-Only Sales Guide
+            </span>
+          )}
+        </div>
+
         {/* Explicit Warning/Error Banner */}
         {errorMessage && (
           <div className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-2 shrink-0 animate-in fade-in duration-150">
@@ -291,7 +416,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
             <span className="text-slate-400 font-medium whitespace-nowrap text-[10px] uppercase tracking-wider">
               Quick Doubt:
             </span>
-            {QUICK_PROMPTS.map((item, idx) => (
+            {contextualPrompts.map((item, idx) => (
               <button
                 key={idx}
                 onClick={() => handleSend(item.prompt)}

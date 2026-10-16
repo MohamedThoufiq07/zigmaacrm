@@ -112,6 +112,40 @@ export default function PipelineDealsPage() {
     loadCustomFields();
   }, []);
 
+  // Publish real-time UI context for Zigmaa AI Copilot screen sight
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__ZIGMAA_PAGE_STATE = {
+        page: "deals",
+        activeTab: activeTab,
+        viewMode: viewMode,
+        selectedStage: selectedStage,
+        totalRecords: deals.length,
+        visibleCount: deals.length,
+        sampleNames: deals.slice(0, 5).map((d) => d.title)
+      };
+    }
+  }, [activeTab, viewMode, selectedStage, deals]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (selectedDealForDetails) {
+        (window as any).__ZIGMAA_ACTIVE_DRAWER = {
+          type: "deal",
+          id: selectedDealForDetails.id,
+          name: selectedDealForDetails.title,
+          stage: selectedDealForDetails.stage,
+          value: selectedDealForDetails.value,
+          company: selectedDealForDetails.company_name
+        };
+      } else {
+        if ((window as any).__ZIGMAA_ACTIVE_DRAWER?.type === "deal") {
+          (window as any).__ZIGMAA_ACTIVE_DRAWER = null;
+        }
+      }
+    }
+  }, [selectedDealForDetails]);
+
   const handleCreateDealDrawer = async (dealData: Partial<Deal>) => {
     const temp: Deal = {
       id: Date.now(),
@@ -250,12 +284,12 @@ export default function PipelineDealsPage() {
   const paginatedDeals = filteredDeals.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-5 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
           {/* Controls: ONE Straight Row Above Table (Tabs on Left | Actions on Right) */}
           <div className="flex flex-wrap lg:flex-nowrap items-center justify-between gap-3">
             {/* Left: Navigation Tabs + More Views (···) */}

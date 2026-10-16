@@ -120,12 +120,12 @@ export default function BillingPage() {
   const totalInvoiced = invoices.reduce((sum, inv) => sum + (Number(inv.total_amount) || 0), 0);
 
   return (
-    <div className="flex h-screen bg-[#F8FAFC] text-slate-900 font-sans overflow-hidden select-none">
+    <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs">
             <div className="flex items-center gap-3">
@@ -226,7 +226,7 @@ export default function BillingPage() {
                       <td className="py-3 px-4 font-semibold text-slate-800">
                         {inv.client_name || inv.patient_name || "Client"}
                       </td>
-                      <td className="py-3 px-4 text-slate-600">{new Date(inv.created_at).toLocaleDateString()}</td>
+                      <td className="py-3 px-4 text-slate-600">{new Date(inv.created_at || Date.now()).toLocaleDateString()}</td>
                       <td className="py-3 px-4 text-slate-600">{inv.payment_method}</td>
                       <td className="py-3 px-4">
                         <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
@@ -418,7 +418,7 @@ export default function BillingPage() {
             <div className="text-xs space-y-3">
               <div className="flex justify-between text-slate-600">
                 <span>Client: <strong>{selectedInvoice.client_name || selectedInvoice.patient_name}</strong></span>
-                <span>Date: {new Date(selectedInvoice.created_at).toLocaleDateString()}</span>
+                <span>Date: {new Date(selectedInvoice.created_at || Date.now()).toLocaleDateString()}</span>
               </div>
 
               <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100">

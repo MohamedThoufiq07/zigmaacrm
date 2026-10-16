@@ -12,11 +12,14 @@ router = APIRouter()
 
 @router.get("/activities", response_model=List[ActivityOut])
 async def get_activities(
+    contact_id: Optional[str] = Query(None),
     lead_id: Optional[str] = Query(None),
     deal_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db)
 ):
-    query = select(Activity).order_by(Activity.id.desc())
+    query = select(Activity).order_by(Activity.created_at.desc())
+    if contact_id:
+        query = query.where(Activity.contact_id == contact_id)
     if lead_id:
         query = query.where(Activity.lead_id == lead_id)
     if deal_id:
@@ -37,6 +40,7 @@ async def create_activity(
 
     act = Activity(
         organization_id=org_id,
+        contact_id=activity_in.contact_id,
         lead_id=activity_in.lead_id,
         deal_id=activity_in.deal_id,
         type=activity_in.type,

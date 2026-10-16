@@ -14,6 +14,7 @@ from app.models.contact import Contact
 from app.models.activity import Activity
 from app.models.lead_pipeline import PipelineStage
 from app.models.organization_user import Organization
+from app.models.organization_setting import OrganizationSetting
 
 router = APIRouter()
 
@@ -378,6 +379,26 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
     if not inv:
         raise HTTPException(status_code=404, detail="Invoice or quote not found")
 
+    # Fetch dynamic organization settings
+    org_setting_res = await db.execute(select(OrganizationSetting).order_by(OrganizationSetting.created_at.desc()))
+    org_setting = org_setting_res.scalars().first()
+
+    org_res = await db.execute(select(Organization))
+    org = org_res.scalars().first()
+
+    seller_name = (org_setting.company_name if org_setting and org_setting.company_name else None) or (org.name if org and org.name else "Arsath Thoufiq's Workspace")
+    seller_logo = org_setting.logo_url if org_setting else None
+    seller_email = (org_setting.email if org_setting and org_setting.email else "thoufiqarsath84@gmail.com")
+    seller_phone = (org_setting.phone if org_setting and org_setting.phone else "+91 98765 43210")
+    seller_address = (org_setting.address if org_setting and org_setting.address else "Chennai Tech Park, Guindy, Chennai, Tamil Nadu 600032")
+    seller_gstin = (org_setting.gstin if org_setting and org_setting.gstin else "33AAECZ9920K1ZX")
+    signatory_name = (org_setting.signatory_name if org_setting and org_setting.signatory_name else "Arsath Thoufiq")
+    signatory_desig = (org_setting.signatory_designation if org_setting and org_setting.signatory_designation else "Authorized Signatory")
+    bank_name = (org_setting.bank_name if org_setting and org_setting.bank_name else "HDFC Bank Ltd")
+    account_number = (org_setting.account_number if org_setting and org_setting.account_number else "50200084729104")
+    ifsc_code = (org_setting.ifsc_code if org_setting and org_setting.ifsc_code else "HDFC0001244")
+    upi_id = (org_setting.upi_id if org_setting and org_setting.upi_id else "zigmaa@hdfcbank")
+
     items = inv.items or []
     subtotal = float(inv.subtotal or 0.0)
     tax_amount = float(inv.tax_amount or 0.0)
@@ -406,6 +427,8 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
         </tr>
         """
 
+    logo_or_brand_html = f'<img src="{seller_logo}" style="max-height: 52px; max-width: 200px; object-fit: contain; margin-bottom: 8px;" alt="{seller_name}" />' if seller_logo else f'<span style="font-size: 22px; font-weight: 900; color: #dc2626; letter-spacing: -0.5px;">{seller_name}</span>'
+
     html_content = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -415,7 +438,7 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
     <style>
         @page {{
             size: A4;
-            margin: 15mm;
+            margin: 12mm;
         }}
         body {{
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -499,23 +522,23 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
 
     <div class="invoice-box">
         <!-- Header -->
-        <table class="header-table" style="margin-bottom: 28px;">
+        <table class="header-table" style="margin-bottom: 24px;">
             <tr>
                 <td style="vertical-align: top; width: 60%;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 6px;">
-                        <span style="font-size: 24px; font-weight: 900; color: #dc2626; letter-spacing: -0.5px;">ZIGMAA</span>
+                    <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 6px;">
+                        {logo_or_brand_html}
                         <span class="brand-badge">{doc_title}</span>
                     </div>
-                    <p style="font-size: 12px; color: #64748b; margin: 2px 0;">Zigmaa CRM Technologies Pvt. Ltd.</p>
-                    <p style="font-size: 11px; color: #94a3b8; margin: 2px 0;">Enterprise SaaS & Cloud Infrastructure Solutions</p>
-                    <p style="font-size: 11px; color: #94a3b8; margin: 2px 0;">GSTIN: 33AAECZ9920K1ZX | support@zigmaa.com</p>
+                    <p style="font-size: 12px; color: #475569; font-weight: 600; margin: 2px 0;">{seller_name}</p>
+                    <p style="font-size: 11px; color: #64748b; margin: 2px 0;">{seller_address}</p>
+                    <p style="font-size: 11px; color: #94a3b8; margin: 2px 0;">GSTIN: {seller_gstin} • {seller_email} • {seller_phone}</p>
                 </td>
                 <td style="vertical-align: top; text-align: right; width: 40%;">
-                    <div style="font-size: 18px; font-weight: 800; color: #0f172a;">{inv.invoice_number}</div>
+                    <div style="font-size: 18px; font-weight: 800; color: #0f172a; font-family: monospace;">{inv.invoice_number}</div>
                     <p style="font-size: 12px; color: #64748b; margin: 4px 0;">
                         <strong>Date:</strong> {inv.issue_date or date.today()}
                     </p>
-                    {f'<p style="font-size: 12px; color: #64748b; margin: 2px 0;"><strong>Due Date:</strong> {inv.due_date}</p>' if inv.due_date else ''}
+                    {f'<p style="font-size: 12px; color: #64748b; margin: 2px 0;"><strong>Valid Until:</strong> {inv.due_date}</p>' if inv.due_date else ''}
                     <div style="margin-top: 8px;">
                         <span style="display: inline-block; padding: 3px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; background: {'#ecfdf5' if inv.status == 'PAID' else '#eff6ff'}; color: {'#059669' if inv.status == 'PAID' else '#2563eb'};">
                             Status: {inv.status}
@@ -540,9 +563,9 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
                 <td style="width: 5%;"></td>
                 <td style="width: 45%; vertical-align: top; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
                     <div style="font-size: 10px; font-weight: 800; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">ISSUED BY</div>
-                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">Zigmaa CRM Sales Operations</div>
-                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">Chennai HQ, Tamil Nadu, India</div>
-                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">PAN: AAECZ9920K | MSME Reg.</div>
+                    <div style="font-size: 13px; font-weight: 700; color: #0f172a;">{seller_name}</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">{seller_address}</div>
+                    <div style="font-size: 12px; color: #64748b; margin-top: 2px;">GSTIN: {seller_gstin} | {seller_phone}</div>
                 </td>
             </tr>
         </table>
@@ -552,11 +575,11 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
             <thead>
                 <tr style="background: #f1f5f9; text-align: left; font-size: 11px; text-transform: uppercase; color: #475569; font-weight: 800; letter-spacing: 0.5px;">
                     <th style="padding: 10px 14px; width: 6%; text-align: center;">#</th>
-                    <th style="padding: 10px 14px; width: 44%;">Item Description</th>
-                    <th style="padding: 10px 14px; width: 12%; text-align: center;">Qty</th>
-                    <th style="padding: 10px 14px; width: 14%; text-align: right;">Unit Price</th>
-                    <th style="padding: 10px 14px; width: 10%; text-align: center;">Tax %</th>
-                    <th style="padding: 10px 14px; width: 14%; text-align: right;">Amount (₹)</th>
+                    <th style="padding: 10px 14px; width: 44%;">ITEM & DESCRIPTION</th>
+                    <th style="padding: 10px 14px; width: 12%; text-align: center;">QTY</th>
+                    <th style="padding: 10px 14px; width: 14%; text-align: right;">RATE (₹)</th>
+                    <th style="padding: 10px 14px; width: 10%; text-align: center;">TAX</th>
+                    <th style="padding: 10px 14px; width: 14%; text-align: right;">AMOUNT (₹)</th>
                 </tr>
             </thead>
             <tbody>
@@ -573,11 +596,10 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
                         <span style="font-size: 12px; font-weight: 700; color: #581c87; line-height: 1.4;">{amount_in_words}</span>
                     </div>
 
-                    <div style="margin-top: 14px; font-size: 11px; color: #64748b; line-height: 1.5;">
-                        <strong style="color: #334155;">Bank Transfer / NEFT Details:</strong><br/>
-                        Bank: HDFC Bank Limited | A/C: 50200084729104<br/>
-                        IFSC: HDFC0001244 | Branch: Chennai Main<br/>
-                        UPI ID: zigmaa@hdfcbank
+                    <div style="margin-top: 14px; font-size: 11px; color: #64748b; line-height: 1.5; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+                        <strong style="color: #334155; display: block; margin-bottom: 3px;">Payment Instructions & Bank Transfer:</strong>
+                        Bank: {bank_name} | A/C: {account_number}<br/>
+                        IFSC: {ifsc_code} | UPI ID: {upi_id}
                     </div>
                 </td>
                 <td style="width: 45%; vertical-align: top;">
@@ -603,14 +625,28 @@ async def generate_invoice_pdf_view(invoice_id: str, db: AsyncSession = Depends(
             </tr>
         </table>
 
-        <!-- Notes and Terms -->
-        <div style="padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
-            <strong style="color: #334155; display: block; margin-bottom: 4px;">Terms & Conditions:</strong>
-            {inv.notes or "Payment terms: 50% advance, balance upon milestone delivery. Bank transfer or UPI accepted."}
-        </div>
+        <!-- Notes and Signatory Row -->
+        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+            <tr>
+                <td style="width: 60%; vertical-align: top; padding-right: 20px;">
+                    <div style="padding: 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; font-size: 11px; color: #64748b;">
+                        <strong style="color: #334155; display: block; margin-bottom: 4px;">Terms & Conditions:</strong>
+                        {inv.notes or "Payment terms: 50% advance, balance upon milestone delivery. Bank transfer or UPI accepted."}
+                    </div>
+                </td>
+                <td style="width: 40%; vertical-align: bottom; text-align: right;">
+                    <div style="display: inline-block; text-align: center; width: 220px;">
+                        <div style="height: 48px; border-bottom: 1.5px solid #94a3b8; margin-bottom: 6px;"></div>
+                        <div style="font-size: 12px; font-weight: 800; color: #0f172a;">{signatory_name}</div>
+                        <div style="font-size: 11px; color: #64748b; font-weight: 600;">{signatory_desig}</div>
+                        <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">{seller_name}</div>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-        <div style="margin-top: 28px; text-align: center; font-size: 10px; color: #94a3b8;">
-            This is a computer-generated document authorized by Zigmaa CRM Systems. No signature is required.
+        <div style="margin-top: 24px; text-align: center; font-size: 10px; color: #94a3b8;">
+            This is a computer-generated proposal document issued by {seller_name}.
         </div>
     </div>
 </body>

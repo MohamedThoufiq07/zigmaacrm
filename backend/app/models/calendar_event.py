@@ -19,5 +19,7 @@ class CalendarEvent(TimeStampedBase):
     lead_or_deal = Column(String(255), nullable=True)
     notes = Column(Text, nullable=True)
     google_calendar_synced = Column(Boolean, default=False)
+    owner_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    owner_name = Column(String(255), default="Mohamed Thoufiq")
 
     contact = relationship("Contact", backref="calendar_events", lazy="joined")

@@ -13,6 +13,10 @@ class DealBase(BaseModel):
     expected_close_date: Optional[str] = None
     status: Optional[str] = "OPEN"
     custom_data: Optional[dict] = {}
+    assigned_user_id: Optional[str] = None
+    assigned_user_name: Optional[str] = None
+    owner_id: Optional[str] = None
+    owner_name: Optional[str] = None
 
 class DealCreate(DealBase):
     pass
@@ -23,7 +27,6 @@ class DealStageMove(BaseModel):
 class DealOut(DealBase):
     id: str
     organization_id: str
-    assigned_user_id: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

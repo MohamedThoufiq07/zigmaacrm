@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { 
   Eye, 
   EyeOff, 
@@ -31,7 +31,8 @@ import { api } from "@/lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [isSignUp, setIsSignUp] = useState(false);
+  const pathname = usePathname();
+  const [isSignUp, setIsSignUp] = useState(pathname === "/signup");
   const [isResetPassword, setIsResetPassword] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [resetEmail, setResetEmail] = useState("");

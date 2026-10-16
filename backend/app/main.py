@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router
+from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router, team, telephony
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -26,6 +26,8 @@ app.include_router(organizations.router, prefix=settings.API_V1_STR, tags=["Orga
 
 app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["Dashboard"])
 app.include_router(settings_router.router, prefix=f"{settings.API_V1_STR}/settings", tags=["Settings"])
+app.include_router(team.router, prefix=f"{settings.API_V1_STR}/settings/team", tags=["Team"])
+app.include_router(team.router, prefix=f"{settings.API_V1_STR}/team", tags=["Team-Direct"])
 app.include_router(leads.router, prefix=settings.API_V1_STR, tags=["Leads"])
 app.include_router(contacts.router, prefix=settings.API_V1_STR, tags=["Contacts"])
 app.include_router(pipelines.router, prefix=settings.API_V1_STR, tags=["Pipelines"])
@@ -39,6 +41,8 @@ app.include_router(webhooks.router, prefix=settings.API_V1_STR, tags=["Webhooks-
 app.include_router(automations.router, prefix=settings.API_V1_STR, tags=["Automations"])
 app.include_router(invoices.router, prefix=settings.API_V1_STR, tags=["Invoices"])
 app.include_router(copilot.router, prefix=settings.API_V1_STR, tags=["AI Copilot"])
+app.include_router(telephony.router, prefix=settings.API_V1_STR, tags=["Telephony"])
+app.include_router(telephony.router, prefix=f"{settings.API_V1_STR}/telephony", tags=["Telephony-Direct"])
 
 @app.on_event("startup")
 async def on_startup():

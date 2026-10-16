@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from typing import List, Optional, Any, Dict
 from pydantic import BaseModel
 
@@ -8,7 +8,8 @@ from app.core.database import get_db
 from app.models.deal import Deal
 from app.models.lead_pipeline import Pipeline, PipelineStage, Lead
 from app.models.contact import Contact
-from app.models.organization_user import Organization
+from app.models.organization_user import Organization, User
+from app.api.deps import get_current_user
 from app.models.activity import Activity
 from app.schemas.deal_schema import DealCreate, DealOut, DealStageMove
 
@@ -21,18 +22,28 @@ class DealStageUpdate(BaseModel):
 @router.get("/deals", response_model=List[DealOut])
 async def get_deals(
     pipeline_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = select(Deal).order_by(Deal.id.desc())
     if pipeline_id:
         query = query.where(Deal.pipeline_id == pipeline_id)
+    if current_user.role == "SALES_REP":
+        query = query.where(
+            or_(
+                Deal.owner_id == current_user.id,
+                Deal.assigned_user_id == current_user.id,
+                Deal.owner_name.ilike(f"%{current_user.full_name}%")
+            )
+        )
     result = await db.execute(query)
     return result.scalars().all()
 
 @router.get("/deals/board")
 async def get_deals_board(
     pipeline_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     # Retrieve pipeline
     if pipeline_id:
@@ -53,9 +64,16 @@ async def get_deals_board(
     stages = stages_res.scalars().all()
 
     # Retrieve deals for this pipeline
-    deals_res = await db.execute(
-        select(Deal).where(Deal.pipeline_id == pipeline.id).order_by(Deal.updated_at.desc())
-    )
+    deals_query = select(Deal).where(Deal.pipeline_id == pipeline.id)
+    if current_user.role == "SALES_REP":
+        deals_query = deals_query.where(
+            or_(
+                Deal.owner_id == current_user.id,
+                Deal.assigned_user_id == current_user.id,
+                Deal.owner_name.ilike(f"%{current_user.full_name}%")
+            )
+        )
+    deals_res = await db.execute(deals_query.order_by(Deal.updated_at.desc()))
     deals = deals_res.scalars().all()
 
     # Also map lead / contact company and names if needed
@@ -108,7 +126,8 @@ async def get_deals_board(
 async def create_deal(
     deal_in: DealCreate,
     org_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     if not org_id:
         res = await db.execute(select(Organization))
@@ -139,6 +158,10 @@ async def create_deal(
             found_st = st_first.scalars().first()
         stage_id = found_st.id if found_st else deal_in.stage_id or "default_stage"
 
+    owner_id = deal_in.owner_id or (current_user.id if current_user else None)
+    owner_name = deal_in.owner_name or deal_in.assigned_user_name or (current_user.full_name if current_user else "Mohamed Thoufiq")
+    assigned_user_id = deal_in.assigned_user_id or owner_id
+
     deal = Deal(
         organization_id=org_id,
         pipeline_id=pipeline_id,
@@ -150,7 +173,10 @@ async def create_deal(
         currency=deal_in.currency,
         expected_close_date=deal_in.expected_close_date,
         status=deal_in.status or "OPEN",
-        custom_data=deal_in.custom_data or {}
+        custom_data=deal_in.custom_data or {},
+        assigned_user_id=assigned_user_id,
+        owner_id=owner_id,
+        owner_name=owner_name
     )
     db.add(deal)
     await db.commit()

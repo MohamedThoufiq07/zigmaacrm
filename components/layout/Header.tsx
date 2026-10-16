@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
-  FolderCog,
-  CalendarDays,
+  Sun,
+  Moon,
   FileText,
   Bell,
   User,
@@ -25,6 +25,7 @@ import AddLeadModal from "@/components/leads/AddLeadModal";
 import HelpSupportModal from "@/components/common/HelpSupportModal";
 import AICopilotDrawer from "@/components/ai/AICopilotDrawer";
 import { api } from "@/lib/api";
+import { useTheme } from "@/context/ThemeContext";
 
 interface HeaderProps {
   title?: string;
@@ -33,6 +34,7 @@ interface HeaderProps {
 export default function Header({ title }: HeaderProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const { theme, toggleTheme } = useTheme();
   const [searchQuery, setSearchQuery] = useState("");
   const [showAddLead, setShowAddLead] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -43,14 +45,22 @@ export default function Header({ title }: HeaderProps) {
   const [isSidebarHidden, setIsSidebarHidden] = useState(false);
 
   const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeRole, setActiveRole] = useState<string>("ADMIN");
 
   useEffect(() => {
     if (typeof window !== "undefined") {
       setIsSidebarHidden(localStorage.getItem("zigmaa_sidebar_hidden") === "true");
+      setActiveRole(api.getActiveRole());
+
       const handleSidebarChange = (e: any) => {
         setIsSidebarHidden(Boolean(e.detail?.hidden));
       };
       window.addEventListener("zigmaa_sidebar_toggle", handleSidebarChange);
+
+      const handleRoleChange = () => {
+        setActiveRole(api.getActiveRole());
+      };
+      window.addEventListener("zigmaa_role_changed", handleRoleChange);
 
       // Load logged-in user details
       const loadUser = () => {
@@ -66,11 +76,18 @@ export default function Header({ title }: HeaderProps) {
 
       return () => {
         window.removeEventListener("zigmaa_sidebar_toggle", handleSidebarChange);
+        window.removeEventListener("zigmaa_role_changed", handleRoleChange);
         window.removeEventListener("zigmaa_user_updated", loadUser);
         window.removeEventListener("storage", loadUser);
       };
     }
   }, []);
+
+  const switchRole = (newRole: "ADMIN" | "SALES_REP") => {
+    setActiveRole(newRole);
+    api.setActiveRole(newRole);
+    window.location.reload();
+  };
 
   const getInitials = (name?: string, email?: string) => {
     if (name && name.trim()) {
@@ -112,7 +129,7 @@ export default function Header({ title }: HeaderProps) {
   const handleLogout = () => {
     api.logout();
     setShowProfileMenu(false);
-    router.push("/login");
+    router.replace("/login");
   };
 
   const menuItems = [
@@ -162,21 +179,21 @@ export default function Header({ title }: HeaderProps) {
           </button>
 
           {/* Utility Action Icons */}
-          <div className="flex items-center gap-1.5 text-slate-600 px-1 py-1">
-            <Link
-              href="/contacts"
-              className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors"
-              title="Workspace Records"
+          <div className="flex items-center gap-1.5 text-slate-600 dark:text-slate-300 px-1 py-1">
+            {/* Dark & Light Mode Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-amber-300 dark:hover:bg-slate-800 transition-all cursor-pointer flex items-center justify-center group"
+              title={theme === "dark" ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              aria-label="Toggle dark and light mode"
             >
-              <FolderCog className="w-4 h-4" />
-            </Link>
-            <Link
-              href="/events"
-              className="p-1.5 rounded-lg hover:bg-slate-100 hover:text-slate-900 transition-colors"
-              title="Calendar"
-            >
-              <CalendarDays className="w-4 h-4" />
-            </Link>
+              {theme === "dark" ? (
+                <Sun className="w-4.5 h-4.5 text-amber-400 group-hover:rotate-45 transition-transform" />
+              ) : (
+                <Moon className="w-4.5 h-4.5 text-slate-600 group-hover:text-slate-900 transition-colors" />
+              )}
+            </button>
 
             {/* Notifications Dropdown */}
             <div className="relative">
@@ -207,6 +224,36 @@ export default function Header({ title }: HeaderProps) {
                 </>
               )}
             </div>
+          </div>
+
+          {/* Quick Role Simulation Switcher in Navbar */}
+          <div className="hidden sm:flex items-center bg-slate-100/90 border border-slate-200/90 p-0.5 rounded-xl shadow-xs">
+            <button
+              type="button"
+              onClick={() => switchRole("ADMIN")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeRole === "ADMIN"
+                  ? "bg-white text-red-600 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              title="View full organization pipeline and records"
+            >
+              <ShieldCheck className="w-3.5 h-3.5" />
+              <span>Admin</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => switchRole("SALES_REP")}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeRole === "SALES_REP"
+                  ? "bg-white text-slate-900 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+              title="View restricted to assigned rep leads and pipeline"
+            >
+              <User className="w-3.5 h-3.5" />
+              <span>Sales Rep</span>
+            </button>
           </div>
 
           {/* User Profile Avatar with Exact Dropdown */}
@@ -274,6 +321,50 @@ export default function Header({ title }: HeaderProps) {
                   </div>
 
                   <div className="h-px bg-slate-100 mx-3 my-1" />
+
+                  {/* Role Simulation Section */}
+                  <div className="mx-3 my-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                        Role Simulation
+                      </span>
+                      <span
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          activeRole === "ADMIN"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-slate-200 text-slate-800"
+                        }`}
+                      >
+                        {activeRole === "ADMIN" ? "Admin Mode" : "Sales Rep Mode"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-200/60 rounded-lg">
+                      <button
+                        type="button"
+                        onClick={() => switchRole("ADMIN")}
+                        className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          activeRole === "ADMIN"
+                            ? "bg-white text-red-600 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <ShieldCheck className="w-3 h-3" />
+                        <span>Admin</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => switchRole("SALES_REP")}
+                        className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                          activeRole === "SALES_REP"
+                            ? "bg-white text-slate-900 shadow-xs"
+                            : "text-slate-600 hover:text-slate-900"
+                        }`}
+                      >
+                        <User className="w-3 h-3" />
+                        <span>Sales Rep</span>
+                      </button>
+                    </div>
+                  </div>
 
                   {/* Menu Items List */}
                   <div className="p-2 space-y-0.5">

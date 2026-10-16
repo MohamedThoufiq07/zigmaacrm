@@ -138,6 +138,25 @@ export interface InvoiceItem {
   total?: number;
 }
 
+export interface OrganizationSettings {
+  id?: string;
+  organization_id?: string;
+  company_name: string;
+  logo_url?: string | null;
+  email: string;
+  phone: string;
+  address: string;
+  gstin: string;
+  website?: string;
+  signatory_name: string;
+  signatory_designation: string;
+  bank_name: string;
+  account_number: string;
+  ifsc_code: string;
+  upi_id: string;
+  default_terms?: string;
+}
+
 export interface Invoice {
   id: number | string;
   invoice_number?: string;
@@ -162,7 +181,7 @@ export interface Invoice {
   total_amount: number;
   notes?: string;
   payment_method?: "Cash" | "UPI" | "Card" | "Bank Transfer" | string;
-  created_at: string;
+  created_at?: string;
   updated_at?: string;
 }
 

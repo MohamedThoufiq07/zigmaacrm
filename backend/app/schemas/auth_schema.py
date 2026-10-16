@@ -15,8 +15,16 @@ class UserCreate(BaseModel):
     email: EmailStr
     password: str
     full_name: str
-    organization_name: Optional[str] = "Zigmaa Global"
+    organization_name: Optional[str] = None
+    company_name: Optional[str] = None
     role: Optional[str] = "ADMIN"
+
+class SignupRequest(BaseModel):
+    email: EmailStr
+    password: str
+    full_name: str
+    company_name: Optional[str] = None
+    organization_name: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -30,6 +38,8 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    company_name: Optional[str] = None
+    organization_name: Optional[str] = None
 
     class Config:
         from_attributes = True

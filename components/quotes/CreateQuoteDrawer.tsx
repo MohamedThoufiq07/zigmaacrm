@@ -15,12 +15,18 @@ import {
   Download,
   CheckCircle2,
   Loader2,
-  FileCheck
+  FileCheck,
+  Eye,
+  Share2,
+  Send,
+  Sparkles,
+  ShieldCheck
 } from "lucide-react";
-import { Deal, Contact, Invoice } from "@/lib/mockData";
+import { Deal, Contact, Invoice, OrganizationSettings } from "@/lib/mockData";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
 import { useToast } from "@/components/common/ToastProvider";
+import QuotationPreviewModal from "./QuotationPreviewModal";
 
 interface CreateQuoteDrawerProps {
   isOpen: boolean;
@@ -70,8 +76,14 @@ export default function CreateQuoteDrawer({
 
   // Document Settings
   const [docType, setDocType] = useState<"QUOTE" | "INVOICE">("QUOTE");
+  const [quoteId, setQuoteId] = useState("QT-2026-001");
   const [issueDate, setIssueDate] = useState("");
   const [dueDate, setDueDate] = useState("");
+  const [orgSettings, setOrgSettings] = useState<OrganizationSettings | null>(null);
+
+  // Live preview modal state
+  const [previewModalOpen, setPreviewModalOpen] = useState(false);
+  const [previewInvoiceData, setPreviewInvoiceData] = useState<Invoice | null>(null);
 
   // Client Info
   const [clientName, setClientName] = useState("");
@@ -115,6 +127,19 @@ export default function CreateQuoteDrawer({
       const due = new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
       setIssueDate(today);
       setDueDate(due);
+
+      const generatedNum = `QT-2026-${String(Math.floor(Math.random() * 899) + 101)}`;
+      setQuoteId(generatedNum);
+
+      // Load dynamic organization settings
+      api.getOrganizationSettings().then((settings) => {
+        if (settings) {
+          setOrgSettings(settings);
+          if (settings.default_terms && !notes) {
+            setNotes(settings.default_terms);
+          }
+        }
+      });
 
       // Pre-fill client info from active deal / contact
       if (deal) {
@@ -204,8 +229,48 @@ export default function CreateQuoteDrawer({
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
+  // Open Live Preview of Current Draft
+  const handlePreviewCurrentDraft = () => {
+    if (!clientName.trim()) {
+      toast.warning("Validation", "Please enter a Client Name to preview.");
+      return;
+    }
+    const draftInvoice: Invoice = {
+      id: "preview-temp",
+      invoice_number: quoteId,
+      deal_id: deal?.id ? String(deal.id) : undefined,
+      contact_id: contact?.id ? String(contact.id) : undefined,
+      client_name: clientName.trim(),
+      client_company: clientCompany.trim() || undefined,
+      client_email: clientEmail.trim() || undefined,
+      client_phone: clientPhone.trim() || undefined,
+      type: docType,
+      status: "DRAFT",
+      issue_date: issueDate || new Date().toISOString().split("T")[0],
+      due_date: dueDate || undefined,
+      items: items.map((it) => ({
+        description: it.description.trim() || "Scope Deliverables",
+        qty: Number(it.qty) || 1,
+        unit_price: Number(it.unit_price) || 0,
+        tax_rate: Number(it.tax_rate) || 0,
+        amount: (Number(it.qty) || 1) * (Number(it.unit_price) || 0)
+      })),
+      subtotal: Math.round(subtotal * 100) / 100,
+      tax_amount: Math.round(taxAmount * 100) / 100,
+      discount: Math.round((Number(discount) || 0) * 100) / 100,
+      total_amount: grandTotal,
+      notes: notes.trim(),
+      created_at: new Date().toISOString()
+    };
+    setPreviewInvoiceData(draftInvoice);
+    setPreviewModalOpen(true);
+  };
+
   // Submit Handler
-  const handleSave = async (status: "DRAFT" | "SENT", downloadPdf = false) => {
+  const handleSave = async (
+    status: "DRAFT" | "SENT",
+    dispatchAction: "NONE" | "DOWNLOAD_PDF" | "WHATSAPP" | "EMAIL" = "NONE"
+  ) => {
     if (!clientName.trim()) {
       toast.warning("Validation", "Client Name is required.");
       return;
@@ -218,6 +283,7 @@ export default function CreateQuoteDrawer({
     setSubmitting(true);
     try {
       const payload: Partial<Invoice> = {
+        invoice_number: quoteId || undefined,
         deal_id: deal?.id ? String(deal.id) : undefined,
         contact_id: contact?.id ? String(contact.id) : (deal?.contact_id ? String(deal.contact_id) : undefined),
         client_name: clientName.trim(),
@@ -253,9 +319,21 @@ export default function CreateQuoteDrawer({
         onSuccess(saved);
       }
 
-      if (downloadPdf) {
+      if (dispatchAction === "DOWNLOAD_PDF") {
         const printUrl = `http://localhost:8000/api/v1/invoices/${saved.id}/pdf`;
         window.open(printUrl, "_blank", "noopener,noreferrer");
+      } else if (dispatchAction === "WHATSAPP") {
+        const rawPhone = (clientPhone || "").replace(/\D/g, "");
+        const targetPhone = rawPhone.length === 10 ? `91${rawPhone}` : rawPhone;
+        const sellerName = orgSettings?.company_name || "Arsath Thoufiq's Workspace";
+        const msg = `Hello ${clientName},\n\nHere is your official Quotation ${saved.invoice_number || quoteId} for ₹${grandTotal.toLocaleString("en-IN")} from ${sellerName}.\n\nPlease review and let us know your approval.\n\nBest regards,\n${orgSettings?.signatory_name || "Arsath Thoufiq"}\n${sellerName}`;
+        window.open(`https://wa.me/${targetPhone}?text=${encodeURIComponent(msg)}`, "_blank", "noopener,noreferrer");
+      } else if (dispatchAction === "EMAIL") {
+        const targetEmail = clientEmail || "";
+        const sellerName = orgSettings?.company_name || "Arsath Thoufiq's Workspace";
+        const subject = `Quotation ${saved.invoice_number || quoteId} for ${clientName} - ${sellerName}`;
+        const body = `Dear ${clientName},\n\nPlease find your commercial quotation ${saved.invoice_number || quoteId} amounting to ₹${grandTotal.toLocaleString("en-IN")}.\n\nPayment terms: ${notes}\n\nBest regards,\n${orgSettings?.signatory_name || "Arsath Thoufiq"}\n${sellerName}`;
+        window.location.href = `mailto:${targetEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       }
 
       handleClose();
@@ -323,15 +401,53 @@ export default function CreateQuoteDrawer({
 
         {/* Scrollable Form Body */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6 custom-scrollbar text-xs">
-          {/* SECTION 1: DOCUMENT TYPE & DATES */}
+          {/* Dynamic Organization Branding Indicator */}
+          <div className="p-3 bg-red-50/70 rounded-2xl border border-red-200/80 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {orgSettings?.logo_url ? (
+                <img
+                  src={orgSettings.logo_url}
+                  alt="Logo"
+                  className="w-8 h-8 rounded-lg object-contain bg-white p-0.5 border border-red-200"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-lg bg-red-600 text-white font-black text-xs flex items-center justify-center shadow-xs">
+                  {(orgSettings?.company_name || "AT").slice(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-bold text-slate-900 leading-tight">
+                    {orgSettings?.company_name || "Arsath Thoufiq's Workspace"}
+                  </span>
+                  <span className="text-[10px] font-semibold text-red-700 bg-red-100/80 px-1.5 py-0.2 rounded">
+                    Seller
+                  </span>
+                </div>
+                <span className="text-[11px] text-slate-500 font-medium block mt-0.5">
+                  Signatory: {orgSettings?.signatory_name || "Arsath Thoufiq"} • GSTIN: {orgSettings?.gstin || "33AAECZ9920K1ZX"}
+                </span>
+              </div>
+            </div>
+            <a
+              href="/settings"
+              target="_blank"
+              rel="noreferrer"
+              className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:underline px-2 py-1 rounded-lg hover:bg-red-100/50 transition-colors"
+            >
+              Edit Branding ↗
+            </a>
+          </div>
+
+          {/* SECTION 1: DOCUMENT TYPE, QUOTE ID & DATES */}
           <div className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/80 space-y-3.5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                  1. Document Type
+                  1. Document Settings
                 </span>
                 <span className="text-xs font-bold text-slate-800">
-                  Select Output Template Standard
+                  Document Type & Metadata
                 </span>
               </div>
 
@@ -362,26 +478,37 @@ export default function CreateQuoteDrawer({
               </div>
             </div>
 
-            {/* Dates row */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 border-t border-slate-200/60">
+            {/* Metadata row: Quote ID, Issue Date, Due Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 border-t border-slate-200/60">
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Issue Date <span className="text-red-500">*</span>
+                  Quote / Invoice ID
                 </label>
-                <div className="relative">
-                  <input
-                    type="date"
-                    required
-                    value={issueDate}
-                    onChange={(e) => setIssueDate(e.target.value)}
-                    className="w-full bg-white text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                  />
-                </div>
+                <input
+                  type="text"
+                  value={quoteId}
+                  onChange={(e) => setQuoteId(e.target.value)}
+                  placeholder="QT-2026-001"
+                  className="w-full bg-white text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-mono font-bold"
+                />
               </div>
 
               <div>
                 <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                  Valid Until / Due Date
+                  Issue Date <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={issueDate}
+                  onChange={(e) => setIssueDate(e.target.value)}
+                  className="w-full bg-white text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-700 mb-1">
+                  Valid Until date (15 days)
                 </label>
                 <input
                   type="date"
@@ -642,30 +769,68 @@ export default function CreateQuoteDrawer({
             </span>
           </div>
 
-          <div className="flex items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={handleClose}
               disabled={submitting}
-              className="px-3.5 py-2 text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+              className="px-3 py-2 text-xs font-semibold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             >
               Cancel
             </button>
 
+            {/* Preview Quotation */}
             <button
               type="button"
-              onClick={() => handleSave("DRAFT", false)}
+              onClick={handlePreviewCurrentDraft}
               disabled={submitting}
-              className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Preview branded quotation in A4 sheet"
             >
-              Save as Draft
+              <Eye className="w-3.5 h-3.5 text-slate-600" />
+              <span>Preview</span>
             </button>
 
+            {/* Send via WhatsApp */}
             <button
               type="button"
-              onClick={() => handleSave("SENT", true)}
+              onClick={() => handleSave("SENT", "WHATSAPP")}
               disabled={submitting}
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl shadow-md shadow-red-600/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Save & dispatch quotation link via WhatsApp"
+            >
+              <Share2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>WhatsApp</span>
+            </button>
+
+            {/* Send via Email */}
+            <button
+              type="button"
+              onClick={() => handleSave("SENT", "EMAIL")}
+              disabled={submitting}
+              className="px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 text-xs font-bold rounded-xl transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+              title="Save & draft quotation email"
+            >
+              <Mail className="w-3.5 h-3.5 text-blue-600" />
+              <span>Email</span>
+            </button>
+
+            {/* Save as Draft */}
+            <button
+              type="button"
+              onClick={() => handleSave("DRAFT", "NONE")}
+              disabled={submitting}
+              className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold rounded-xl transition-all cursor-pointer disabled:opacity-50"
+            >
+              Draft
+            </button>
+
+            {/* Primary: Generate & Download PDF */}
+            <button
+              type="button"
+              onClick={() => handleSave("SENT", "DOWNLOAD_PDF")}
+              disabled={submitting}
+              className="px-4 py-2.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-bold rounded-xl shadow-md shadow-red-600/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
               {submitting ? (
                 <>
@@ -682,6 +847,14 @@ export default function CreateQuoteDrawer({
           </div>
         </div>
       </div>
+
+      {/* Branded Quotation Live Preview Modal */}
+      <QuotationPreviewModal
+        invoice={previewInvoiceData}
+        isOpen={previewModalOpen}
+        onClose={() => setPreviewModalOpen(false)}
+        orgSettings={orgSettings}
+      />
     </div>
   );
 }

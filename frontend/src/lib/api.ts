@@ -16,6 +16,7 @@ import {
   CalendarEvent,
   Expense,
   Invoice,
+  OrganizationSettings,
   AutomationLog,
   OPDToken,
   formatGoogleCalendarUrl,
@@ -43,7 +44,60 @@ function setStorage<T>(key: string, value: T): void {
   }
 }
 
+export function getAuthHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {};
+  if (typeof window !== "undefined") {
+    const token = localStorage.getItem("zigmaa_token");
+    if (token) {
+      let isExpired = false;
+      try {
+        const payloadBase64 = token.split(".")[1];
+        if (payloadBase64) {
+          const payloadJson = JSON.parse(atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/")));
+          if (payloadJson.exp && Date.now() >= payloadJson.exp * 1000) {
+            isExpired = true;
+          }
+        }
+      } catch {
+        isExpired = true;
+      }
+
+      if (!isExpired) {
+        headers["Authorization"] = `Bearer ${token}`;
+      } else {
+        // Automatically purge stale/expired token to prevent 401s
+        localStorage.removeItem("zigmaa_token");
+        if (typeof document !== "undefined") {
+          document.cookie = "zigmaa_token=; path=/; max-age=0; SameSite=Lax";
+        }
+      }
+    }
+    const activeRole = localStorage.getItem("zigmaa_active_role") || "ADMIN";
+    headers["X-User-Role"] = activeRole;
+    const userStr = localStorage.getItem("zigmaa_user");
+    if (userStr) {
+      try {
+        const u = JSON.parse(userStr);
+        if (u.id) headers["X-User-Id"] = u.id;
+        if (u.email) headers["X-User-Email"] = u.email;
+      } catch {}
+    }
+  }
+  return headers;
+}
+
+
 export const zigmaaApi = {
+  getActiveRole(): string {
+    if (typeof window === "undefined") return "ADMIN";
+    return localStorage.getItem("zigmaa_active_role") || "ADMIN";
+  },
+
+  setActiveRole(role: string): void {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("zigmaa_active_role", role);
+    window.dispatchEvent(new CustomEvent("zigmaa_role_changed", { detail: { role } }));
+  },
   async getHealth() {
     try {
       const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
@@ -71,11 +125,22 @@ export const zigmaaApi = {
     const data = await res.json();
     setStorage("zigmaa_token", data.access_token);
     setStorage("zigmaa_user", data.user);
+    if (data.user?.role) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("zigmaa_active_role", data.user.role);
+      }
+    }
+    if (typeof document !== "undefined" && data.access_token) {
+      document.cookie = `zigmaa_token=${encodeURIComponent(data.access_token)}; path=/; max-age=604800; SameSite=Lax`;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
     return data;
   },
 
-  async register(data: { email: string; password: string; full_name: string; organization_name?: string }) {
-    const res = await fetch(`${API_BASE}/auth/register`, {
+  async signup(data: { email: string; password: string; full_name: string; company_name?: string; organization_name?: string }) {
+    const res = await fetch(`${API_BASE}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data)
@@ -93,7 +158,43 @@ export const zigmaaApi = {
     const resData = await res.json();
     setStorage("zigmaa_token", resData.access_token);
     setStorage("zigmaa_user", resData.user);
+    if (resData.user?.role) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("zigmaa_active_role", resData.user.role);
+      }
+    }
+    if (typeof document !== "undefined" && resData.access_token) {
+      document.cookie = `zigmaa_token=${encodeURIComponent(resData.access_token)}; path=/; max-age=604800; SameSite=Lax`;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
     return resData;
+  },
+
+  async register(data: { email: string; password: string; full_name: string; organization_name?: string; company_name?: string }) {
+    return this.signup(data);
+  },
+
+  async getMe() {
+    const token = typeof window !== "undefined" ? localStorage.getItem("zigmaa_token") : null;
+    if (!token) throw new Error("No authentication token found");
+    const res = await fetch(`${API_BASE}/auth/me`, {
+      headers: getAuthHeaders(),
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      throw new Error("Invalid session");
+    }
+    const user = await res.json();
+    setStorage("zigmaa_user", user);
+    if (user?.role && typeof window !== "undefined") {
+      localStorage.setItem("zigmaa_active_role", user.role);
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
+    return user;
   },
 
   async sendOtp(email: string) {
@@ -223,6 +324,11 @@ export const zigmaaApi = {
     if (typeof window !== "undefined") {
       localStorage.removeItem("zigmaa_token");
       localStorage.removeItem("zigmaa_user");
+      localStorage.removeItem("zigmaa_active_role");
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
+    if (typeof document !== "undefined") {
+      document.cookie = "zigmaa_token=; path=/; max-age=0; SameSite=Lax";
     }
   },
 
@@ -262,6 +368,7 @@ export const zigmaaApi = {
   async getDashboardMetrics(rangeType: string = "Last 30 Days"): Promise<any> {
     try {
       const res = await fetch(`${API_BASE}/dashboard/metrics?range_type=${encodeURIComponent(rangeType)}`, {
+        headers: getAuthHeaders(),
         cache: "no-store"
       });
       if (res.ok) {
@@ -688,13 +795,117 @@ export const zigmaaApi = {
     return fallback;
   },
 
+  // ===== ORGANIZATION & PROPOSAL BRANDING SETTINGS =====
+  async getOrganizationSettings(): Promise<OrganizationSettings> {
+    const defaultSettings: OrganizationSettings = {
+      company_name: "Arsath Thoufiq's Workspace",
+      logo_url: null,
+      email: "thoufiqarsath84@gmail.com",
+      phone: "+91 98765 43210",
+      address: "Chennai Tech Park, Guindy, Chennai, Tamil Nadu 600032",
+      gstin: "33AAECZ9920K1ZX",
+      website: "https://zigmaa.com",
+      signatory_name: "Arsath Thoufiq",
+      signatory_designation: "Authorized Signatory",
+      bank_name: "HDFC Bank Ltd",
+      account_number: "50200084729104",
+      ifsc_code: "HDFC0001244",
+      upi_id: "zigmaa@hdfcbank",
+      default_terms: "Payment terms: 50% advance, balance upon project milestone delivery. Bank Transfer / UPI accepted."
+    };
+
+    const cached = getStorage<OrganizationSettings>("zigmaa_org_settings", defaultSettings);
+    const currentUser = this.getCurrentUser();
+    if (currentUser?.organization_name && (!cached.company_name || cached.company_name === "Zigmaa CRM Technologies Pvt. Ltd.")) {
+      cached.company_name = currentUser.organization_name;
+    }
+    if (currentUser?.picture && !cached.logo_url) {
+      cached.logo_url = currentUser.picture;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/settings/organization`, { cache: "no-store" });
+      if (res.ok) {
+        const serverData = await res.json();
+        const merged: OrganizationSettings = {
+          ...defaultSettings,
+          ...cached,
+          ...serverData,
+          company_name: serverData.company_name || cached.company_name || defaultSettings.company_name,
+          logo_url: serverData.logo_url || cached.logo_url || null
+        };
+        setStorage("zigmaa_org_settings", merged);
+        return merged;
+      }
+    } catch (e) {
+      console.warn("Could not fetch remote organization settings, using local cache:", e);
+    }
+
+    return cached;
+  },
+
+  async updateOrganizationSettings(data: Partial<OrganizationSettings>): Promise<OrganizationSettings> {
+    const current = await this.getOrganizationSettings();
+    const updated: OrganizationSettings = {
+      ...current,
+      ...data
+    };
+
+    setStorage("zigmaa_org_settings", updated);
+
+    // Also update current user workspace info if company_name or logo_url changed
+    const user = this.getCurrentUser() || {};
+    let userChanged = false;
+    if (data.company_name && user.organization_name !== data.company_name) {
+      user.organization_name = data.company_name;
+      userChanged = true;
+    }
+    if (data.logo_url && user.picture !== data.logo_url) {
+      user.picture = data.logo_url;
+      userChanged = true;
+    }
+    if (userChanged) {
+      setStorage("zigmaa_user", user);
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+      }
+    }
+
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_org_settings_updated"));
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/settings/organization`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.settings) {
+          const remoteMerged = { ...updated, ...result.settings };
+          setStorage("zigmaa_org_settings", remoteMerged);
+          return remoteMerged;
+        }
+      }
+    } catch (e) {
+      console.error("Failed to sync organization settings with server:", e);
+    }
+
+    return updated;
+  },
+
   // ===== DEALS (PIPELINE) CRUD =====
   async getDeals(): Promise<Deal[]> {
     try {
-      const res = await fetch(`${API_BASE}/deals`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/deals`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
       if (res.ok) {
         const backendDeals = await res.json();
-        if (Array.isArray(backendDeals) && backendDeals.length > 0) {
+        if (Array.isArray(backendDeals)) {
           return backendDeals.map((d: any) => ({
             id: d.id,
             title: d.title,
@@ -722,7 +933,10 @@ export const zigmaaApi = {
 
   async getDealsBoard(): Promise<{ pipeline: any; stages: any[] }> {
     try {
-      const res = await fetch(`${API_BASE}/deals/board`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/deals/board`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
       if (res.ok) {
         return await res.json();
       }
@@ -760,6 +974,7 @@ export const zigmaaApi = {
         lead_id: dealData.lead_id ? String(dealData.lead_id) : null,
         contact_id: dealData.contact_id ? String(dealData.contact_id) : null,
         expected_close_date: dealData.close_date || dealData.expected_close_date,
+        assigned_user_id: (dealData as any).assigned_user_id || undefined,
         custom_data: {
           company_name: dealData.company_name,
           contact_name: dealData.contact_name,
@@ -768,7 +983,10 @@ export const zigmaaApi = {
       };
       const res = await fetch(`${API_BASE}/deals`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
         body: JSON.stringify(payload)
       });
       if (res.ok) {
@@ -835,7 +1053,10 @@ export const zigmaaApi = {
   // ===== CONTACTS CRUD =====
   async getContacts(): Promise<Contact[]> {
     try {
-      const res = await fetch(`${API_BASE}/contacts`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/contacts`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
       if (res.ok) {
         const backendContacts = await res.json();
         if (Array.isArray(backendContacts)) {
@@ -941,6 +1162,8 @@ export const zigmaaApi = {
   },
 
   async createContact(contactData: Partial<Contact>): Promise<Contact> {
+    const currentUser = this.getCurrentUser();
+    const defaultOwner = currentUser?.full_name || "Mohamed Thoufiq";
     const payload = {
       full_name: contactData.name || contactData.full_name || "Unnamed Contact",
       email: contactData.email || null,
@@ -952,11 +1175,14 @@ export const zigmaaApi = {
       lifecycle_stage: contactData.lifecycle_stage || contactData.status || "NEW",
       source: contactData.source || "MANUAL",
       custom_data: contactData.custom_data || {},
-      assigned_user_name: contactData.assigned_to || "Mohamed Thoufiq"
+      assigned_user_name: contactData.assigned_to || defaultOwner
     };
     const res = await fetch(`${API_BASE}/contacts`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
       body: JSON.stringify(payload)
     });
     if (res.ok) {
@@ -984,38 +1210,53 @@ export const zigmaaApi = {
 
   async bulkUploadContacts(rows: any[]): Promise<{ total_ingested: number; records: Contact[] }> {
     const createdList: Contact[] = [];
+    let lastError: string | null = null;
+
     for (let idx = 0; idx < rows.length; idx++) {
       const r = rows[idx];
-      const contactName =
-        r.name || r.full_name || r["Contact Name"] || r["Name"] || r["Full Name"] || `Contact ${idx + 1}`;
-      const phone =
-        r.phone || r.mobile || r["Phone"] || r["Mobile"] || r["Phone Number"] || r["Mobile Number"] || "";
-      const email =
-        r.email || r["Email"] || r["Email Address"] || "";
-      const company =
-        r.company_name || r.company || r["Company"] || r["Company Name"] || "";
-      const jobTitle =
-        r.job_title || r.designation || r["Job Title"] || r["Designation"] || "";
-      const source =
-        r.source || r.ad_source || r["Source"] || "Excel/CSV Import";
-      const stage =
-        r.stage || r.lifecycle_stage || r.status || r["Lifecycle Stage"] || r["Stage"] || "New";
+      if (!r || typeof r !== "object") continue;
+
+      const getField = (...keys: string[]): string => {
+        for (const k of keys) {
+          if (r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== "") {
+            return String(r[k]).trim();
+          }
+          const foundKey = Object.keys(r).find((rk) => rk.trim().toLowerCase() === k.toLowerCase());
+          if (foundKey && r[foundKey] !== undefined && r[foundKey] !== null && String(r[foundKey]).trim() !== "") {
+            return String(r[foundKey]).trim();
+          }
+        }
+        return "";
+      };
+
+      const contactName = getField("name", "full_name", "Contact Name", "Name", "Full Name") || `Contact ${idx + 1}`;
+      const phone = getField("phone", "mobile", "Phone", "Mobile", "Phone Number", "Mobile Number") || "+91 98000 00000";
+      const email = getField("email", "Email", "Email Address") || "";
+      const company = getField("company_name", "company", "Company", "Company Name") || "";
+      const jobTitle = getField("job_title", "designation", "Job Title", "Designation") || "";
+      const source = getField("source", "ad_source", "Source") || "Excel/CSV Import";
+      const stage = getField("stage", "lifecycle_stage", "status", "Lifecycle Stage", "Stage") || "New";
 
       try {
         const created = await this.createContact({
-          name: String(contactName).trim(),
-          phone: String(phone).trim(),
-          email: String(email).trim(),
-          company_name: String(company).trim(),
-          job_title: String(jobTitle).trim(),
-          source: String(source).trim(),
-          status: String(stage).trim() as any,
-          lifecycle_stage: String(stage).trim() as any
+          name: contactName,
+          phone: phone,
+          email: email,
+          company_name: company,
+          job_title: jobTitle,
+          source: source,
+          status: stage as any,
+          lifecycle_stage: stage as any
         });
         createdList.push(created);
-      } catch (e) {
+      } catch (e: any) {
         console.error("Bulk contact item insert error:", e);
+        lastError = e?.message || String(e);
       }
+    }
+
+    if (createdList.length === 0 && rows.length > 0) {
+      throw new Error(lastError || "Could not import contacts. Please verify your file format.");
     }
 
     return {
@@ -1724,12 +1965,21 @@ export const zigmaaApi = {
   },
 
   // ===== AI COPILOT / ASSISTANT =====
-  async askCopilot(question: string, history: Array<{ role: string; content: string }> = []): Promise<{ answer: string; model_used?: string; status?: string; error?: string }> {
+  async askCopilot(
+    question: string,
+    history: Array<{ role: string; content: string }> = [],
+    ui_context?: any
+  ): Promise<{ answer: string; model_used?: string; status?: string; error?: string }> {
     try {
       const res = await fetch(`${API_BASE}/ai/copilot`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question, history })
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          question,
+          message: question,
+          history,
+          ui_context
+        })
       });
       if (!res.ok) {
         let errDetail = "Failed to communicate with AI Copilot";
@@ -1752,6 +2002,213 @@ export const zigmaaApi = {
         error: "Backend server unreachable. Please make sure FastAPI backend is running on port 8000."
       };
     }
+  },
+
+  // ===== TEAM & RBAC MANAGEMENT =====
+  async getTeamMembers(): Promise<any[]> {
+    try {
+      const res = await fetch(`${API_BASE}/settings/team`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Failed to fetch team members:", e);
+    }
+    return [
+      {
+        id: "dab48b03-d621-4b8d-9291-83fb2b346c09",
+        full_name: "Alexander Vance (Admin)",
+        email: "admin@zigmaa.com",
+        role: "ADMIN",
+        is_active: true,
+        assigned_deals_count: 12,
+        assigned_leads_count: 2,
+        created_at: new Date().toISOString()
+      },
+      {
+        id: "7ee2c242-cc7f-4c96-ae2d-9cabcd1f1e4e",
+        full_name: "Sarah Jenkins (Senior Sales Rep)",
+        email: "sales@zigmaa.com",
+        role: "SALES_REP",
+        is_active: true,
+        assigned_deals_count: 11,
+        assigned_leads_count: 2,
+        created_at: new Date().toISOString()
+      }
+    ];
+  },
+
+  async inviteTeamMember(data: { full_name: string; email: string; role: string }): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings/team/invite`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      let err = "Failed to invite team member";
+      try {
+        const errJson = await res.json();
+        err = errJson.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async updateMemberRole(userId: string, role: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings/team/${userId}/role`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ role })
+    });
+    if (!res.ok) {
+      let err = "Failed to update role";
+      try {
+        const errJson = await res.json();
+        err = errJson.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async removeTeamMember(userId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/settings/team/${userId}`, {
+      method: "DELETE",
+      headers: getAuthHeaders()
+    });
+    if (!res.ok) {
+      let err = "Failed to remove team member";
+      try {
+        const errJson = await res.json();
+        err = errJson.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async createActivity(activity: {
+    contact_id?: string;
+    deal_id?: string;
+    lead_id?: string;
+    type: string;
+    notes?: string;
+    status?: string;
+  }): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/activities`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify(activity)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("createActivity backend call failed, fallback locally", e);
+    }
+    return {
+      id: "act_" + Date.now(),
+      ...activity,
+      created_at: new Date().toISOString()
+    };
+  },
+
+  async getActivities(params?: { contact_id?: string; type?: string }): Promise<any[]> {
+    try {
+      const query = new URLSearchParams(params as any).toString();
+      const res = await fetch(`${API_BASE}/activities${query ? `?${query}` : ""}`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("getActivities error", e);
+    }
+    return [];
+  },
+
+  async getTelephonySettings(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/telephony/settings`, {
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("getTelephonySettings error", e);
+    }
+    return { is_configured: false, provider: "TWILIO" };
+  },
+
+  async saveTelephonySettings(data: {
+    twilio_account_sid?: string;
+    twilio_auth_token?: string;
+    twilio_caller_id?: string;
+    twilio_twiml_app_sid?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/telephony/settings`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) {
+      let err = "Failed to save telephony settings";
+      try {
+        const json = await res.json();
+        err = json.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async initiateRealCall(payload: {
+    to_phone: string;
+    contact_id?: string | number;
+    contact_name?: string;
+    custom_message?: string;
+  }): Promise<any> {
+    const res = await fetch(`${API_BASE}/telephony/call`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({
+        to_phone: payload.to_phone,
+        contact_id: payload.contact_id ? String(payload.contact_id) : undefined,
+        contact_name: payload.contact_name,
+        custom_message: payload.custom_message
+      })
+    });
+    if (!res.ok) {
+      let err = "Failed to dispatch real call";
+      try {
+        const json = await res.json();
+        err = json.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
   }
 };
 

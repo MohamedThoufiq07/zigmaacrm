@@ -14,6 +14,8 @@ class Task(TimeStampedBase):
     priority = Column(String(50), default="Medium")       # Low, Medium, High, Urgent
     status = Column(String(50), default="PENDING")        # PENDING, COMPLETED, IN_PROGRESS
     assigned_to = Column(String(255), default="Mohamed Thoufiq")
+    owner_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)
+    owner_name = Column(String(255), default="Mohamed Thoufiq")
     description = Column(Text, nullable=True)
     
     # Associated contact

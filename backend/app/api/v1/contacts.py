@@ -8,7 +8,8 @@ from app.core.database import get_db
 from app.models.contact import Contact
 from app.models.deal import Deal
 from app.models.activity import Activity
-from app.models.organization_user import Organization
+from app.models.organization_user import Organization, User
+from app.api.deps import get_current_user
 from app.schemas.contact_schema import ContactCreate, ContactOut
 
 router = APIRouter()
@@ -18,9 +19,19 @@ async def get_contacts(
     search: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     query = select(Contact).order_by(Contact.created_at.desc())
+    if current_user.role == "SALES_REP":
+        query = query.where(
+            or_(
+                Contact.owner_id == current_user.id,
+                Contact.assigned_user_id == current_user.id,
+                Contact.owner_name.ilike(f"%{current_user.full_name}%"),
+                Contact.assigned_user_name.ilike(f"%{current_user.full_name}%")
+            )
+        )
     if org_id:
         query = query.where(Contact.organization_id == org_id)
     if status:
@@ -254,7 +265,8 @@ async def get_contact_ai_insights(
 async def create_contact(
     contact_in: ContactCreate,
     org_id: Optional[str] = Query(None),
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     target_org_id = org_id
     if not target_org_id:
@@ -263,23 +275,37 @@ async def create_contact(
         target_org_id = org.id if org else None
 
     designation = contact_in.designation or contact_in.job_title
-    contact = Contact(
-        organization_id=target_org_id,
-        full_name=contact_in.full_name,
-        email=contact_in.email,
-        phone=contact_in.phone,
-        company_name=contact_in.company_name,
-        designation=designation,
-        job_title=contact_in.job_title or designation,
-        status=contact_in.status or contact_in.lifecycle_stage or "NEW",
-        lifecycle_stage=contact_in.lifecycle_stage or contact_in.status or "NEW",
-        source=contact_in.source or "MANUAL",
-        custom_data=contact_in.custom_data or {},
-        assigned_user_name=contact_in.assigned_user_name or "Mohamed Thoufiq"
-    )
-    db.add(contact)
-    await db.commit()
-    await db.refresh(contact)
+    assigned_name = contact_in.assigned_user_name or (current_user.full_name if current_user else "Mohamed Thoufiq")
+    owner_id = current_user.id if current_user else None
+    owner_name = current_user.full_name if current_user else assigned_name
+
+    try:
+        contact = Contact(
+            organization_id=target_org_id,
+            full_name=contact_in.full_name or "Unnamed Contact",
+            email=contact_in.email,
+            phone=contact_in.phone or "",
+            company_name=contact_in.company_name,
+            designation=designation,
+            job_title=contact_in.job_title or designation,
+            status=contact_in.status or contact_in.lifecycle_stage or "NEW",
+            lifecycle_stage=contact_in.lifecycle_stage or contact_in.status or "NEW",
+            source=contact_in.source or "MANUAL",
+            custom_data=contact_in.custom_data or {},
+            assigned_user_name=assigned_name,
+            assigned_user_id=owner_id,
+            owner_id=owner_id,
+            owner_name=owner_name
+        )
+        db.add(contact)
+        await db.commit()
+        await db.refresh(contact)
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Failed to create contact: {str(e)}"
+        )
 
     return {
         "id": contact.id,

@@ -27,7 +27,7 @@ import {
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import CreateWorkflowModal from "@/components/automations/CreateWorkflowModal";
+import NewWorkflowDrawer from "@/components/automations/NewWorkflowDrawer";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { useToast } from "@/components/common/ToastProvider";
@@ -153,9 +153,11 @@ export default function AutomationsPage() {
   const getActionBadge = (actions?: any[]) => {
     if (!actions || actions.length === 0) return "General Action";
     const act = actions[0]?.action || "";
-    if (act.includes("WHATSAPP")) return "WhatsApp Dispatch";
-    if (act.includes("ASSIGN")) return "Round-Robin Assignment";
-    if (act.includes("TASK")) return "Task Creation";
+    if (act.includes("WHATSAPP")) return "WhatsApp";
+    if (act.includes("EMAIL")) return "Email Sync";
+    if (act.includes("DEAL")) return "Deals Module";
+    if (act.includes("TASK")) return "Task Automation";
+    if (act.includes("ASSIGN")) return "Auto-Assign";
     return act;
   };
 
@@ -255,6 +257,7 @@ export default function AutomationsPage() {
                         <th className="px-4 py-3.5 border-r border-slate-200/80">Workflow Name & Module</th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">Trigger Event</th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">Configured Action</th>
+                        <th className="px-4 py-3.5 border-r border-slate-200/80 text-center">Executions</th>
                         <th className="px-4 py-3.5 border-r border-slate-200/80">Last Executed</th>
                         <th className="px-4 py-3.5 text-right">Actions</th>
                       </tr>
@@ -263,7 +266,7 @@ export default function AutomationsPage() {
                     <tbody className="divide-y divide-slate-100 text-slate-700 font-medium text-xs">
                       {loading ? (
                         <tr>
-                          <td colSpan={6} className="py-24 text-center">
+                          <td colSpan={7} className="py-24 text-center">
                             <div className="max-w-md mx-auto space-y-2">
                               <RefreshCw className="w-6 h-6 text-red-600 animate-spin mx-auto" />
                               <p className="text-xs font-semibold text-slate-500">Loading workflows...</p>
@@ -272,7 +275,7 @@ export default function AutomationsPage() {
                         </tr>
                       ) : filteredWorkflows.length === 0 ? (
                         <tr>
-                          <td colSpan={6} className="py-24 text-center">
+                          <td colSpan={7} className="py-24 text-center">
                             <div className="max-w-md mx-auto space-y-2">
                               <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
                                 <Zap className="w-6 h-6" />
@@ -348,6 +351,14 @@ export default function AutomationsPage() {
                               <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                 <Layers className="w-3 h-3 text-indigo-500" />
                                 <span>{getActionBadge(wf.actions)}</span>
+                              </span>
+                            </td>
+
+                            {/* Execution Counts */}
+                            <td className="p-4 border-r border-slate-100 text-center">
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold font-mono bg-slate-100 text-slate-700 border border-slate-200">
+                                <Activity className="w-3 h-3 text-slate-400" />
+                                {wf.execution_count ?? 0}
                               </span>
                             </td>
 
@@ -477,8 +488,8 @@ export default function AutomationsPage() {
         </main>
       </div>
 
-      {/* Twozo-style Builder Modal */}
-      <CreateWorkflowModal
+      {/* Zigmaa Slide-Over Workflow Builder Drawer */}
+      <NewWorkflowDrawer
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreated={() => {

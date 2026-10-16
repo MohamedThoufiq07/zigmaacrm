@@ -8,6 +8,7 @@ class Activity(TimeStampedBase):
 
     organization_id = Column(String(36), ForeignKey("organizations.id"), nullable=False, index=True)
     lead_id = Column(String(36), ForeignKey("leads.id"), nullable=True)
+    contact_id = Column(String(36), ForeignKey("contacts.id"), nullable=True)
     deal_id = Column(String(36), ForeignKey("deals.id"), nullable=True)
     user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     type = Column(String(50), nullable=False)  # CALL, WHATSAPP, EMAIL, NOTE, STAGE_CHANGE
@@ -15,7 +16,8 @@ class Activity(TimeStampedBase):
     status = Column(String(50), default="COMPLETED")  # SCHEDULED, COMPLETED
     scheduled_at = Column(DateTime, nullable=True)
 
-    lead = relationship("Lead", back_populates="activities")
+    lead = relationship("Lead", back_populates="activities", foreign_keys=[lead_id])
+    contact = relationship("Contact", back_populates="activities", foreign_keys=[contact_id])
     deal = relationship("Deal", back_populates="activities")
 
 class MessageLog(TimeStampedBase):

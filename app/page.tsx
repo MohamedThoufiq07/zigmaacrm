@@ -1,280 +1,182 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Users,
-  UserPlus,
   TrendingUp,
   AlertTriangle,
   Clock,
   Calendar,
   CheckCircle2,
   ChevronDown,
-  LayoutGrid,
-  BarChart3,
-  Megaphone,
-  Globe,
-  Share2,
   Phone,
   MessageSquare,
   Mail,
   ChevronRight,
   Plus,
-  Download,
   Trash2,
   ExternalLink,
-  Kanban,
-  Check,
-  X
+  Briefcase,
+  Share2,
+  Globe,
+  Megaphone,
+  CheckSquare,
+  Square,
+  ArrowUpRight,
+  RefreshCw,
+  Sparkles,
+  PhoneCall
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import AddLeadModal from "@/components/leads/AddLeadModal";
-import LeadDetailsDrawer from "@/components/leads/LeadDetailsDrawer";
-import { api, formatGoogleCalendarUrl } from "@/lib/api";
-import { formatCurrency } from "@/lib/utils";
-import { Lead, Deal } from "@/lib/mockData";
+import ContactSlideDrawer from "@/components/contacts/ContactSlideDrawer";
+import NewTaskDrawer from "@/components/tasks/NewTaskDrawer";
+import { api } from "@/lib/api";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import { Contact, Task } from "@/lib/mockData";
+import { useToast } from "@/components/common/ToastProvider";
+
+interface DashboardMetrics {
+  range_type: string;
+  total_leads: number;
+  all_time_leads: number;
+  today_leads: number;
+  pipeline_value: number;
+  active_deals_count: number;
+  won_revenue: number;
+  won_deals_count: number;
+  conversion_rate: number;
+  pending_followups: number;
+  source_breakdown: Array<{ source: string; count: number; percentage: number }>;
+  stage_breakdown: Array<{ title: string; count: number; value: number; color?: string }>;
+  recent_leads: Array<{
+    id: string;
+    full_name: string;
+    email?: string;
+    phone?: string;
+    company_name?: string;
+    source?: string;
+    lifecycle_stage?: string;
+    created_at?: string;
+  }>;
+  today_due_tasks: Array<{
+    id: string | number;
+    title: string;
+    activity_type?: string;
+    due_date?: string;
+    due_time?: string;
+    priority?: string;
+    status?: string;
+    contact_name?: string;
+    contact_id?: string;
+  }>;
+}
 
 export default function DashboardPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [deals, setDeals] = useState<Deal[]>([]);
-  const [activeTab, setActiveTab] = useState<"leads" | "deals">("leads");
-  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
-  const [showAddLead, setShowAddLead] = useState(false);
+  const { toast } = useToast();
+  const [metrics, setMetrics] = useState<DashboardMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
   const [dateRange, setDateRange] = useState("Last 30 Days");
   const [showDateDropdown, setShowDateDropdown] = useState(false);
-  const [showEditLayoutModal, setShowEditLayoutModal] = useState(false);
 
-  // Layout customization state
-  const [visibleWidgets, setVisibleWidgets] = useState({
-    stats: true,
-    trendChart: true,
-    sourcePerformance: true,
-    recentTable: true,
-    quickActions: true
-  });
+  // Drawers
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [showAddTaskDrawer, setShowAddTaskDrawer] = useState(false);
 
-  const loadAllData = async () => {
+  // Local task completion toggle
+  const [completedTasks, setCompletedTasks] = useState<Set<string | number>>(new Set());
+
+  const fetchDashboardMetrics = async (range: string) => {
     try {
-      const [allLeads, allDeals] = await Promise.all([
-        api.getLeads(),
-        api.getDeals()
-      ]);
-      setLeads(allLeads);
-      setDeals(allDeals);
+      setLoading(true);
+      const data = await api.getDashboardMetrics(range);
+      if (data) {
+        setMetrics(data);
+      }
     } catch (e) {
-      console.error(e);
+      console.error("Failed to load dashboard metrics:", e);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadAllData();
-  }, []);
+    fetchDashboardMetrics(dateRange);
+  }, [dateRange]);
 
-  // Filter leads based on selected date range
-  const filteredLeads = leads.filter(lead => {
-    if (dateRange === "All Time") return true;
-    const created = new Date(lead.created_at).getTime();
-    const now = Date.now();
-    if (dateRange === "Today") {
-      return (now - created) <= 24 * 60 * 60 * 1000;
-    }
-    if (dateRange === "Yesterday") {
-      return (now - created) <= 48 * 60 * 60 * 1000;
-    }
-    if (dateRange === "Last 7 Days") {
-      return (now - created) <= 7 * 24 * 60 * 60 * 1000;
-    }
-    if (dateRange === "Last 30 Days") {
-      return (now - created) <= 30 * 24 * 60 * 60 * 1000;
-    }
-    return true;
-  });
-
-  // Calculate dynamic metrics starting from ZERO
-  const totalLeads = filteredLeads.length;
-  const now = new Date();
-  const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const todayStr = now.toISOString().split("T")[0];
-  const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const yesterdayStr = yesterday.toISOString().split("T")[0];
-  const thisMonth = now.getMonth();
-  const thisYear = now.getFullYear();
-
-  const newThisWeek = filteredLeads.filter(l => new Date(l.created_at) >= oneWeekAgo).length;
-  const convertedLeads = filteredLeads.filter(l => l.stage === "Closed / Won" || l.status === "CONVERTED").length;
-  const conversionRate = totalLeads > 0 ? `${((convertedLeads / totalLeads) * 100).toFixed(0)}%` : "0%";
-  
-  const overdueFollowups = filteredLeads.filter(l => {
-    if (l.stage === "Closed / Won" || l.stage === "Lost") return false;
-    const diff = (now.getTime() - new Date(l.created_at).getTime()) / (1000 * 3600 * 24);
-    return diff > 3;
-  }).length;
-
-  const todaysLeads = filteredLeads.filter(l => (l.created_at || "").startsWith(todayStr)).length;
-  const yesterdaysLeads = filteredLeads.filter(l => (l.created_at || "").startsWith(yesterdayStr)).length;
-  const leadsThisMonth = filteredLeads.filter(l => {
-    const d = new Date(l.created_at);
-    return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-  }).length;
-
-  // Deal metrics
-  const totalDeals = deals.length;
-  const wonDeals = deals.filter(d => d.stage === "Closed Won").length;
-  const winRate = totalDeals > 0 ? `${((wonDeals / totalDeals) * 100).toFixed(0)}%` : "0%";
-  const totalPipelineVal = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
-  const newDealsThisWeek = deals.filter(d => new Date(d.created_at) >= oneWeekAgo).length;
-  const todaysDeals = deals.filter(d => (d.created_at || "").startsWith(todayStr)).length;
-  const yesterdaysDeals = deals.filter(d => (d.created_at || "").startsWith(yesterdayStr)).length;
-  const dealsThisMonth = deals.filter(d => {
-    const dDate = new Date(d.created_at);
-    return dDate.getMonth() === thisMonth && dDate.getFullYear() === thisYear;
-  }).length;
-
-  // Stat cards for Leads view
-  const leadStatCards = [
-    {
-      title: "TOTAL LEADS",
-      value: totalLeads,
-      icon: Users,
-      topBorder: "border-t-[3px] border-blue-500",
-      iconBg: "bg-blue-50 text-blue-600"
-    },
-    {
-      title: "NEW LEADS THIS WEEK",
-      value: newThisWeek,
-      icon: UserPlus,
-      topBorder: "border-t-[3px] border-cyan-500",
-      iconBg: "bg-cyan-50 text-cyan-600"
-    },
-    {
-      title: "CONVERSION RATE",
-      value: conversionRate,
-      icon: TrendingUp,
-      topBorder: "border-t-[3px] border-pink-500",
-      iconBg: "bg-pink-50 text-pink-600"
-    },
-    {
-      title: "OVERDUE FOLLOW-UPS",
-      value: overdueFollowups,
-      icon: AlertTriangle,
-      topBorder: "border-t-[3px] border-rose-500",
-      iconBg: "bg-rose-50 text-rose-600"
-    },
-    {
-      title: "TODAY'S LEADS",
-      value: todaysLeads,
-      icon: Clock,
-      topBorder: "border-t-[3px] border-amber-500",
-      iconBg: "bg-amber-50 text-amber-600"
-    },
-    {
-      title: "YESTERDAY'S LEADS",
-      value: yesterdaysLeads,
-      icon: Calendar,
-      topBorder: "border-t-[3px] border-rose-500",
-      iconBg: "bg-rose-50 text-rose-600"
-    },
-    {
-      title: "LEADS THIS MONTH",
-      value: leadsThisMonth,
-      icon: BarChart3,
-      topBorder: "border-t-[3px] border-teal-500",
-      iconBg: "bg-teal-50 text-teal-600"
-    },
-    {
-      title: "CONVERTED LEADS",
-      value: convertedLeads,
-      icon: CheckCircle2,
-      topBorder: "border-t-[3px] border-emerald-500",
-      iconBg: "bg-emerald-50 text-emerald-600"
-    }
-  ];
-
-  // Stat cards for Deals view
-  const dealStatCards = [
-    {
-      title: "TOTAL DEALS",
-      value: totalDeals,
-      icon: Kanban,
-      topBorder: "border-t-[3px] border-blue-500",
-      iconBg: "bg-blue-50 text-blue-600"
-    },
-    {
-      title: "NEW DEALS THIS WEEK",
-      value: newDealsThisWeek,
-      icon: UserPlus,
-      topBorder: "border-t-[3px] border-cyan-500",
-      iconBg: "bg-cyan-50 text-cyan-600"
-    },
-    {
-      title: "WIN RATE",
-      value: winRate,
-      icon: TrendingUp,
-      topBorder: "border-t-[3px] border-pink-500",
-      iconBg: "bg-pink-50 text-pink-600"
-    },
-    {
-      title: "PIPELINE VALUE",
-      value: formatCurrency(totalPipelineVal),
-      icon: BarChart3,
-      topBorder: "border-t-[3px] border-rose-500",
-      iconBg: "bg-rose-50 text-rose-600"
-    },
-    {
-      title: "TODAY'S DEALS",
-      value: todaysDeals,
-      icon: Clock,
-      topBorder: "border-t-[3px] border-amber-500",
-      iconBg: "bg-amber-50 text-amber-600"
-    },
-    {
-      title: "YESTERDAY'S DEALS",
-      value: yesterdaysDeals,
-      icon: Calendar,
-      topBorder: "border-t-[3px] border-rose-500",
-      iconBg: "bg-rose-50 text-rose-600"
-    },
-    {
-      title: "DEALS THIS MONTH",
-      value: dealsThisMonth,
-      icon: BarChart3,
-      topBorder: "border-t-[3px] border-teal-500",
-      iconBg: "bg-teal-50 text-teal-600"
-    },
-    {
-      title: "CLOSED WON DEALS",
-      value: wonDeals,
-      icon: CheckCircle2,
-      topBorder: "border-t-[3px] border-emerald-500",
-      iconBg: "bg-emerald-50 text-emerald-600"
-    }
-  ];
-
-  const currentCards = activeTab === "leads" ? leadStatCards : dealStatCards;
-
-  // Source breakdown counts
-  const sourceCounts: Record<string, number> = {
-    "Meta Ads": 0,
-    "Google Ads": 0,
-    "Website Form": 0,
-    "Walk-in": 0,
-    "Referral": 0
+  const handleOpenContact = async (contactSummary: any) => {
+    try {
+      const fullContact = await api.getContactDetail(contactSummary.id);
+      if (fullContact) {
+        setSelectedContact(fullContact);
+        return;
+      }
+    } catch {}
+    // Fallback object matching Contact interface
+    setSelectedContact({
+      id: contactSummary.id,
+      name: contactSummary.full_name,
+      email: contactSummary.email || "",
+      phone: contactSummary.phone || "",
+      company_name: contactSummary.company_name || "",
+      status: contactSummary.lifecycle_stage || "NEW",
+      source: contactSummary.source || "MANUAL",
+      created_at: contactSummary.created_at || new Date().toISOString()
+    } as any);
   };
-  filteredLeads.forEach(l => {
-    const src = l.ad_source || l.source || "Meta Ads";
-    if (src in sourceCounts) {
-      sourceCounts[src] += 1;
-    } else {
-      sourceCounts["Referral"] = (sourceCounts["Referral"] || 0) + 1;
-    }
-  });
 
-  const handleDeleteLead = async (id: number | string) => {
-    if (confirm("Are you sure you want to delete this lead?")) {
-      await api.deleteLead(id);
-      loadAllData();
+  const handleToggleTask = async (taskId: string | number) => {
+    const isCompleted = completedTasks.has(taskId);
+    const next = new Set(completedTasks);
+    if (isCompleted) {
+      next.delete(taskId);
+    } else {
+      next.add(taskId);
+    }
+    setCompletedTasks(next);
+
+    try {
+      await api.toggleTaskStatus(taskId);
+      toast.success(
+        isCompleted ? "Task Reopened" : "Task Completed",
+        isCompleted ? "Task marked as pending" : "Task marked as completed"
+      );
+    } catch (e) {
+      // Revert if API fails
+      setCompletedTasks(completedTasks);
+      toast.error("Error", "Could not update task status");
+    }
+  };
+
+  // Helper for source icon & styling
+  const getSourceMeta = (source: string) => {
+    const s = (source || "").toUpperCase();
+    if (s.includes("META") || s.includes("FACEBOOK") || s.includes("INSTAGRAM")) {
+      return { label: "Meta Ads", icon: Megaphone, color: "bg-blue-500", text: "text-blue-600", bg: "bg-blue-50" };
+    }
+    if (s.includes("WEBSITE") || s.includes("FORM") || s.includes("WEB")) {
+      return { label: "Website Form", icon: Share2, color: "bg-emerald-500", text: "text-emerald-600", bg: "bg-emerald-50" };
+    }
+    if (s.includes("GOOGLE")) {
+      return { label: "Google Ads", icon: Globe, color: "bg-amber-500", text: "text-amber-600", bg: "bg-amber-50" };
+    }
+    return { label: source || "Manual", icon: Users, color: "bg-slate-500", text: "text-slate-600", bg: "bg-slate-50" };
+  };
+
+  // Helper for task activity icon
+  const getActivityIcon = (type?: string) => {
+    switch (type) {
+      case "Call":
+        return "📞";
+      case "WhatsApp":
+        return "💬";
+      case "Email":
+        return "📧";
+      case "Meeting":
+        return "🤝";
+      default:
+        return "📝";
     }
   };
 
@@ -284,69 +186,41 @@ export default function DashboardPage() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 space-y-6 custom-scrollbar">
-          {/* Top Header & Filter Row */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div className="flex items-center gap-6">
-              <div>
-                <h1 className="text-2xl font-bold text-slate-900 tracking-tight">
-                  {activeTab === "leads" ? "Leads Dashboard" : "Deals Dashboard"}
-                </h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  {activeTab === "leads"
-                    ? "Track, qualify, and convert your leads"
-                    : "Track pipelines, values, and sales velocity"}
-                </p>
-              </div>
-
-              {/* Segmented Pill Switcher */}
-              <div className="p-1 bg-slate-200/80 rounded-xl flex items-center gap-1 border border-slate-300/60">
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    setActiveTab("leads");
-                    e.currentTarget.blur();
-                  }}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! select-none cursor-pointer ${
-                    activeTab === "leads"
-                      ? "bg-red-600 text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                  style={{ outline: "none" }}
-                >
-                  <Users className="w-3.5 h-3.5" />
-                  <span>Leads</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    setActiveTab("deals");
-                    e.currentTarget.blur();
-                  }}
-                  className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all outline-none! focus:outline-none! focus-visible:outline-none! ring-0! focus:ring-0! select-none cursor-pointer ${
-                    activeTab === "deals"
-                      ? "bg-red-600 text-white shadow-sm"
-                      : "text-slate-600 hover:text-slate-900"
-                  }`}
-                  style={{ outline: "none" }}
-                >
-                  <Kanban className="w-3.5 h-3.5" />
-                  <span>Deals</span>
-                </button>
-              </div>
+        <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-6 custom-scrollbar">
+          {/* Executive Header Controls */}
+          <div className="flex flex-wrap items-center justify-between gap-4 pb-1">
+            <div>
+              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 flex items-center gap-2">
+                <span>Executive Dashboard</span>
+                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  Live PostgreSQL
+                </span>
+              </h1>
+              <p className="text-xs text-slate-500 font-medium mt-0.5">
+                Real-time CRM metrics, conversion rates, and revenue pipeline
+              </p>
             </div>
 
-            {/* Right Action Dropdowns */}
+            {/* Actions: Date Range Selector + Refresh */}
             <div className="flex items-center gap-2.5">
-              {/* Date Filter Dropdown */}
+              <button
+                onClick={() => fetchDashboardMetrics(dateRange)}
+                disabled={loading}
+                title="Refresh Metrics"
+                className="p-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 rounded-xl shadow-2xs transition-all cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin text-red-600" : ""}`} />
+              </button>
+
               <div className="relative">
                 <button
+                  type="button"
                   onClick={() => setShowDateDropdown(!showDateDropdown)}
-                  className="flex items-center gap-2 px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-xs hover:bg-slate-50 transition-colors"
+                  className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                 >
                   <Calendar className="w-3.5 h-3.5 text-slate-400" />
                   <span>{dateRange}</span>
-                  <ChevronDown className="w-3 h-3 text-slate-400" />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                 </button>
 
                 {showDateDropdown && (
@@ -358,7 +232,7 @@ export default function DashboardPage() {
                           setDateRange(range);
                           setShowDateDropdown(false);
                         }}
-                        className="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center justify-between"
+                        className="w-full text-left px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center justify-between cursor-pointer"
                       >
                         <span>{range}</span>
                         {dateRange === range && <span className="text-red-600 font-bold">✓</span>}
@@ -368,359 +242,476 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              {/* Edit Layout Button */}
               <button
-                onClick={() => setShowEditLayoutModal(true)}
-                className="flex items-center gap-1.5 px-3.5 py-1.5 bg-white border border-slate-200 text-slate-700 hover:border-red-500 hover:text-red-600 rounded-xl text-xs font-semibold shadow-xs transition-colors"
+                onClick={() => setShowAddTaskDrawer(true)}
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-all cursor-pointer"
               >
-                <LayoutGrid className="w-3.5 h-3.5" />
-                <span>Edit Layout</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Task</span>
               </button>
             </div>
           </div>
 
-          {/* 8 Stat Cards Grid (2 rows x 4 cols) */}
-          {visibleWidgets.stats && (
-            <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
-              {currentCards.map((card, idx) => {
-                const Icon = card.icon;
-                return (
-                  <div
-                    key={idx}
-                    className={`p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden ${card.topBorder}`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
-                        {card.title}
-                      </span>
-                      <div className={`p-2 rounded-full ${card.iconBg} transition-transform`}>
-                        <Icon className="w-4 h-4" />
-                      </div>
-                    </div>
-
-                    <div className="text-3xl font-bold text-slate-900 tracking-tight mt-3">
-                      {card.value}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {/* Analytics & Performance Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* Leads Trend Card */}
-            {visibleWidgets.trendChart && (
-              <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Leads Trend</h3>
-                    <p className="text-xs text-slate-500 font-medium">Volume over last 6 months</p>
-                  </div>
-                  <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-100">
-                    Live Record
+          {/* 1. TOP 4 HIGH-IMPACT KPI CARDS */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Card 1: Total Leads */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden border-t-[3px] border-t-blue-500">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                  Total Leads
+                </span>
+                <div className="p-2 rounded-xl bg-blue-50 text-blue-600">
+                  <Users className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
+                  {loading ? (
+                    <div className="h-8 w-16 bg-slate-100 rounded-md animate-pulse" />
+                  ) : (
+                    metrics?.total_leads ?? 0
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    +{metrics?.today_leads ?? 0} today
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({metrics?.all_time_leads ?? 0} all-time)
                   </span>
                 </div>
+              </div>
+            </div>
 
-                {/* Dynamic Trend Visualization */}
-                <div className="h-44 flex items-end justify-between gap-4 pt-4 px-2">
-                  {[
-                    { month: "May", leads: 0 },
-                    { month: "Jun", leads: 0 },
-                    { month: "Jul", leads: 0 },
-                    { month: "Aug", leads: 0 },
-                    { month: "Sep", leads: 0 },
-                    { month: "Oct", leads: totalLeads }
-                  ].map((item, idx) => {
-                    const maxVal = Math.max(totalLeads, 10);
-                    const heightPercent = totalLeads > 0 && item.month === "Oct" ? Math.min(100, Math.max(20, (item.leads / maxVal) * 100)) : 10;
+            {/* Card 2: Active Pipeline Value */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden border-t-[3px] border-t-amber-500">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                  Active Pipeline Value
+                </span>
+                <div className="p-2 rounded-xl bg-amber-50 text-amber-600">
+                  <Briefcase className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
+                  {loading ? (
+                    <div className="h-8 w-24 bg-slate-100 rounded-md animate-pulse" />
+                  ) : (
+                    formatCurrency(metrics?.pipeline_value ?? 0)
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    {metrics?.active_deals_count ?? 0} active deals
+                  </span>
+                  <span className="text-[11px] text-slate-400">in progression</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Closed Won Revenue */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden border-t-[3px] border-t-emerald-500">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                  Closed Revenue
+                </span>
+                <div className="p-2 rounded-xl bg-emerald-50 text-emerald-600">
+                  <TrendingUp className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
+                  {loading ? (
+                    <div className="h-8 w-24 bg-slate-100 rounded-md animate-pulse" />
+                  ) : (
+                    formatCurrency(metrics?.won_revenue ?? 0)
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    {metrics?.conversion_rate ?? 0}% win rate
+                  </span>
+                  <span className="text-[11px] text-slate-400">
+                    ({metrics?.won_deals_count ?? 0} won)
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 4: Pending Follow-ups */}
+            <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col justify-between hover:shadow-md transition-shadow relative overflow-hidden border-t-[3px] border-t-rose-500">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold uppercase text-slate-400 tracking-wider">
+                  Pending Follow-ups
+                </span>
+                <div className="p-2 rounded-xl bg-rose-50 text-rose-600">
+                  <AlertTriangle className="w-4.5 h-4.5" />
+                </div>
+              </div>
+              <div className="mt-3">
+                <div className="text-2xl lg:text-3xl font-bold text-slate-900 tracking-tight">
+                  {loading ? (
+                    <div className="h-8 w-16 bg-slate-100 rounded-md animate-pulse" />
+                  ) : (
+                    metrics?.pending_followups ?? 0
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 mt-2">
+                  {(metrics?.pending_followups ?? 0) > 0 ? (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                      Needs action
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-50 text-slate-600 border border-slate-200">
+                      All caught up
+                    </span>
+                  )}
+                  <span className="text-[11px] text-slate-400">due or overdue</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. MIDDLE SECTION: PIPELINE STAGES & SOURCE BREAKDOWN */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Left: Pipeline Stage Distribution (8 Cols) */}
+            <div className="lg:col-span-8 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Pipeline Stage Distribution</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Deal value and volume progression across pipeline stages
+                  </p>
+                </div>
+                <Link
+                  href="/pipeline"
+                  className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+                >
+                  <span>Deals Board</span>
+                  <ArrowUpRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {loading ? (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-9 bg-slate-50 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (metrics?.stage_breakdown?.length ?? 0) === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-400">
+                  No active pipeline deals created yet.
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {metrics?.stage_breakdown.map((st, idx) => {
+                    const maxVal = Math.max(
+                      ...(metrics?.stage_breakdown.map((s) => s.value) || [1]),
+                      1
+                    );
+                    const widthPct = Math.max(5, Math.min(100, (st.value / maxVal) * 100));
+
                     return (
-                      <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                        <div className="w-full max-w-[48px] flex items-end justify-center h-32 bg-slate-50 rounded-xl p-1 relative border border-slate-100">
-                          <div
-                            className="w-full bg-red-600 rounded-lg transition-all group-hover:bg-red-700"
-                            style={{ height: `${heightPercent}%` }}
-                          />
-                          <div className="absolute -top-7 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow">
-                            {item.leads}
+                      <div key={idx} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full"
+                              style={{ backgroundColor: st.color || "#3b82f6" }}
+                            />
+                            <span className="font-semibold text-slate-800">{st.title}</span>
+                            <span className="text-[11px] text-slate-400 font-medium">
+                              ({st.count} {st.count === 1 ? "deal" : "deals"})
+                            </span>
                           </div>
+                          <span className="font-bold text-slate-900 font-mono">
+                            {formatCurrency(st.value)}
+                          </span>
                         </div>
-                        <span className="text-xs font-semibold text-slate-500">{item.month}</span>
+                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
+                          <div
+                            className="h-full rounded-full transition-all duration-500"
+                            style={{
+                              width: `${widthPct}%`,
+                              backgroundColor: st.color || "#3b82f6"
+                            }}
+                          />
+                        </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
 
-            {/* Source Performance Card */}
-            {visibleWidgets.sourcePerformance && (
-              <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                  <div>
-                    <h3 className="text-sm font-bold text-slate-900">Source Performance</h3>
-                    <p className="text-xs text-slate-500 font-medium">Leads & conversions by source</p>
-                  </div>
-                  <Megaphone className="w-4 h-4 text-slate-400" />
+            {/* Right: Lead Source Performance (4 Cols) */}
+            <div className="lg:col-span-4 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-5">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Source Performance</h3>
+                  <p className="text-xs text-slate-500 font-medium">Distribution by inbound channel</p>
                 </div>
+                <Megaphone className="w-4 h-4 text-slate-400" />
+              </div>
 
-                {/* Source Bars */}
-                <div className="space-y-3.5 pt-2">
-                  {[
-                    { name: "Meta Ads", count: sourceCounts["Meta Ads"], color: "bg-blue-600", icon: Megaphone },
-                    { name: "Google Ads", count: sourceCounts["Google Ads"], color: "bg-amber-500", icon: Globe },
-                    { name: "Website Form", count: sourceCounts["Website Form"], color: "bg-emerald-500", icon: Share2 },
-                    { name: "Walk-in", count: sourceCounts["Walk-in"], color: "bg-rose-600", icon: Users },
-                    { name: "Referral", count: sourceCounts["Referral"], color: "bg-cyan-600", icon: Users }
-                  ].map((src, idx) => {
-                    const percent = totalLeads > 0 ? ((src.count / totalLeads) * 100).toFixed(0) : "0";
+              {loading ? (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-9 bg-slate-50 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3.5">
+                  {metrics?.source_breakdown.map((src, idx) => {
+                    const meta = getSourceMeta(src.source);
+                    const Icon = meta.icon;
+
                     return (
                       <div key={idx} className="space-y-1.5">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-semibold text-slate-700">{src.name}</span>
-                          <span className="font-bold text-slate-900">
-                            {src.count} ({percent}%)
+                          <div className="flex items-center gap-1.5">
+                            <Icon className={`w-3.5 h-3.5 ${meta.text}`} />
+                            <span className="font-semibold text-slate-700">{meta.label}</span>
+                          </div>
+                          <span className="font-bold text-slate-900 font-mono">
+                            {src.count} ({src.percentage}%)
                           </span>
                         </div>
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                           <div
-                            className={`h-full ${src.color} transition-all duration-500`}
-                            style={{ width: `${percent}%` }}
+                            className={`h-full ${meta.color} transition-all duration-500`}
+                            style={{ width: `${Math.max(src.percentage, 2)}%` }}
                           />
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Quick Actions & Recent Table Section */}
-          {visibleWidgets.recentTable && (
-            <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+          {/* 3. BOTTOM OPERATIONAL FEEDS: RECENT INBOUND LEADS & TODAY'S DUE TASKS */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* Bottom Left: Recent Inbound Leads (7 Cols) */}
+            <div className="lg:col-span-7 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div>
-                  <h3 className="text-sm font-bold text-slate-900">Recent Records</h3>
+                  <h3 className="text-sm font-bold text-slate-900">Recent Inbound Leads</h3>
                   <p className="text-xs text-slate-500 font-medium">
-                    {totalLeads > 0 ? `Showing ${Math.min(5, totalLeads)} of ${totalLeads} active records` : "No records yet. Start by adding a lead."}
+                    Latest contacts captured into your database
                   </p>
                 </div>
-
-                <div className="flex items-center gap-2">
-                  <Link
-                    href="/leads/import"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Bulk Import CSV</span>
-                  </Link>
-
-                  <Link
-                    href="/events"
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 text-xs font-semibold rounded-xl transition-colors"
-                  >
-                    <Calendar className="w-3.5 h-3.5" />
-                    <span>Google Calendar</span>
-                  </Link>
-
-                  <Link
-                    href="/leads"
-                    className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-600 hover:underline"
-                  >
-                    <span>View All</span>
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </Link>
-                </div>
+                <Link
+                  href="/contacts"
+                  className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+                >
+                  <span>View All Contacts</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
               </div>
 
-              {/* Table or Zero State */}
-              {leads.length === 0 ? (
-                <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                  <div className="w-12 h-12 rounded-full bg-red-50 text-red-600 flex items-center justify-center">
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-800">Clean Slate — 0 Records</h4>
-                    <p className="text-xs text-slate-500 max-w-sm mt-1">
-                      No dummy prices or dummy data. Click &quot;Add Lead&quot; or import a CSV to populate your CRM.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setShowAddLead(true)}
-                    className="mt-2 flex items-center gap-1.5 px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow-sm hover:bg-red-700 transition-all"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>Add First Lead</span>
-                  </button>
+              {loading ? (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <div key={i} className="h-10 bg-slate-50 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (metrics?.recent_leads?.length ?? 0) === 0 ? (
+                <div className="py-10 text-center text-xs text-slate-400">
+                  No contacts found in PostgreSQL yet.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs">
                     <thead>
-                      <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[11px]">
-                        <th className="py-2.5 px-3">Lead Name</th>
-                        <th className="py-2.5 px-3">Company</th>
-                        <th className="py-2.5 px-3">Phone</th>
-                        <th className="py-2.5 px-3">Source</th>
-                        <th className="py-2.5 px-3">Stage</th>
-                        <th className="py-2.5 px-3">Deal Value</th>
-                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      <tr className="border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                        <th className="py-2 px-2">Contact Name</th>
+                        <th className="py-2 px-2">Company</th>
+                        <th className="py-2 px-2">Source</th>
+                        <th className="py-2 px-2">Stage</th>
+                        <th className="py-2 px-2 text-right">Action</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {leads.slice(0, 5).map((lead) => (
-                        <tr key={lead.id} className="hover:bg-slate-50/80 transition-colors">
-                          <td className="py-3 px-3 font-semibold text-slate-900">
-                            {lead.name}
-                          </td>
-                          <td className="py-3 px-3 text-slate-600">
-                            {lead.company_name || "—"}
-                          </td>
-                          <td className="py-3 px-3 text-slate-600 font-mono">
-                            {lead.phone}
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
-                              {lead.ad_source || "Direct"}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3">
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-50 text-red-600 border border-red-200">
-                              {lead.stage}
-                            </span>
-                          </td>
-                          <td className="py-3 px-3 font-semibold text-slate-900">
-                            {formatCurrency(lead.deal_value || 0)}
-                          </td>
-                          <td className="py-3 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              {lead.phone && (
-                                <a
-                                  href={`tel:${lead.phone}`}
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                  title="Call"
-                                >
-                                  <Phone className="w-3.5 h-3.5" />
-                                </a>
-                              )}
-                              {lead.phone && (
-                                <a
-                                  href={`https://wa.me/${lead.phone.replace(/[^0-9]/g, "")}`}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="p-1.5 rounded-lg text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                  title="WhatsApp"
-                                >
-                                  <MessageSquare className="w-3.5 h-3.5" />
-                                </a>
-                              )}
+                    <tbody className="divide-y divide-slate-50">
+                      {metrics?.recent_leads.map((c) => {
+                        const meta = getSourceMeta(c.source || "");
+
+                        return (
+                          <tr
+                            key={c.id}
+                            className="hover:bg-slate-50/80 transition-colors group cursor-pointer"
+                            onClick={() => handleOpenContact(c)}
+                          >
+                            <td className="py-2.5 px-2 font-semibold text-slate-900 flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center font-bold text-[10px] shrink-0">
+                                {c.full_name?.charAt(0)?.toUpperCase() || "C"}
+                              </div>
+                              <span className="truncate max-w-[130px] group-hover:text-red-600 transition-colors">
+                                {c.full_name}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-slate-600 truncate max-w-[110px]">
+                              {c.company_name || "—"}
+                            </td>
+                            <td className="py-2.5 px-2">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${meta.bg} ${meta.text}`}
+                              >
+                                {meta.label}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-600">
+                                {c.lifecycle_stage || "NEW"}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-2 text-right">
                               <button
-                                onClick={() => setSelectedLead(lead)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                                title="View Details"
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenContact(c);
+                                }}
+                                className="p-1 rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 transition-colors"
+                                title="Open Drawer"
                               >
                                 <ExternalLink className="w-3.5 h-3.5" />
                               </button>
-                              <button
-                                onClick={() => handleDeleteLead(lead.id)}
-                                className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
               )}
             </div>
-          )}
+
+            {/* Bottom Right: Today's Due Tasks (5 Cols) */}
+            <div className="lg:col-span-5 p-6 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Today's Due Tasks</h3>
+                  <p className="text-xs text-slate-500 font-medium">
+                    Immediate action checklist for your day
+                  </p>
+                </div>
+                <Link
+                  href="/tasks"
+                  className="flex items-center gap-1 text-xs font-semibold text-red-600 hover:underline"
+                >
+                  <span>All Tasks</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </Link>
+              </div>
+
+              {loading ? (
+                <div className="space-y-3 py-4">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-10 bg-slate-50 rounded-xl animate-pulse" />
+                  ))}
+                </div>
+              ) : (metrics?.today_due_tasks?.length ?? 0) === 0 ? (
+                <div className="py-10 text-center space-y-2">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 mx-auto flex items-center justify-center">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700">No overdue tasks!</p>
+                  <p className="text-[11px] text-slate-400">You are all caught up for today.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {metrics?.today_due_tasks.map((task) => {
+                    const isDone =
+                      completedTasks.has(task.id) ||
+                      (task.status || "").toUpperCase() === "COMPLETED";
+
+                    return (
+                      <div
+                        key={task.id}
+                        className={`p-3 rounded-xl border transition-all flex items-start gap-2.5 ${
+                          isDone
+                            ? "bg-slate-50/60 border-slate-200 opacity-60"
+                            : "bg-white border-slate-200/90 shadow-2xs hover:border-red-300"
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleToggleTask(task.id)}
+                          className="mt-0.5 text-slate-400 hover:text-red-600 transition-colors cursor-pointer"
+                        >
+                          {isDone ? (
+                            <CheckSquare className="w-4 h-4 text-emerald-600" />
+                          ) : (
+                            <Square className="w-4 h-4" />
+                          )}
+                        </button>
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">{getActivityIcon(task.activity_type)}</span>
+                            <h4
+                              className={`text-xs font-bold truncate leading-tight ${
+                                isDone ? "line-through text-slate-400" : "text-slate-900"
+                              }`}
+                            >
+                              {task.title}
+                            </h4>
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[10px] text-slate-500 mt-1">
+                            {task.contact_name && (
+                              <span className="font-medium text-slate-700 truncate max-w-[110px]">
+                                {task.contact_name}
+                              </span>
+                            )}
+                            {task.due_date && (
+                              <span className="font-mono text-slate-400">
+                                {task.due_date} {task.due_time || ""}
+                              </span>
+                            )}
+                            <span
+                              className={`px-1.5 py-0.2 rounded font-bold ${
+                                task.priority === "Urgent" || task.priority === "High"
+                                  ? "bg-rose-50 text-rose-700"
+                                  : task.priority === "Medium"
+                                  ? "bg-amber-50 text-amber-700"
+                                  : "bg-slate-100 text-slate-600"
+                              }`}
+                            >
+                              {task.priority || "Medium"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </main>
       </div>
 
-      {/* Edit Layout Modal */}
-      {showEditLayoutModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="font-bold text-slate-900 text-base">Customize Dashboard Layout</h3>
-                <p className="text-xs text-slate-500">Toggle panels to customize your dashboard</p>
-              </div>
-              <button
-                onClick={() => setShowEditLayoutModal(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Slide Drawer for Contact Click */}
+      <ContactSlideDrawer
+        contact={selectedContact}
+        isOpen={!!selectedContact}
+        onClose={() => setSelectedContact(null)}
+      />
 
-            <div className="space-y-2.5">
-              {[
-                { key: "stats", label: "8 Metric Stat Cards (Zero-Default)" },
-                { key: "trendChart", label: "Leads Trend Chart (6 Months)" },
-                { key: "sourcePerformance", label: "Source Performance Analytics" },
-                { key: "recentTable", label: "Recent Records Table & Actions" }
-              ].map((item) => (
-                <label
-                  key={item.key}
-                  className="flex items-center justify-between p-3 rounded-xl border border-slate-200 hover:bg-slate-50 cursor-pointer"
-                >
-                  <span className="text-xs font-semibold text-slate-800">{item.label}</span>
-                  <input
-                    type="checkbox"
-                    checked={visibleWidgets[item.key as keyof typeof visibleWidgets]}
-                    onChange={(e) =>
-                      setVisibleWidgets({
-                        ...visibleWidgets,
-                        [item.key]: e.target.checked
-                      })
-                    }
-                    className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
-                  />
-                </label>
-              ))}
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <button
-                onClick={() => setShowEditLayoutModal(false)}
-                className="px-4 py-2 bg-red-600 text-white text-xs font-bold rounded-xl shadow hover:bg-red-700"
-              >
-                Save Layout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Lead Modal */}
-      {showAddLead && (
-        <AddLeadModal
-          isOpen={showAddLead}
-          onClose={() => {
-            setShowAddLead(false);
-            loadAllData();
-          }}
-        />
-      )}
-
-      {/* Lead Details Drawer */}
-      {selectedLead && (
-        <LeadDetailsDrawer
-          lead={selectedLead}
-          isOpen={!!selectedLead}
-          onClose={() => {
-            setSelectedLead(null);
-            loadAllData();
-          }}
-          onLeadUpdated={loadAllData}
-        />
-      )}
+      {/* Slide Drawer for Add Task */}
+      <NewTaskDrawer
+        isOpen={showAddTaskDrawer}
+        onClose={() => setShowAddTaskDrawer(false)}
+        onSubmit={async (taskData) => {
+          await api.createTask(taskData);
+          setShowAddTaskDrawer(false);
+          fetchDashboardMetrics(dateRange);
+        }}
+      />
     </div>
   );
 }

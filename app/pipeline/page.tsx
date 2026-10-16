@@ -32,6 +32,8 @@ import Header from "@/components/layout/Header";
 import FilterSelect from "@/components/common/FilterSelect";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
 import ManageCustomFieldsModal from "@/components/common/ManageCustomFieldsModal";
+import NewDealDrawer from "@/components/deals/NewDealDrawer";
+import DealDetailsDrawer from "@/components/deals/DealDetailsDrawer";
 import { Sliders, ArrowUpDown } from "lucide-react";
 import { api } from "@/lib/api";
 import { formatCurrency } from "@/lib/utils";
@@ -78,7 +80,8 @@ export default function PipelineDealsPage() {
   const [selectedStage, setSelectedStage] = useState("ALL");
   const [searchQuery, setSearchQuery] = useState("");
   const [showSearchInput, setShowSearchInput] = useState(false);
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showAddDrawer, setShowAddDrawer] = useState(false);
+  const [selectedDealForDetails, setSelectedDealForDetails] = useState<Deal | null>(null);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedIds, setSelectedIds] = useState<Set<number | string>>(new Set());
@@ -87,15 +90,6 @@ export default function PipelineDealsPage() {
   const [customData, setCustomData] = useState<Record<string, any>>({});
   const [sortBy, setSortBy] = useState<"value" | "close_date" | "none">("none");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
-
-  // Form Fields
-  const [title, setTitle] = useState("");
-  const [companyName, setCompanyName] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [value, setValue] = useState("");
-  const [stage, setStage] = useState("New Deal");
-  const [probability, setProbability] = useState("30");
-  const [closeDate, setCloseDate] = useState("");
 
   const loadDeals = async () => {
     try {
@@ -116,48 +110,27 @@ export default function PipelineDealsPage() {
   useEffect(() => {
     loadDeals();
     loadCustomFields();
-    const future = new Date(Date.now() + 14 * 86400000).toISOString().split("T")[0];
-    setCloseDate(future);
   }, []);
 
-  const handleCreateDeal = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!title.trim() || !value) return;
-
-    const newDeal: Partial<Deal> = {
-      title: title.trim(),
-      company_name: companyName.trim() || "Enterprise Client",
-      contact_name: contactName.trim(),
-      value: Number(value) || 0,
-      stage: stage as any,
-      probability: Number(probability) || 50,
-      close_date: closeDate || new Date().toISOString().split("T")[0],
-      custom_data: customData
-    };
-
-    // Optimistic Update
+  const handleCreateDealDrawer = async (dealData: Partial<Deal>) => {
     const temp: Deal = {
       id: Date.now(),
-      title: title.trim(),
-      company_name: companyName.trim() || "Enterprise Client",
-      contact_name: contactName.trim(),
-      value: Number(value) || 0,
-      stage: stage as any,
-      probability: Number(probability) || 50,
-      close_date: closeDate || new Date().toISOString().split("T")[0],
+      title: dealData.title || "New Deal",
+      company_name: dealData.company_name || "Enterprise Client",
+      contact_name: dealData.contact_name || "",
+      value: Number(dealData.value) || 0,
+      deal_value: Number(dealData.value) || 0,
+      stage: dealData.stage || ("New Deal" as any),
+      probability: Number(dealData.probability) || 50,
+      close_date: dealData.close_date || new Date().toISOString().split("T")[0],
+      expected_close_date: dealData.close_date || new Date().toISOString().split("T")[0],
       created_at: new Date().toISOString(),
-      custom_data: customData
+      custom_data: dealData.custom_data || {}
     };
     setDeals((prev) => [temp, ...prev]);
 
-    await api.createDeal(newDeal);
-    setTitle("");
-    setCompanyName("");
-    setContactName("");
-    setValue("");
-    setCustomData({});
-    setShowAddModal(false);
-    toast.success("Deal Created", `"${newDeal.title}" was added.`);
+    await api.createDeal(dealData);
+    toast.success("Deal Created", `"${dealData.title}" was added.`);
     loadDeals();
   };
 
@@ -333,7 +306,7 @@ export default function PipelineDealsPage() {
 
               {/* Right Action Buttons */}
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => setShowAddDrawer(true)}
                 className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-semibold rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
@@ -605,8 +578,8 @@ export default function PipelineDealsPage() {
 
           {/* VIEW 2: KANBAN VIEW (Matching Leads: Independent Columns, Red Theme, Horizontal Board Scroll, Individual Column Scroll) */}
           {viewMode === "kanban" && (
-            <div className="w-full overflow-x-auto pb-4 pt-1">
-              <div className="flex items-start gap-4 w-max min-w-full">
+            <div className="w-full overflow-x-auto pb-4 pt-1 scrollbar-thin scrollbar-thumb-slate-200">
+              <div className="flex items-start gap-4 min-w-max">
                 {DEAL_STAGES.map((st) => {
                   const stageDeals = filteredDeals.filter((d) => d.stage === st.id);
                   const stageTotalValue = stageDeals.reduce((sum, d) => sum + (d.value || 0), 0);
@@ -620,7 +593,7 @@ export default function PipelineDealsPage() {
                         const dealId = e.dataTransfer.getData("dealId");
                         if (dealId) handleStageChange(dealId, st.id);
                       }}
-                      className="w-[280px] sm:w-[305px] shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[calc(100vh-215px)] min-h-[500px] max-h-[700px] transition-all"
+                      className="w-[280px] shrink-0 bg-white rounded-2xl border border-slate-200 shadow-xs flex flex-col h-[calc(100vh-215px)] min-h-[500px] max-h-[700px] transition-all"
                     >
                       {/* Column Header: [Dot] [Grip] [Title] [Count Pill] [Chevron] */}
                       <div className="p-3.5 border-b border-slate-100 flex items-center justify-between select-none shrink-0 bg-white rounded-t-2xl">
@@ -652,17 +625,8 @@ export default function PipelineDealsPage() {
                       {/* Column Body: Individual Vertical Scrollbar */}
                       <div className="flex-1 p-3 space-y-2.5 overflow-y-auto custom-scrollbar flex flex-col">
                         {stageDeals.length === 0 ? (
-                          <div className="flex-1 flex flex-col items-center justify-center py-16 px-4 text-center select-none">
-                            <p className="text-xs text-slate-500 font-medium mb-3">
-                              No Columns found
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => setShowAddModal(true)}
-                              className="px-4 py-1.5 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white text-xs font-semibold rounded-full shadow-xs transition-all cursor-pointer"
-                            >
-                              Create Deals
-                            </button>
+                          <div className="min-h-[140px] border-2 border-dashed border-slate-200/80 rounded-xl flex items-center justify-center text-slate-400 text-xs font-normal select-none">
+                            Drop deal here
                           </div>
                         ) : (
                           stageDeals.map((deal) => (
@@ -670,28 +634,30 @@ export default function PipelineDealsPage() {
                               key={deal.id}
                               draggable
                               onDragStart={(e) => e.dataTransfer.setData("dealId", String(deal.id))}
-                              className="p-3.5 bg-white rounded-xl border border-slate-200/90 shadow-2xs hover:shadow-md hover:border-red-300 transition-all cursor-grab active:cursor-grabbing space-y-2.5 group shrink-0"
+                              onClick={() => setSelectedDealForDetails(deal)}
+                              className="border border-slate-200/80 rounded-xl shadow-xs hover:shadow-md transition-shadow p-3.5 bg-white cursor-grab active:cursor-grabbing space-y-2.5 group shrink-0"
                             >
                               <div className="flex items-start justify-between gap-2">
-                                <div>
-                                  <h4 className="text-xs font-bold text-slate-900 group-hover:text-red-600 transition-colors leading-tight">
+                                <div className="min-w-0">
+                                  <h4 className="font-medium text-slate-800 text-sm group-hover:text-red-600 transition-colors leading-snug truncate">
                                     {deal.title}
                                   </h4>
-                                  <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-                                    {deal.company_name} {deal.contact_name ? `• ${deal.contact_name}` : ""}
+                                  <p className="text-xs text-slate-500 truncate mt-0.5">
+                                    {deal.company_name || "Enterprise Account"}
+                                    {deal.contact_name ? ` • ${deal.contact_name}` : ""}
                                   </p>
                                 </div>
-                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
-                                  {deal.probability}% Prob.
+                                <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full shrink-0">
+                                  {deal.probability || 50}%
                                 </span>
                               </div>
 
                               <div className="flex items-center justify-between text-xs pt-1">
-                                <span className="font-bold text-red-600 text-sm">
-                                  {formatCurrency(deal.value)}
+                                <span className="text-slate-900 font-semibold text-sm">
+                                  {formatCurrency(deal.value || deal.deal_value || 0)}
                                 </span>
                                 <span className="text-[11px] text-slate-500 font-medium">
-                                  Due: {deal.close_date || "Open"}
+                                  Due: {deal.close_date || deal.expected_close_date || "Open"}
                                 </span>
                               </div>
 
@@ -699,7 +665,7 @@ export default function PipelineDealsPage() {
                               <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5">
                                 <span className="flex items-center gap-1.5 truncate">
                                   <span className="w-5 h-5 rounded-full bg-red-100 text-red-700 text-[10px] font-bold flex items-center justify-center shrink-0">
-                                    {(deal.contact_name || "A").substring(0, 1).toUpperCase()}
+                                    {(deal.contact_name || deal.company_name || "A").substring(0, 1).toUpperCase()}
                                   </span>
                                   <span className="truncate">{deal.contact_name || "Assigned Agent"}</span>
                                 </span>
@@ -715,10 +681,11 @@ export default function PipelineDealsPage() {
                                 />
                               </div>
 
-                              <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs">
+                              <div className="flex items-center justify-end pt-2 border-t border-slate-100 text-xs" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center gap-1">
                                   {DEAL_STAGES.findIndex((s) => s.id === st.id) > 0 && (
                                     <button
+                                      type="button"
                                       onClick={() => {
                                         const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
                                         if (idx > 0) handleStageChange(deal.id, DEAL_STAGES[idx - 1].id);
@@ -731,6 +698,7 @@ export default function PipelineDealsPage() {
                                   )}
                                   {DEAL_STAGES.findIndex((s) => s.id === st.id) < DEAL_STAGES.length - 1 && (
                                     <button
+                                      type="button"
                                       onClick={() => {
                                         const idx = DEAL_STAGES.findIndex((s) => s.id === st.id);
                                         if (idx < DEAL_STAGES.length - 1) handleStageChange(deal.id, DEAL_STAGES[idx + 1].id);
@@ -756,174 +724,28 @@ export default function PipelineDealsPage() {
         </main>
       </div>
 
-      {/* Add Deal Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4 border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900 text-base">Create New Deal</h3>
-              <button
-                onClick={() => setShowAddModal(false)}
-                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Add Deal Slide-Over Drawer */}
+      <NewDealDrawer
+        isOpen={showAddDrawer}
+        onClose={() => setShowAddDrawer(false)}
+        onSubmit={handleCreateDealDrawer}
+        customFields={customFields}
+      />
 
-            <form onSubmit={handleCreateDeal} className="space-y-3.5">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Deal Title *</label>
-                <input
-                  type="text"
-                  required
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Enterprise Cloud Migration Contract"
-                  className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:bg-white font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Company Name</label>
-                  <input
-                    type="text"
-                    value={companyName}
-                    onChange={(e) => setCompanyName(e.target.value)}
-                    placeholder="Acme Global Inc"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Contact Person</label>
-                  <input
-                    type="text"
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="Robert Smith"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Deal Value (₹ / $) *</label>
-                  <input
-                    type="number"
-                    required
-                    value={value}
-                    onChange={(e) => setValue(e.target.value)}
-                    placeholder="250000"
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Stage</label>
-                  <select
-                    value={stage}
-                    onChange={(e) => setStage(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                  >
-                    {DEAL_STAGES.map((s) => (
-                      <option key={s.id} value={s.id}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Probability (%)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="100"
-                    value={probability}
-                    onChange={(e) => setProbability(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1">Target Close Date</label>
-                  <input
-                    type="date"
-                    value={closeDate}
-                    onChange={(e) => setCloseDate(e.target.value)}
-                    className="w-full bg-slate-50 text-slate-900 text-xs px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                  />
-                </div>
-              </div>
-
-              {/* Dynamic Custom Fields in Deal Modal */}
-              {customFields.length > 0 && (
-                <div className="space-y-3 pt-2 border-t border-slate-100">
-                  <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
-                    Custom Attributes
-                  </span>
-                  <div className="grid grid-cols-2 gap-3">
-                    {customFields.map((cf) => (
-                      <div key={cf.id}>
-                        <label className="block text-xs font-bold text-slate-700 mb-1">
-                          {cf.label} {cf.is_required && <span className="text-red-500">*</span>}
-                        </label>
-                        {cf.field_type === "SELECT" ? (
-                          <select
-                            value={customData[cf.field_key] || ""}
-                            onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
-                            required={cf.is_required}
-                            className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                          >
-                            <option value="">Select option</option>
-                            {(cf.options || []).map((opt: string) => (
-                              <option key={opt} value={opt}>{opt}</option>
-                            ))}
-                          </select>
-                        ) : cf.field_type === "BOOLEAN" ? (
-                          <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-slate-700 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={!!customData[cf.field_key]}
-                              onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.checked })}
-                              className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
-                            />
-                            <span>Yes / Enabled</span>
-                          </label>
-                        ) : (
-                          <input
-                            type={cf.field_type === "NUMBER" ? "number" : cf.field_type === "DATE" ? "date" : "text"}
-                            value={customData[cf.field_key] || ""}
-                            onChange={(e) => setCustomData({ ...customData, [cf.field_key]: e.target.value })}
-                            required={cf.is_required}
-                            placeholder={cf.label}
-                            className="w-full bg-slate-50 text-slate-900 text-xs px-3 py-2 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500"
-                          />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="pt-2 flex items-center justify-end gap-2.5 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-500 hover:text-slate-800 cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
-                >
-                  Create Deal
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      {/* Deal Details Overview Drawer */}
+      <DealDetailsDrawer
+        deal={selectedDealForDetails}
+        isOpen={!!selectedDealForDetails}
+        onClose={() => setSelectedDealForDetails(null)}
+        onStageChange={async (dealId, newStage) => {
+          await handleStageChange(dealId, newStage);
+          setSelectedDealForDetails((prev) => (prev ? { ...prev, stage: newStage as any } : null));
+        }}
+        onDelete={async (dealId) => {
+          setSelectedDealForDetails(null);
+          await handleDelete(dealId);
+        }}
+      />
 
       {/* Manage Custom Fields Modal */}
       <ManageCustomFieldsModal

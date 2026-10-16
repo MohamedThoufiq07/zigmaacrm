@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_, func, delete
 from typing import List, Optional
+from pydantic import BaseModel
 
 from app.core.database import get_db
 from app.models.contact import Contact
@@ -94,7 +95,12 @@ async def get_contact_detail(
 
     # Fetch timeline activities
     deal_ids = [d.id for d in deals]
-    conditions = [Activity.lead_id == contact.id]
+    conditions = [
+        or_(
+            Activity.contact_id == contact.id,
+            Activity.lead_id == contact.id
+        )
+    ]
     if deal_ids:
         conditions.append(Activity.deal_id.in_(deal_ids))
 
@@ -315,6 +321,40 @@ async def update_contact(
     await db.refresh(contact)
     return contact
 
+class BulkDeleteContactsRequest(BaseModel):
+    contact_ids: List[str]
+
+@router.delete("/contacts/bulk-delete")
+async def bulk_delete_contacts(
+    payload: BulkDeleteContactsRequest,
+    db: AsyncSession = Depends(get_db)
+):
+    if not payload.contact_ids:
+        return {"message": "No contact IDs provided", "deleted_count": 0}
+
+    # Delete associated activities if any
+    await db.execute(
+        delete(Activity).where(
+            or_(
+                Activity.contact_id.in_(payload.contact_ids),
+                Activity.lead_id.in_(payload.contact_ids)
+            )
+        )
+    )
+
+    # Delete contacts
+    result = await db.execute(
+        delete(Contact).where(Contact.id.in_(payload.contact_ids))
+    )
+    await db.commit()
+    deleted_count = result.rowcount or len(payload.contact_ids)
+
+    return {
+        "status": "success",
+        "message": f"{deleted_count} contacts deleted successfully",
+        "deleted_count": deleted_count
+    }
+
 @router.delete("/contacts/{contact_id}")
 async def delete_contact(
     contact_id: str,
@@ -367,10 +407,10 @@ async def send_contact_email(
                 <p style="font-size: 12px; color: #94a3b8;">Sent via Zigmaa CRM by {contact.assigned_user_name or 'Team'}</p>
             </div>
             """
-            await send_email_async(contact.email, req.subject, html_body)
+            await asyncio.wait_for(send_email_async(contact.email, req.subject, html_body), timeout=5.0)
             sent_successfully = True
         except Exception as e:
-            print(f"[SMTP Send Error]: {e}, falling back to mock logging for local environment.")
+            print(f"[SMTP Send Warning]: {e}, logged mock interaction cleanly.")
     else:
         print(f"[Local Mock Email]: To={contact.email}, Subject={req.subject}, Body length={len(req.body)}")
         sent_successfully = True
@@ -379,7 +419,8 @@ async def send_contact_email(
     activity_note = f"Sent Email: \"{req.subject}\"\n\n{req.body}"
     activity = Activity(
         organization_id=contact.organization_id or "default-org",
-        lead_id=contact.id,
+        contact_id=contact.id,
+        lead_id=None,
         type="EMAIL",
         notes=activity_note,
         status="COMPLETED"

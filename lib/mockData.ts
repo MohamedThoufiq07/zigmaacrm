@@ -30,6 +30,8 @@ export interface Deal {
   title: string;
   company_name: string;
   contact_name: string;
+  contact_email?: string;
+  contact_phone?: string;
   value: number;
   deal_value?: number;
   currency?: string;
@@ -53,6 +55,7 @@ export interface Contact {
   phone: string;
   company_name: string;
   job_title?: string;
+  designation?: string;
   status: "New" | "Contacted" | "Interested" | "Qualified" | "Customer" | "Active" | "Lead" | string;
   lifecycle_stage?: "New" | "Contacted" | "Interested" | "Qualified" | "Customer" | string;
   source?: "Meta Ads" | "Google Ads" | "Website" | "Manual" | string;
@@ -80,9 +83,17 @@ export interface Account {
 export interface Task {
   id: number | string;
   title: string;
+  activity_type?: "Call" | "WhatsApp" | "Email" | "Meeting" | "To-Do" | string;
   due_date: string;
-  priority: "High" | "Medium" | "Low";
-  status: "To Do" | "In Progress" | "Completed";
+  due_time?: string;
+  priority: "High" | "Medium" | "Low" | "Urgent" | string;
+  status: "To Do" | "In Progress" | "Completed" | "PENDING" | "COMPLETED" | string;
+  assigned_to?: string;
+  description?: string;
+  contact_id?: number | string;
+  contact_name?: string;
+  contact_phone?: string;
+  contact_company?: string;
   related_to?: string;
   created_at: string;
 }
@@ -91,11 +102,14 @@ export interface CalendarEvent {
   id: number | string;
   title: string;
   description?: string;
+  notes?: string;
   start_time: string; // ISO string e.g. "2026-10-10T14:00"
   end_time: string;   // ISO string e.g. "2026-10-10T15:00"
   location?: string;
+  meeting_link?: string;
   attendee_name?: string;
   attendee_email?: string;
+  contact_id?: number | string;
   event_type: "Product Demo" | "Discovery Call" | "Follow-up" | "Closing Meeting" | "Meeting" | "Call" | "Demo" | "Consultation" | string;
   lead_or_deal?: string;
   meet_url?: string;
@@ -115,24 +129,41 @@ export interface Expense {
 }
 
 export interface InvoiceItem {
-  name: string;
+  description?: string;
+  name?: string;
   qty: number;
   unit_price: number;
-  total: number;
+  tax_rate?: number;
+  amount?: number;
+  total?: number;
 }
 
 export interface Invoice {
   id: number | string;
-  bill_number: string;
-  patient_name?: string; // Kept for backwards compatibility
-  client_name?: string;
-  phone: string;
+  invoice_number?: string;
+  bill_number?: string;
+  deal_id?: string;
+  contact_id?: string;
+  client_name: string;
+  client_company?: string;
+  client_email?: string;
+  client_phone?: string;
+  patient_name?: string;
+  phone?: string;
   email?: string;
+  type?: "QUOTE" | "INVOICE" | string;
+  status?: "DRAFT" | "SENT" | "PAID" | "OVERDUE" | "Paid" | "Pending" | string;
+  issue_date?: string;
+  due_date?: string;
   items: InvoiceItem[];
+  subtotal?: number;
+  tax_amount?: number;
+  discount?: number;
   total_amount: number;
-  payment_method: "Cash" | "UPI" | "Card" | "Bank Transfer";
-  status: "Paid" | "Pending" | "Overdue";
+  notes?: string;
+  payment_method?: "Cash" | "UPI" | "Card" | "Bank Transfer" | string;
   created_at: string;
+  updated_at?: string;
 }
 
 export interface AutomationLog {

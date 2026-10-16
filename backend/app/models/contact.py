@@ -27,3 +27,4 @@ class Contact(TimeStampedBase):
 
     organization = relationship("Organization", back_populates="contacts")
     deals = relationship("Deal", back_populates="contact")
+    activities = relationship("Activity", back_populates="contact")

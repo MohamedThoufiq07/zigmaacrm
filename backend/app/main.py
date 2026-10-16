@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot
+from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -24,12 +24,16 @@ app.include_router(auth.router, prefix=f"{settings.API_V1_STR}/auth", tags=["Aut
 app.include_router(auth.router, prefix=settings.API_V1_STR, tags=["Auth-Direct"])
 app.include_router(organizations.router, prefix=settings.API_V1_STR, tags=["Organizations"])
 
+app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", tags=["Dashboard"])
+app.include_router(settings_router.router, prefix=f"{settings.API_V1_STR}/settings", tags=["Settings"])
 app.include_router(leads.router, prefix=settings.API_V1_STR, tags=["Leads"])
 app.include_router(contacts.router, prefix=settings.API_V1_STR, tags=["Contacts"])
 app.include_router(pipelines.router, prefix=settings.API_V1_STR, tags=["Pipelines"])
 app.include_router(deals.router, prefix=settings.API_V1_STR, tags=["Deals"])
+app.include_router(tasks.router, prefix=settings.API_V1_STR, tags=["Tasks"])
 app.include_router(custom_fields.router, prefix=settings.API_V1_STR, tags=["Custom Fields"])
 app.include_router(activities.router, prefix=settings.API_V1_STR, tags=["Activities"])
+app.include_router(calendar.router, prefix=settings.API_V1_STR, tags=["Calendar"])
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["Webhooks"])
 app.include_router(webhooks.router, prefix=settings.API_V1_STR, tags=["Webhooks-Direct"])
 app.include_router(automations.router, prefix=settings.API_V1_STR, tags=["Automations"])
@@ -48,3 +52,9 @@ async def root():
         "version": settings.VERSION,
         "docs": "/docs"
     }
+
+@app.get("/health")
+@app.get(f"{settings.API_V1_STR}/health")
+async def health_check():
+    return {"status": "ok", "app": "Zigmaa CRM", "timestamp": "healthy"}
+

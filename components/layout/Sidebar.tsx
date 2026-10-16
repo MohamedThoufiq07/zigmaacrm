@@ -15,7 +15,8 @@ import {
   ChevronLeft,
   ArrowLeftToLine,
   Maximize2,
-  PanelLeftOpen
+  PanelLeftOpen,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -114,7 +115,8 @@ export default function Sidebar() {
       title: "SALES",
       items: [
         { name: "Contacts", href: "/contacts", icon: User },
-        { name: "Deals", href: "/pipeline", icon: Handshake }
+        { name: "Deals", href: "/pipeline", icon: Handshake },
+        { name: "Quotes & Invoices", href: "/quotes", icon: FileText }
       ]
     },
     {

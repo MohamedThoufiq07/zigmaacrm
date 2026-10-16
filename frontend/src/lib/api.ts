@@ -258,75 +258,75 @@ export const zigmaaApi = {
   },
 
 
-  // ===== DASHBOARD METRICS (STARTS FROM ZERO) =====
-  async getDashboardMetrics() {
-    const leads = await this.getLeads();
+  // ===== DASHBOARD METRICS =====
+  async getDashboardMetrics(rangeType: string = "Last 30 Days"): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/dashboard/metrics?range_type=${encodeURIComponent(rangeType)}`, {
+        cache: "no-store"
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Dashboard metrics API error:", e);
+    }
+
+    // Fallback computed from local contacts & deals if backend is offline
+    const contacts = await this.getContacts();
     const deals = await this.getDeals();
-    const expenses = await this.getExpenses();
+    const tasks = await this.getTasks();
 
+    const totalLeads = contacts.length;
     const now = new Date();
-    const oneWeekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const todayStr = now.toISOString().split("T")[0];
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-    const yesterdayStr = yesterday.toISOString().split("T")[0];
-    const thisMonth = now.getMonth();
-    const thisYear = now.getFullYear();
+    const todayLeads = contacts.filter(c => (c.created_at || "").startsWith(todayStr)).length;
 
-    const totalLeads = leads.length;
-    const newLeadsThisWeek = leads.filter(l => new Date(l.created_at) >= oneWeekAgo).length;
-    const convertedLeads = leads.filter(l => l.stage === "Closed / Won" || l.status === "CONVERTED").length;
-    const conversionRate = totalLeads > 0 ? Number(((convertedLeads / totalLeads) * 100).toFixed(1)) : 0;
-    
-    const overdueFollowups = leads.filter(l => {
-      if (l.stage === "Closed / Won" || l.stage === "Lost") return false;
-      const created = new Date(l.created_at);
-      const daysOld = (now.getTime() - created.getTime()) / (1000 * 3600 * 24);
-      return daysOld > 3;
-    }).length;
+    let pipelineVal = 0;
+    let wonRev = 0;
+    let wonCount = 0;
+    let activeDealsCount = 0;
 
-    const todaysLeads = leads.filter(l => (l.created_at || "").startsWith(todayStr)).length;
-    const yesterdaysLeads = leads.filter(l => (l.created_at || "").startsWith(yesterdayStr)).length;
-    const leadsThisMonth = leads.filter(l => {
-      const d = new Date(l.created_at);
-      return d.getMonth() === thisMonth && d.getFullYear() === thisYear;
-    }).length;
-
-    const totalPipelineValue = deals.reduce((sum, d) => sum + (Number(d.value) || 0), 0);
-    const wonDeals = deals.filter(d => d.stage === "Closed Won").length;
-    const winRate = deals.length > 0 ? Number(((wonDeals / deals.length) * 100).toFixed(1)) : 0;
-
-    const funnelBreakdown: Record<string, number> = {
-      "Meta Ads": 0,
-      "Google Ads": 0,
-      "Website Form": 0,
-      "Walk-in": 0,
-      "Referral": 0
-    };
-    leads.forEach(l => {
-      const src = l.ad_source || l.source || "Meta Ads";
-      if (src in funnelBreakdown) {
-        funnelBreakdown[src] += 1;
-      } else {
-        funnelBreakdown[src] = 1;
+    deals.forEach(d => {
+      const v = Number(d.value || d.deal_value) || 0;
+      const st = (d.stage || "").toLowerCase();
+      if (st.includes("won")) {
+        wonRev += v;
+        wonCount += 1;
+      } else if (!st.includes("lost")) {
+        pipelineVal += v;
+        activeDealsCount += 1;
       }
     });
 
-    const totalExpenses = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
+    const pendingFollowups = tasks.filter(t => t.status === "PENDING").length;
 
     return {
+      range_type: rangeType,
       total_leads: totalLeads,
-      new_leads_this_week: newLeadsThisWeek,
-      conversion_rate: conversionRate,
-      overdue_followups: overdueFollowups,
-      todays_leads: todaysLeads,
-      yesterdays_leads: yesterdaysLeads,
-      leads_this_month: leadsThisMonth,
-      converted_leads: convertedLeads,
-      total_deals: deals.length,
-      total_pipeline_value: totalPipelineValue,
-      win_rate: winRate,
-      total_expenses: totalExpenses,
-      funnel_breakdown: funnelBreakdown
+      all_time_leads: totalLeads,
+      today_leads: todayLeads,
+      pipeline_value: pipelineVal,
+      active_deals_count: activeDealsCount,
+      won_revenue: wonRev,
+      won_deals_count: wonCount,
+      conversion_rate: deals.length > 0 ? Number(((wonCount / deals.length) * 100).toFixed(1)) : 0,
+      pending_followups: pendingFollowups,
+      source_breakdown: [
+        { source: "META_ADS", count: 0, percentage: 0 },
+        { source: "WEBSITE_FORM", count: 0, percentage: 0 },
+        { source: "MANUAL", count: totalLeads, percentage: 100 }
+      ],
+      stage_breakdown: [],
+      recent_leads: contacts.slice(0, 5).map(c => ({
+        id: String(c.id),
+        full_name: c.name,
+        email: c.email,
+        phone: c.phone,
+        company_name: c.company_name,
+        source: c.source,
+        lifecycle_stage: c.status
+      })),
+      today_due_tasks: tasks.slice(0, 5)
     };
   },
 
@@ -608,6 +608,84 @@ export const zigmaaApi = {
     await this.addLeadActivity(leadId, { activity_type: type as any, description: note });
     const leads = getStorage<Lead[]>("zigmaa_leads", INITIAL_LEADS);
     return leads.find(l => String(l.id) === String(leadId)) || null;
+  },
+
+  // ===== EMAIL SYNC (ZIGMAA 1-CLICK INTEGRATION) =====
+  async getEmailSync(): Promise<{ is_connected: boolean; email: string | null; provider: string | null; last_synced_at?: string | null }> {
+    try {
+      const res = await fetch(`${API_BASE}/settings/email-sync`, { cache: "no-store" });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Email sync status check error:", e);
+    }
+    return getStorage<{ is_connected: boolean; email: string | null; provider: string | null; last_synced_at?: string | null }>(
+      "zigmaa_email_sync",
+      { is_connected: false, email: null, provider: null }
+    );
+  },
+
+  async connectEmailSync(data: { email: string; provider?: string }): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/settings/email-sync/connect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      if (res.ok) {
+        const result = await res.json();
+        setStorage("zigmaa_email_sync", {
+          is_connected: true,
+          email: data.email,
+          provider: data.provider || "GMAIL",
+          last_synced_at: "Just now"
+        });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("zigmaa_email_sync_updated"));
+        }
+        return result;
+      }
+    } catch (e) {
+      console.error("Connect email sync API error:", e);
+    }
+
+    const fallback = {
+      status: "success",
+      is_connected: true,
+      email: data.email,
+      provider: data.provider || "GMAIL",
+      last_synced_at: "Just now"
+    };
+    setStorage("zigmaa_email_sync", fallback);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_email_sync_updated"));
+    }
+    return fallback;
+  },
+
+  async disconnectEmailSync(): Promise<any> {
+    try {
+      const res = await fetch(`${API_BASE}/settings/email-sync/disconnect`, {
+        method: "POST"
+      });
+      if (res.ok) {
+        setStorage("zigmaa_email_sync", { is_connected: false, email: null, provider: null });
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("zigmaa_email_sync_updated"));
+        }
+        return await res.json();
+      }
+    } catch (e) {
+      console.error("Disconnect email sync API error:", e);
+    }
+
+    const fallback = { is_connected: false, email: null, provider: null };
+    setStorage("zigmaa_email_sync", fallback);
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_email_sync_updated"));
+    }
+    return fallback;
   },
 
   // ===== DEALS (PIPELINE) CRUD =====
@@ -958,6 +1036,23 @@ export const zigmaaApi = {
     return true;
   },
 
+  async bulkDeleteContacts(ids: (number | string)[]): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/contacts/bulk-delete`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ contact_ids: ids.map(String) })
+      });
+      if (res.ok) return true;
+    } catch {}
+
+    const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
+    const idSet = new Set(ids.map(String));
+    const filtered = contacts.filter(c => !idSet.has(String(c.id)));
+    setStorage("zigmaa_contacts", filtered);
+    return true;
+  },
+
   // ===== CUSTOM FIELDS ENGINE =====
   async getCustomFields(entityType: "LEAD" | "CONTACT" | "DEAL"): Promise<any[]> {
     try {
@@ -1055,8 +1150,35 @@ export const zigmaaApi = {
     return true;
   },
 
-  // ===== TASKS CRUD =====
+  // ===== TASKS CRUD (Connected to FastAPI + PostgreSQL) =====
   async getTasks(): Promise<Task[]> {
+    try {
+      const res = await fetch(`${API_BASE}/tasks`, { cache: "no-store" });
+      if (res.ok) {
+        const backendTasks = await res.json();
+        if (Array.isArray(backendTasks) && backendTasks.length > 0) {
+          return backendTasks.map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            activity_type: t.activity_type || "To-Do",
+            due_date: t.due_date || "",
+            due_time: t.due_time || "",
+            priority: t.priority || "Medium",
+            status: t.status || "PENDING",
+            assigned_to: t.assigned_to || "Mohamed Thoufiq",
+            description: t.description || "",
+            contact_id: t.contact_id || null,
+            contact_name: t.contact_name || "",
+            contact_phone: t.contact_phone || "",
+            contact_company: t.contact_company || "",
+            created_at: t.created_at || new Date().toISOString()
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("Backend tasks fetch failed, falling back to local storage", e);
+    }
+
     const raw = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
     if (!Array.isArray(raw)) return [];
     const seen = new Set<string>();
@@ -1068,21 +1190,67 @@ export const zigmaaApi = {
         deduplicated.push(t);
       }
     }
-    if (deduplicated.length !== raw.length) {
-      setStorage("zigmaa_tasks", deduplicated);
-    }
     return deduplicated;
   },
 
   async createTask(taskData: Partial<Task>): Promise<Task> {
+    try {
+      const res = await fetch(`${API_BASE}/tasks`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: taskData.title || "",
+          activity_type: taskData.activity_type || "To-Do",
+          due_date: taskData.due_date || new Date(Date.now() + 86400000).toISOString().split("T")[0],
+          due_time: taskData.due_time || null,
+          priority: taskData.priority || "Medium",
+          status: taskData.status || "PENDING",
+          assigned_to: taskData.assigned_to || "Mohamed Thoufiq",
+          description: taskData.description || null,
+          contact_id: taskData.contact_id ? String(taskData.contact_id) : null,
+          contact_name: taskData.contact_name || null,
+          contact_phone: taskData.contact_phone || null,
+          contact_company: taskData.contact_company || null
+        })
+      });
+      if (res.ok) {
+        const created = await res.json();
+        return {
+          id: created.id,
+          title: created.title,
+          activity_type: created.activity_type || "To-Do",
+          due_date: created.due_date || "",
+          due_time: created.due_time || "",
+          priority: created.priority || "Medium",
+          status: created.status || "PENDING",
+          assigned_to: created.assigned_to || "Mohamed Thoufiq",
+          description: created.description || "",
+          contact_id: created.contact_id,
+          contact_name: created.contact_name || "",
+          contact_phone: created.contact_phone || "",
+          contact_company: created.contact_company || "",
+          created_at: created.created_at || new Date().toISOString()
+        };
+      }
+    } catch (e) {
+      console.warn("Backend task creation failed, saving locally", e);
+    }
+
     const tasks = await this.getTasks();
     const newTask: Task = {
       id: `${Date.now()}-${Math.floor(Math.random() * 10000)}`,
       title: taskData.title || "",
+      activity_type: taskData.activity_type || "To-Do",
       due_date: taskData.due_date || new Date(Date.now() + 86400000).toISOString().split("T")[0],
+      due_time: taskData.due_time || "",
       priority: taskData.priority || "Medium",
-      status: taskData.status || "To Do",
-      related_to: taskData.related_to || "",
+      status: taskData.status || "PENDING",
+      assigned_to: taskData.assigned_to || "Mohamed Thoufiq",
+      description: taskData.description || "",
+      contact_id: taskData.contact_id,
+      contact_name: taskData.contact_name || "",
+      contact_phone: taskData.contact_phone || "",
+      contact_company: taskData.contact_company || "",
       created_at: new Date().toISOString()
     };
     tasks.unshift(newTask);
@@ -1091,6 +1259,17 @@ export const zigmaaApi = {
   },
 
   async updateTask(id: number | string, patch: Partial<Task>): Promise<Task | null> {
+    try {
+      const res = await fetch(`${API_BASE}/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+
     const tasks = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
     const idx = tasks.findIndex(t => String(t.id) === String(id));
     if (idx === -1) return null;
@@ -1099,7 +1278,32 @@ export const zigmaaApi = {
     return tasks[idx];
   },
 
+  async toggleTaskStatus(id: number | string): Promise<Task | null> {
+    try {
+      const res = await fetch(`${API_BASE}/tasks/${id}/toggle-status`, {
+        method: "PATCH"
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+
+    const tasks = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
+    const idx = tasks.findIndex(t => String(t.id) === String(id));
+    if (idx === -1) return null;
+    const current = tasks[idx].status;
+    const next = current === "Completed" || current === "COMPLETED" ? "PENDING" : "COMPLETED";
+    tasks[idx] = { ...tasks[idx], status: next };
+    setStorage("zigmaa_tasks", tasks);
+    return tasks[idx];
+  },
+
   async deleteTask(id: number | string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/tasks/${id}`, { method: "DELETE" });
+      if (res.ok) return true;
+    } catch {}
+
     const tasks = getStorage<Task[]>("zigmaa_tasks", INITIAL_TASKS);
     const filtered = tasks.filter(t => String(t.id) !== String(id));
     setStorage("zigmaa_tasks", filtered);
@@ -1108,10 +1312,54 @@ export const zigmaaApi = {
 
   // ===== CALENDAR EVENTS & GOOGLE CALENDAR CRUD =====
   async getEvents(): Promise<CalendarEvent[]> {
+    try {
+      const res = await fetch(`${API_BASE}/calendar/events`, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data;
+        }
+      }
+    } catch (e) {
+      console.warn("FastAPI getEvents failed, falling back to local storage:", e);
+    }
     return getStorage<CalendarEvent[]>("zigmaa_events", INITIAL_EVENTS);
   },
 
   async createEvent(eventData: Partial<CalendarEvent>): Promise<CalendarEvent> {
+    const payload = {
+      title: eventData.title || "Sales Meeting",
+      event_type: eventData.event_type || "Product Demo",
+      start_time: eventData.start_time,
+      end_time: eventData.end_time || eventData.start_time,
+      meeting_link: eventData.meeting_link || eventData.meet_url || eventData.location || "https://meet.google.com/zgm-live-meet",
+      location: eventData.location || eventData.meeting_link || eventData.meet_url || "Online Google Meet",
+      attendee_name: eventData.attendee_name || "",
+      attendee_email: eventData.attendee_email || "",
+      contact_id: eventData.contact_id ? String(eventData.contact_id) : null,
+      notes: eventData.notes || eventData.description || "",
+      description: eventData.notes || eventData.description || "",
+      lead_or_deal: eventData.lead_or_deal || "",
+      google_calendar_synced: Boolean(eventData.google_calendar_synced)
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/calendar/events`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        const saved = await res.json();
+        const events = getStorage<CalendarEvent[]>("zigmaa_events", INITIAL_EVENTS);
+        events.unshift(saved);
+        setStorage("zigmaa_events", events);
+        return saved;
+      }
+    } catch (e) {
+      console.warn("FastAPI createEvent failed, falling back to local storage:", e);
+    }
+
     const events = getStorage<CalendarEvent[]>("zigmaa_events", INITIAL_EVENTS);
     const now = new Date();
     const defaultStart = new Date(now.getTime() + 3600000).toISOString().slice(0, 16);
@@ -1120,13 +1368,18 @@ export const zigmaaApi = {
     const newEvent: CalendarEvent = {
       id: Date.now(),
       title: eventData.title || "Sales Meeting",
-      description: eventData.description || "",
+      description: eventData.description || eventData.notes || "",
+      notes: eventData.notes || eventData.description || "",
       start_time: eventData.start_time || defaultStart,
       end_time: eventData.end_time || defaultEnd,
       location: eventData.location || "Online Google Meet",
+      meeting_link: eventData.meeting_link || eventData.meet_url || eventData.location,
+      meet_url: eventData.meet_url || eventData.meeting_link,
       attendee_name: eventData.attendee_name || "",
       attendee_email: eventData.attendee_email || "",
-      event_type: eventData.event_type || "Meeting",
+      contact_id: eventData.contact_id,
+      lead_or_deal: eventData.lead_or_deal,
+      event_type: eventData.event_type || "Product Demo",
       google_calendar_synced: false,
       created_at: new Date().toISOString()
     };
@@ -1137,6 +1390,16 @@ export const zigmaaApi = {
   },
 
   async deleteEvent(id: number | string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/calendar/events/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        const events = getStorage<CalendarEvent[]>("zigmaa_events", INITIAL_EVENTS);
+        const filtered = events.filter(e => String(e.id) !== String(id));
+        setStorage("zigmaa_events", filtered);
+        return true;
+      }
+    } catch {}
+
     const events = getStorage<CalendarEvent[]>("zigmaa_events", INITIAL_EVENTS);
     const filtered = events.filter(e => String(e.id) !== String(id));
     setStorage("zigmaa_events", filtered);
@@ -1182,23 +1445,122 @@ export const zigmaaApi = {
     return true;
   },
 
-  // ===== INVOICES CRUD =====
-  async getInvoices(): Promise<Invoice[]> {
+  // ===== INVOICES & QUOTES CRUD =====
+  async getInvoices(params?: { search?: string; type?: string; status?: string; deal_id?: string; contact_id?: string }): Promise<Invoice[]> {
+    try {
+      const searchParams = new URLSearchParams();
+      if (params?.search) searchParams.set("search", params.search);
+      if (params?.type) searchParams.set("type", params.type);
+      if (params?.status) searchParams.set("status", params.status);
+      if (params?.deal_id) searchParams.set("deal_id", params.deal_id);
+      if (params?.contact_id) searchParams.set("contact_id", params.contact_id);
+
+      const qs = searchParams.toString();
+      const url = qs ? `${API_BASE}/invoices?${qs}` : `${API_BASE}/invoices`;
+      const res = await fetch(url, { cache: "no-store" });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          return data.map((inv: any) => ({
+            ...inv,
+            bill_number: inv.invoice_number || inv.bill_number
+          }));
+        }
+      }
+    } catch (e) {
+      console.warn("FastAPI getInvoices failed, using local storage:", e);
+    }
     return getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
   },
 
+  async getInvoice(id: number | string): Promise<Invoice | null> {
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}`, { cache: "no-store" });
+      if (res.ok) {
+        const inv = await res.json();
+        return {
+          ...inv,
+          bill_number: inv.invoice_number || inv.bill_number
+        };
+      }
+    } catch (e) {
+      console.warn("FastAPI getInvoice failed:", e);
+    }
+    const invoices = getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
+    return invoices.find(i => String(i.id) === String(id) || i.invoice_number === String(id) || i.bill_number === String(id)) || null;
+  },
+
   async createInvoice(invData: Partial<Invoice>): Promise<Invoice> {
+    try {
+      const payload = {
+        deal_id: invData.deal_id || null,
+        contact_id: invData.contact_id || null,
+        invoice_number: invData.invoice_number || null,
+        client_name: invData.client_name || invData.patient_name || "Client",
+        client_company: invData.client_company || null,
+        client_email: invData.client_email || invData.email || null,
+        client_phone: invData.client_phone || invData.phone || null,
+        type: (invData.type || "QUOTE").toUpperCase(),
+        status: (invData.status || "DRAFT").toUpperCase(),
+        issue_date: invData.issue_date || null,
+        due_date: invData.due_date || null,
+        items: (invData.items || []).map((it) => ({
+          description: it.description || it.name || "Item",
+          qty: it.qty || 1,
+          unit_price: it.unit_price || 0,
+          tax_rate: it.tax_rate !== undefined ? it.tax_rate : 18,
+          amount: it.amount || (it.qty || 1) * (it.unit_price || 0)
+        })),
+        subtotal: invData.subtotal,
+        tax_amount: invData.tax_amount,
+        discount: invData.discount || 0,
+        total_amount: invData.total_amount,
+        notes: invData.notes || null
+      };
+
+      const res = await fetch(`${API_BASE}/invoices`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        const saved = await res.json();
+        const formatted: Invoice = {
+          ...saved,
+          bill_number: saved.invoice_number
+        };
+        const invoices = getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
+        invoices.unshift(formatted);
+        setStorage("zigmaa_invoices", invoices);
+        return formatted;
+      }
+    } catch (e) {
+      console.warn("FastAPI createInvoice failed, fallback to local storage:", e);
+    }
+
     const invoices = getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
     const newInv: Invoice = {
       id: Date.now(),
-      bill_number: `INV-${Date.now().toString().slice(-6)}`,
+      invoice_number: `QT-2026-${Date.now().toString().slice(-4)}`,
+      bill_number: `QT-2026-${Date.now().toString().slice(-4)}`,
+      deal_id: invData.deal_id,
+      contact_id: invData.contact_id,
       client_name: invData.client_name || invData.patient_name || "Client",
-      phone: invData.phone || "",
-      email: invData.email || "",
-      items: invData.items || [{ name: "Professional CRM Consulting", qty: 1, unit_price: 0, total: 0 }],
+      client_company: invData.client_company,
+      client_email: invData.client_email || invData.email,
+      client_phone: invData.client_phone || invData.phone,
+      type: invData.type || "QUOTE",
+      status: invData.status || "DRAFT",
+      issue_date: invData.issue_date || new Date().toISOString().split("T")[0],
+      due_date: invData.due_date,
+      items: invData.items || [{ description: "CRM Consulting", qty: 1, unit_price: 0, amount: 0, tax_rate: 18 }],
+      subtotal: invData.subtotal || 0,
+      tax_amount: invData.tax_amount || 0,
+      discount: invData.discount || 0,
       total_amount: Number(invData.total_amount) || 0,
+      notes: invData.notes,
       payment_method: invData.payment_method || "Bank Transfer",
-      status: invData.status || "Paid",
       created_at: new Date().toISOString()
     };
     invoices.unshift(newInv);
@@ -1206,7 +1568,31 @@ export const zigmaaApi = {
     return newInv;
   },
 
+  async updateInvoice(id: number | string, patch: Partial<Invoice>): Promise<Invoice | null> {
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch)
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch {}
+    return null;
+  },
+
   async deleteInvoice(id: number | string): Promise<boolean> {
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}`, { method: "DELETE" });
+      if (res.ok) {
+        const invoices = getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
+        const filtered = invoices.filter(i => String(i.id) !== String(id));
+        setStorage("zigmaa_invoices", filtered);
+        return true;
+      }
+    } catch {}
+
     const invoices = getStorage<Invoice[]>("zigmaa_invoices", INITIAL_INVOICES);
     const filtered = invoices.filter(i => String(i.id) !== String(id));
     setStorage("zigmaa_invoices", filtered);

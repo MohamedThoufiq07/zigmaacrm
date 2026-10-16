@@ -8,6 +8,8 @@ from app.models.activity import Activity, MessageLog
 from app.models.otp import PasswordResetOTP
 from app.models.custom_field import CustomField
 from app.models.workflow import Workflow, WorkflowLog
+from app.models.task import Task
+from app.models.calendar_event import CalendarEvent
 
 __all__ = [
     "Base",
@@ -26,5 +28,7 @@ __all__ = [
     "CustomField",
     "Workflow",
     "WorkflowLog",
+    "Task",
+    "CalendarEvent",
 ]
 

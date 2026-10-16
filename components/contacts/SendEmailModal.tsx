@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Mail,
@@ -10,10 +10,14 @@ import {
   Italic,
   List,
   Sparkles,
-  Paperclip
+  Paperclip,
+  AlertTriangle,
+  Link as LinkIcon,
+  ShieldCheck
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
+import ConnectEmailModal from "@/components/settings/ConnectEmailModal";
 
 interface SendEmailModalProps {
   isOpen: boolean;
@@ -36,6 +40,29 @@ export default function SendEmailModal({
   const [subject, setSubject] = useState("");
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+
+  // Email sync connection check
+  const [emailSync, setEmailSync] = useState<{ is_connected: boolean; email: string | null }>({
+    is_connected: false,
+    email: null
+  });
+  const [currentUserEmail, setCurrentUserEmail] = useState("user@zigmaa.com");
+  const [showConnectModal, setShowConnectModal] = useState(false);
+
+  const checkSyncStatus = async () => {
+    try {
+      const sync = await api.getEmailSync();
+      if (sync) setEmailSync(sync);
+    } catch {}
+    const user = api.getCurrentUser();
+    if (user?.email) setCurrentUserEmail(user.email);
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      checkSyncStatus();
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -116,6 +143,25 @@ export default function SendEmailModal({
         {/* Form Body */}
         <form onSubmit={handleSend} className="p-6 space-y-4">
           
+          {/* Zigmaa Email Disconnected Warning Banner */}
+          {!emailSync.is_connected && (
+            <div className="p-4 rounded-xl bg-amber-50/80 border border-amber-200/90 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-amber-900">
+              <div className="flex items-start gap-2.5">
+                <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="leading-relaxed">
+                  <span className="font-bold underline">{currentUserEmail}</span> isn&apos;t connected to Zigmaa. You must connect before you can use it to send emails from your CRM.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowConnectModal(true)}
+                className="px-3.5 py-1.5 bg-[#e11d48] hover:bg-[#be123c] active:bg-[#9f1239] text-white rounded-lg text-xs font-bold shadow-2xs transition-all shrink-0 cursor-pointer self-start sm:self-auto"
+              >
+                Connect
+              </button>
+            </div>
+          )}
+
           {/* Recipient Strip */}
           <div className="flex items-center gap-3 text-xs bg-slate-50 px-3.5 py-2.5 rounded-xl border border-slate-200/80">
             <span className="font-bold text-slate-400 w-12 shrink-0">To:</span>
@@ -128,6 +174,15 @@ export default function SendEmailModal({
               <span className="text-slate-400">&gt;</span>
             </div>
           </div>
+
+          {/* Connected Email Sync Tag */}
+          {emailSync.is_connected && (
+            <div className="flex items-center gap-2 text-[11px] text-slate-500 bg-emerald-50/40 px-3 py-1.5 rounded-lg border border-emerald-200/60">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Sending via synced account:</span>
+              <span className="font-bold text-slate-800">{emailSync.email}</span>
+            </div>
+          )}
 
           {/* Subject Field */}
           <div className="space-y-1">
@@ -229,8 +284,9 @@ export default function SendEmailModal({
 
             <button
               type="submit"
-              disabled={sending || !contact.email}
-              className="px-5 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-red-600/20 cursor-pointer flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={sending || !contact.email || !emailSync.is_connected}
+              title={!emailSync.is_connected ? "Connect your email account to send emails" : ""}
+              className="px-5 py-2 bg-red-600 hover:bg-red-700 active:bg-red-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs shadow-red-600/20 cursor-pointer flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {sending ? (
                 <>
@@ -247,6 +303,21 @@ export default function SendEmailModal({
           </div>
         </form>
       </div>
+
+      {/* Connect Email Modal invoked from warning banner */}
+      <ConnectEmailModal
+        isOpen={showConnectModal}
+        onClose={() => setShowConnectModal(false)}
+        defaultEmail={currentUserEmail}
+        onConnected={(data) => {
+          setEmailSync({
+            is_connected: true,
+            email: data.email
+          });
+          setShowConnectModal(false);
+          toast.success("Ready to Send", `Connected ${data.email}. You can now send emails.`);
+        }}
+      />
     </div>
   );
 }

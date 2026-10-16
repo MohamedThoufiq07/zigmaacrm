@@ -180,8 +180,38 @@ export default function ContactsPage() {
 
     if (confirmed) {
       setContacts((prev) => prev.filter((c) => String(c.id) !== String(id)));
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
       await api.deleteContact(id);
       toast.success("Contact Deleted", "The contact record was deleted.");
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+    const count = selectedIds.size;
+    const confirmed = await confirm({
+      title: `Delete ${count} Contacts`,
+      message: `Are you sure you want to delete ${count} selected contacts? This action cannot be undone.`,
+      confirmText: `Delete ${count} Contacts`,
+      cancelText: "Cancel",
+      variant: "danger"
+    });
+
+    if (confirmed) {
+      const idsToDelete = Array.from(selectedIds);
+      setContacts((prev) => prev.filter((c) => !selectedIds.has(c.id)));
+      setSelectedIds(new Set());
+      try {
+        await api.bulkDeleteContacts(idsToDelete);
+        toast.success("Contacts Deleted", `${count} contacts deleted successfully.`);
+      } catch (err: any) {
+        toast.error("Delete Failed", err.message || "Could not delete contacts.");
+        loadContacts();
+      }
     }
   };
 
@@ -611,10 +641,10 @@ export default function ContactsPage() {
           <div className="bg-white border border-slate-200/80 rounded-xl shadow-xs flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Scrollable table body area */}
             <div className="flex-1 overflow-auto custom-scrollbar">
-              <table className="w-full border-separate border-spacing-0 text-left text-sm min-w-[950px]">
-                <thead className="sticky top-0 z-10 bg-white shadow-[0_1px_0_0_#f1f5f9]">
+              <table className="w-full border-separate border-spacing-0 text-left text-sm min-w-[1150px]">
+                <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#f1f5f9]">
                   <tr className="bg-white text-[12px] font-medium text-slate-500 tracking-normal capitalize select-none">
-                    <th className="py-3 px-3 w-10 text-center border-b border-r border-slate-200/70">
+                    <th className="py-3 px-3 w-12 text-center border-b border-r border-slate-200/70 bg-white">
                       <div className="flex items-center justify-center">
                         <button
                           type="button"
@@ -629,8 +659,8 @@ export default function ContactsPage() {
                         </button>
                       </div>
                     </th>
-                    {/* Contact Name Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px]">
+                    {/* Contact Name Header (Standard Flow) */}
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Contact Name</span>
                         <button
@@ -695,7 +725,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Email Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Email</span>
                         <button
@@ -759,7 +789,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Phone Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[160px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[150px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Phone</span>
                         <button
@@ -823,7 +853,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Company Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[150px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[140px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Company</span>
                         <button
@@ -887,7 +917,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Source Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[130px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[120px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Source</span>
                         <button
@@ -951,7 +981,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Lifecycle Stage Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[150px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[130px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Lifecycle Stage</span>
                         <button
@@ -1015,7 +1045,7 @@ export default function ContactsPage() {
                     </th>
 
                     {/* Owner Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[150px]">
+                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[160px] bg-white">
                       <div className="flex items-center justify-between relative">
                         <span className="font-medium text-slate-700">Owner</span>
                         <button
@@ -1078,7 +1108,8 @@ export default function ContactsPage() {
                       </div>
                     </th>
 
-                    <th className="py-3 px-3 text-right border-b border-slate-100 w-28">Actions</th>
+                    {/* Actions Header (Standard Flow) */}
+                    <th className="py-3 px-4 text-right border-b border-slate-100 w-28 bg-white">Actions</th>
                   </tr>
                 </thead>
 
@@ -1113,13 +1144,13 @@ export default function ContactsPage() {
                             setOpenDrawerInEditMode(false);
                             setSelectedContact(contact);
                           }}
-                          className={`hover:bg-slate-50/70 transition-colors cursor-pointer group ${
+                          className={`border-b border-slate-100 hover:bg-slate-50/50 transition-colors cursor-pointer group ${
                             isSelected ? "bg-red-50/30" : ""
                           }`}
                         >
-                          {/* Checkbox */}
+                          {/* Checkbox (Standard Flow) */}
                           <td
-                            className="py-3.5 px-3 text-center border-b border-slate-100"
+                            className="py-3.5 px-3 w-12 text-center border-b border-slate-100 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleSelectOne(contact.id);
@@ -1134,35 +1165,46 @@ export default function ContactsPage() {
                             </div>
                           </td>
 
-                          {/* Contact Name (Single Column with Initials Circle Avatar) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100">
+                          {/* Contact Name (Single Column with Initials Circle Avatar + designation/company subtext - Standard Flow) */}
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[200px] transition-colors">
                             <div className="flex items-center gap-2.5">
                               <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 border border-slate-200/80">
                                 {initials || "C"}
                               </div>
-                              <span className="font-medium text-slate-800 group-hover:text-red-600 transition-colors text-[13px] truncate">
-                                {contact.name || "—"}
-                              </span>
+                              <div className="min-w-0 flex flex-col">
+                                <span className="font-medium text-slate-800 group-hover:text-red-600 transition-colors text-[13px] truncate">
+                                  {contact.name || "—"}
+                                </span>
+                                {contact.designation ? (
+                                  <span className="text-[11px] text-slate-400 truncate">
+                                    {contact.designation}
+                                  </span>
+                                ) : contact.company_name ? (
+                                  <span className="text-[11px] text-slate-400 truncate">
+                                    {contact.company_name}
+                                  </span>
+                                ) : null}
+                              </div>
                             </div>
                           </td>
 
                           {/* Email (Clean slate styling, no red) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[200px] text-slate-600 text-[12px]" onClick={(e) => e.stopPropagation()}>
                             {contact.email ? (
                               <a
                                 href={`mailto:${contact.email}`}
-                                className="text-[12px] font-normal text-slate-600 hover:text-slate-900 hover:underline block truncate"
+                                className="font-normal text-slate-600 hover:text-slate-900 hover:underline block truncate"
                               >
                                 {contact.email}
                               </a>
                             ) : (
-                              <span className="text-[12px] text-slate-400 font-normal">—</span>
+                              <span className="text-slate-400 font-normal">—</span>
                             )}
                           </td>
 
                           {/* Phones (Strict single line, clean straight alignment) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2 text-[13px] text-slate-800 font-sans whitespace-nowrap">
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[150px] text-slate-700 text-[13px]" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center gap-2 font-sans whitespace-nowrap">
                               <span className="font-mono tracking-tight select-text">{contact.phone || "—"}</span>
                               {contact.phone && (
                                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -1188,7 +1230,7 @@ export default function ContactsPage() {
                           </td>
 
                           {/* Company */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 text-[13px] text-slate-600">
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[140px] text-[13px] text-slate-600">
                             {contact.company_name ? (
                               <span className="inline-flex items-center gap-1.5 truncate">
                                 <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
@@ -1200,12 +1242,12 @@ export default function ContactsPage() {
                           </td>
 
                           {/* Source Tag */}
-                          <td className="py-3.5 px-4 border-b border-slate-100">
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[120px]">
                             {renderSourceBadge(contact.source)}
                           </td>
 
                           {/* Lifecycle Stage */}
-                          <td className="py-3.5 px-4 border-b border-slate-100" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
                             <div className="relative inline-block">
                               <select
                                 value={currentStage}
@@ -1221,7 +1263,7 @@ export default function ContactsPage() {
                           </td>
 
                           {/* Owner */}
-                          <td className="py-3.5 px-4 border-b border-slate-100">
+                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[160px]">
                             <div className="flex items-center gap-2 text-[13px] text-slate-700">
                               <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold flex items-center justify-center shrink-0 border border-slate-200">
                                 {(contact.assigned_to || "M").substring(0, 1).toUpperCase()}
@@ -1230,8 +1272,11 @@ export default function ContactsPage() {
                             </div>
                           </td>
 
-                          {/* Actions */}
-                          <td className="py-3.5 px-3 border-b border-slate-100 text-right" onClick={(e) => e.stopPropagation()}>
+                          {/* Actions (Standard Flow) */}
+                          <td
+                            className="py-3.5 px-4 border-b border-slate-100 text-right w-28 transition-colors"
+                            onClick={(e) => e.stopPropagation()}
+                          >
                             <div className="flex items-center justify-end gap-1.5 relative">
                               <button
                                 type="button"
@@ -1313,7 +1358,7 @@ export default function ContactsPage() {
 
             {/* CLEAN BOTTOM PAGINATION FOOTER BAR: Docked at the bottom, no clutter */}
             <div className="shrink-0 bg-white border-t border-slate-100 px-5 py-3 flex items-center justify-between text-xs text-slate-600 font-medium flex-wrap gap-4">
-              {/* Left: Showing 1-X of Y + Page Chevrons */}
+              {/* Left: Showing 1-X of Y + Page Chevrons + Bulk Selection Actions */}
               <div className="flex items-center gap-3">
                 <span className="text-slate-500 font-normal">
                   Showing <strong className="font-semibold text-slate-700">{startRecordIndex}-{endRecordIndex}</strong> of <strong className="font-semibold text-slate-700">{filteredContacts.length}</strong>
@@ -1345,10 +1390,31 @@ export default function ContactsPage() {
                   </button>
                 </div>
 
+                {/* Bulk Action Controls */}
                 {selectedIds.size > 0 && (
-                  <span className="ml-3 text-xs font-medium text-red-600 bg-red-50 px-2 py-0.5 rounded-full border border-red-100">
-                    {selectedIds.size} selected
-                  </span>
+                  <div className="flex items-center gap-2 ml-3 animate-in fade-in duration-150">
+                    <span className="text-xs font-semibold text-red-600 bg-red-50 px-2.5 py-1 rounded-full border border-red-200">
+                      {selectedIds.size} {selectedIds.size === 1 ? "contact" : "contacts"} selected
+                    </span>
+
+                    <button
+                      type="button"
+                      onClick={handleBulkDelete}
+                      className="bg-rose-50 text-rose-600 border border-rose-200 hover:bg-rose-100 font-medium text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer transition-colors shadow-2xs"
+                      title="Delete Selected Contacts"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Delete Selected</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIds(new Set())}
+                      className="text-slate-500 hover:text-slate-700 text-xs px-2 py-1 rounded-md hover:bg-slate-100 transition-colors cursor-pointer font-medium"
+                    >
+                      Deselect All
+                    </button>
+                  </div>
                 )}
               </div>
 

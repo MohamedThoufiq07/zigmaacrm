@@ -14,10 +14,46 @@ from app.schemas.contact_schema import ContactCreate, ContactOut
 
 router = APIRouter()
 
+@router.get("/contacts/verify-whatsapp")
+async def verify_whatsapp_contacts(
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Direct verification endpoint to check if records with source='WhatsApp'
+    exist in the PostgreSQL database contacts table.
+    """
+    total_res = await db.execute(select(func.count(Contact.id)))
+    total_contacts = total_res.scalar() or 0
+
+    wa_res = await db.execute(
+        select(Contact)
+        .where(Contact.source.ilike("%whatsapp%"))
+        .order_by(Contact.created_at.desc())
+    )
+    wa_contacts = wa_res.scalars().all()
+
+    return {
+        "status": "success",
+        "total_contacts_in_db": total_contacts,
+        "whatsapp_contacts_count": len(wa_contacts),
+        "whatsapp_contacts": [
+            {
+                "id": c.id,
+                "full_name": c.full_name,
+                "phone": c.phone,
+                "source": c.source,
+                "lifecycle_stage": c.lifecycle_stage,
+                "created_at": c.created_at.isoformat() if c.created_at else None
+            }
+            for c in wa_contacts
+        ]
+    }
+
 @router.get("/contacts", response_model=List[ContactOut])
 async def get_contacts(
     search: Optional[str] = Query(None),
     status: Optional[str] = Query(None),
+    source: Optional[str] = Query(None),
     org_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -29,13 +65,18 @@ async def get_contacts(
                 Contact.owner_id == current_user.id,
                 Contact.assigned_user_id == current_user.id,
                 Contact.owner_name.ilike(f"%{current_user.full_name}%"),
-                Contact.assigned_user_name.ilike(f"%{current_user.full_name}%")
+                Contact.assigned_user_name.ilike(f"%{current_user.full_name}%"),
+                Contact.source.ilike("%whatsapp%"),
+                Contact.owner_id.is_(None),
+                Contact.assigned_user_id.is_(None)
             )
         )
     if org_id:
         query = query.where(Contact.organization_id == org_id)
     if status:
         query = query.where(Contact.status == status)
+    if source:
+        query = query.where(Contact.source.ilike(f"%{source}%"))
     if search:
         term = f"%{search}%"
         query = query.where(

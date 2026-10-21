@@ -49,6 +49,13 @@ app.include_router(telephony.router, prefix=f"{settings.API_V1_STR}/telephony", 
 async def on_startup():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+    try:
+        from app.core.database import AsyncSessionLocal
+        from app.api.v1.webhooks.whatsapp import backfill_whatsapp_contacts
+        async with AsyncSessionLocal() as session:
+            await backfill_whatsapp_contacts(session)
+    except Exception as e:
+        print(f"[STARTUP BACKFILL] WhatsApp backfill skipped or deferred: {e}")
 
 @app.get("/")
 async def root():

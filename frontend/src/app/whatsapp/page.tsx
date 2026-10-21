@@ -35,7 +35,8 @@ import {
   Tag,
   Zap,
   RefreshCw,
-  Loader2
+  Loader2,
+  Edit2
 } from "lucide-react";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -124,12 +125,30 @@ const AVATAR_GRADIENTS = [
   "from-cyan-600 to-blue-700"
 ];
 
-function formatTime(isoStr?: string): string {
+function parseUtcDate(dateVal?: string | number): Date {
+  if (!dateVal) return new Date();
+  if (typeof dateVal === "number") {
+    return new Date(dateVal * (dateVal < 1e11 ? 1000 : 1));
+  }
+  const str = String(dateVal).trim();
+  if (/^\d{10,13}$/.test(str)) {
+    const num = parseInt(str, 10);
+    return new Date(num * (num < 1e11 ? 1000 : 1));
+  }
+  // Ensure UTC ISO string without explicit offset is treated as UTC so browser converts to local IST
+  if (str.includes("T") && !str.endsWith("Z") && !/[+-]\d{2}:?\d{2}$/.test(str)) {
+    return new Date(str + "Z");
+  }
+  return new Date(str);
+}
+
+function formatTime(isoStr?: string | number): string {
   if (!isoStr) return "Just now";
   try {
-    const d = new Date(isoStr);
+    const d = parseUtcDate(isoStr);
     if (isNaN(d.getTime())) return "Today";
-    return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+    // Format using browser local timezone (IST)
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   } catch {
     return "Today";
   }
@@ -152,6 +171,10 @@ export default function WhatsAppPage() {
   const [isLoadingMessages, setIsLoadingMessages] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -341,7 +364,7 @@ export default function WhatsAppPage() {
       sender: "outbound",
       text,
       timestamp: "Today",
-      timeLabel: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
+      timeLabel: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       dateGroup: "Today",
       status: "SENT"
     };
@@ -422,6 +445,38 @@ export default function WhatsAppPage() {
   const handleQuickCreateDeal = () => {
     if (!activeChat) return;
     toast.success("Deal Linked", `Active pipeline deal synchronized for ${activeChat.companyName}`);
+  };
+
+  // Explicit Contact Name Update Action
+  const handleSaveContactName = async () => {
+    if (!activeChat || !editedName.trim()) return;
+    const newName = editedName.trim();
+    setIsSavingName(true);
+    try {
+      if (activeChat.contact_id) {
+        await api.updateWhatsAppContactName({
+          contactId: activeChat.contact_id,
+          newName
+        });
+      }
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.phone.replace(/[^0-9]/g, "") === activeChat.phone.replace(/[^0-9]/g, "")
+            ? {
+                ...c,
+                contactName: newName,
+                avatarInitials: (newName.split(" ")[0][0] + (newName.split(" ")[1] ? newName.split(" ")[1][0] : "")).toUpperCase()
+              }
+            : c
+        )
+      );
+      toast.success("Contact Name Updated", `Saved as "${newName}"`);
+      setIsEditingName(false);
+    } catch {
+      toast.error("Update Failed", "Could not save contact name.");
+    } finally {
+      setIsSavingName(false);
+    }
   };
 
   // Quick Action: Add Internal Note
@@ -1044,8 +1099,52 @@ export default function WhatsAppPage() {
                   >
                     {activeChat.avatarInitials}
                   </div>
-                  <div className="min-w-0">
-                    <h4 className="font-bold text-sm text-white truncate">{activeChat.contactName}</h4>
+                  <div className="min-w-0 flex-1">
+                    {!isEditingName ? (
+                      <div className="flex items-center gap-1.5 group/name">
+                        <h4 className="font-bold text-sm text-white truncate">{activeChat.contactName}</h4>
+                        <button
+                          onClick={() => {
+                            setEditedName(activeChat.contactName);
+                            setIsEditingName(true);
+                          }}
+                          className="opacity-60 group-hover/name:opacity-100 p-0.5 hover:bg-white/10 rounded text-slate-400 hover:text-emerald-400 transition-all cursor-pointer"
+                          title="Edit Contact Name"
+                        >
+                          <Edit2 className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <input
+                          type="text"
+                          value={editedName}
+                          onChange={(e) => setEditedName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") handleSaveContactName();
+                            if (e.key === "Escape") setIsEditingName(false);
+                          }}
+                          autoFocus
+                          className="bg-[#131B2E] border border-emerald-500/50 rounded-lg px-2 py-0.5 text-xs text-white focus:outline-none w-full"
+                          placeholder="Contact name..."
+                        />
+                        <button
+                          onClick={handleSaveContactName}
+                          disabled={isSavingName}
+                          className="p-1 rounded-md bg-emerald-600 hover:bg-emerald-500 text-white transition-colors shrink-0"
+                          title="Save name"
+                        >
+                          {isSavingName ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3" />}
+                        </button>
+                        <button
+                          onClick={() => setIsEditingName(false)}
+                          className="p-1 rounded-md bg-white/10 hover:bg-white/20 text-slate-400 hover:text-white transition-colors shrink-0"
+                          title="Cancel"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                     <p className="text-xs text-slate-400 truncate">{activeChat.companyName}</p>
                     <span className="inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
                       High Intent Prospect

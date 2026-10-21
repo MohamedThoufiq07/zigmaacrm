@@ -2218,13 +2218,18 @@ export const zigmaaApi = {
     organization_id?: string;
   }): Promise<any> {
     try {
+      const cleanPhone = payload.phone_number.replace(/[^0-9]/g, "");
+      const cleanPayload = {
+        ...payload,
+        phone_number: cleanPhone
+      };
       const res = await fetch(`${API_BASE}/whatsapp/send`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...getAuthHeaders()
         },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(cleanPayload)
       });
       if (!res.ok) {
         let err = "Failed to dispatch WhatsApp message";
@@ -2305,6 +2310,31 @@ export const zigmaaApi = {
       }
     } catch (e) {
       console.warn("Failed to mark WhatsApp conversation read", e);
+    }
+    return { status: "success" };
+  },
+
+  async updateWhatsAppContactName(params: {
+    contactId?: string;
+    phoneNumber?: string;
+    newName: string;
+  }): Promise<any> {
+    try {
+      if (params.contactId) {
+        const res = await fetch(`${API_BASE}/contacts/${params.contactId}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify({ full_name: params.newName })
+        });
+        if (res.ok) {
+          return await res.json();
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to update contact name on backend", e);
     }
     return { status: "success" };
   }

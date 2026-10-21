@@ -414,10 +414,30 @@ export default function ContactsPage() {
     setSelectedIds(next);
   };
 
-  // Sorted contacts based on sortField & sortOrder
+  // Dynamic available sources based on standard sources + any incoming contact source (e.g. WhatsApp)
+  const availableSources = useMemo(() => {
+    const list = new Set(["All Sources", "WhatsApp", ...SOURCES.filter((s) => s !== "All Sources")]);
+    contacts.forEach((c) => {
+      if (c.source) list.add(c.source);
+    });
+    return Array.from(list);
+  }, [contacts]);
+
+  // Sorted contacts based on sortField & sortOrder (Defaults to created_at DESC so newest inbound leads appear at the top)
   const sortedContacts = useMemo(() => {
-    if (!sortField) return filteredContacts;
+    if (!sortField) {
+      return [...filteredContacts].sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+      });
+    }
     const sorted = [...filteredContacts].sort((a, b) => {
+      if (sortField === "created_at") {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return sortOrder === "asc" ? timeA - timeB : timeB - timeA;
+      }
       let aVal = (a as any)[sortField] ?? "";
       let bVal = (b as any)[sortField] ?? "";
       if (sortField === "lifecycle_stage") {
@@ -460,6 +480,13 @@ export default function ContactsPage() {
   // Helper for source badge
   const renderSourceBadge = (src?: string) => {
     const s = (src || "Manual").toUpperCase();
+    if (s.includes("WHATSAPP")) {
+      return (
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+          WhatsApp
+        </span>
+      );
+    }
     if (s.includes("META")) {
       return (
         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
@@ -469,7 +496,7 @@ export default function ContactsPage() {
     }
     if (s.includes("GOOGLE")) {
       return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
           Google Ads
         </span>
       );
@@ -483,7 +510,7 @@ export default function ContactsPage() {
     }
     return (
       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-        Manual
+        {src || "Manual"}
       </span>
     );
   };
@@ -558,7 +585,7 @@ export default function ContactsPage() {
               <FilterSelect
                 placeholder="Source"
                 value={selectedSource === "All Sources" ? "" : selectedSource}
-                options={SOURCES.filter((s) => s !== "All Sources")}
+                options={availableSources.filter((s) => s !== "All Sources")}
                 onChange={(val) => {
                   setSelectedSource(val === "ALL" ? "All Sources" : val);
                   setCurrentPage(1);

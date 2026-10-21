@@ -49,8 +49,9 @@ class Settings(BaseSettings):
 
     # WhatsApp Meta Cloud API Configuration
     WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "zigmaa_wa_secure_webhook_token_2026")
-    WHATSAPP_API_TOKEN: str = os.getenv("WHATSAPP_API_TOKEN", "")
-    WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "109847108023456")
+    WHATSAPP_ACCESS_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "") or os.getenv("WHATSAPP_API_TOKEN", "")
+    WHATSAPP_API_TOKEN: str = os.getenv("WHATSAPP_ACCESS_TOKEN", "") or os.getenv("WHATSAPP_API_TOKEN", "")
+    WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "1445856311935813")
 
     class Config:
         env_file = ".env"

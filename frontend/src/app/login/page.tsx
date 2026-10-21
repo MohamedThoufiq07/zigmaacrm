@@ -345,31 +345,56 @@ export default function LoginPage() {
   return (
     <div className="relative h-screen max-h-screen w-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 font-sans select-none flex">
       {/* ================= LEFT SIDE: RICH ENTERPRISE CRM SHOWCASE ================= */}
-      <div className="hidden lg:flex lg:w-[58%] xl:w-[62%] h-full relative flex-col justify-between p-6 xl:p-8 bg-gradient-to-br from-slate-950 via-[#0d1117] to-[#160a0f] text-white border-r border-slate-800/80 overflow-hidden">
-        {/* Ambient Glows */}
-        <div className="absolute -top-32 -left-32 w-96 h-96 bg-rose-600/20 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -right-32 w-96 h-96 bg-red-600/15 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-24 left-1/4 w-80 h-80 bg-rose-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="hidden lg:flex lg:w-[58%] xl:w-[62%] h-full relative flex-col justify-between p-6 xl:p-8 bg-[#0D0B14] text-white border-r border-slate-800/80 overflow-hidden">
+        {/* Ambient Obsidian & Brand Neon Glows */}
+        <div className="absolute -top-32 -left-32 w-[480px] h-[480px] bg-gradient-to-br from-rose-600/25 via-[#EF4444]/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -right-24 w-[420px] h-[420px] bg-gradient-to-tl from-purple-700/20 via-rose-600/15 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-28 left-1/4 w-[380px] h-[380px] bg-rose-600/10 rounded-full blur-3xl pointer-events-none" />
 
-        {/* Subtle Geometric Grid */}
+        {/* Subtle Tech Grid */}
         <div 
-          className="absolute inset-0 opacity-[0.03] pointer-events-none"
+          className="absolute inset-0 opacity-[0.035] pointer-events-none"
           style={{
             backgroundImage: `radial-gradient(circle at 1px 1px, #ffffff 1px, transparent 0)`,
-            backgroundSize: "28px 28px"
+            backgroundSize: "24px 24px"
+          }}
+        />
+
+        {/* Ambient Glowing Particle Accents */}
+        <div className="absolute top-28 right-24 w-1.5 h-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_#EF4444] animate-pulse pointer-events-none" />
+        <div className="absolute top-1/2 right-12 w-2 h-2 rounded-full bg-purple-500/80 shadow-[0_0_10px_#8B5CF6] pointer-events-none" />
+        <div className="absolute bottom-40 right-1/3 w-1 h-1 rounded-full bg-rose-400 shadow-[0_0_6px_#EF4444] pointer-events-none" />
+
+        {/* Back-Layered Translucent Visual Artwork Element (image_3.png) */}
+        <div className="absolute right-0 bottom-4 w-[65%] h-[62%] pointer-events-none z-0 select-none overflow-hidden opacity-30 xl:opacity-40 mix-blend-screen filter contrast-125">
+          <img 
+            src="/image_3.png" 
+            alt="CRM Visualization" 
+            className="w-full h-full object-cover object-left-top transform scale-105" 
+          />
+          {/* Edge softening gradients */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0D0B14] via-transparent to-[#0D0B14]/80" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#0D0B14] via-transparent to-[#0D0B14]/60" />
+        </div>
+
+        {/* Gradient Mask to ensure typography & bullet buttons stay 100% crisp and readable */}
+        <div 
+          className="absolute inset-0 pointer-events-none z-[1]"
+          style={{
+            background: "linear-gradient(90deg, #08070b 0%, #08070b 40%, rgba(8, 7, 11, 0.88) 58%, rgba(8, 7, 11, 0.25) 82%, transparent 100%)"
           }}
         />
 
         {/* TOP BRAND HEADER */}
         <div className="relative z-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 p-0.5 shadow-xl shadow-rose-900/40 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-rose-600 to-red-500 p-0.5 shadow-xl shadow-rose-900/50 flex items-center justify-center">
               <img src="/crmlogo.png" alt="Zigmaa CRM" className="w-7 h-7 object-contain drop-shadow" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-extrabold text-lg xl:text-xl tracking-tight text-white">Zigmaa CRM</span>
-                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
                   AI-Powered
                 </span>
               </div>
@@ -377,16 +402,16 @@ export default function LoginPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900/90 border border-slate-800 text-xs text-slate-300 shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-[#0D0B14]/90 border border-slate-800/90 text-xs text-slate-300 shadow-sm backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_#10B981] animate-pulse" />
             <span className="font-medium text-[11px]">System Online • Secure</span>
           </div>
         </div>
 
         {/* CENTER HERO & CRM HIGHLIGHTS */}
         <div className="relative z-10 space-y-2.5 my-auto py-1">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs font-semibold">
-            <Sparkles className="w-3 h-3 text-rose-400" />
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/25 text-rose-400 text-xs font-semibold shadow-[0_0_12px_rgba(239,68,68,0.15)]">
+            <Sparkles className="w-3 h-3 text-rose-400 animate-pulse" />
             <span>High-Velocity Revenue Operations</span>
           </div>
 
@@ -401,92 +426,95 @@ export default function LoginPage() {
             Consolidate your pipeline, browser-based telephony, AI Copilot insights, and GST quotations into one enterprise workspace.
           </p>
 
-          {/* Key Features Grid */}
+          {/* Key Features Grid with Glowing Borders */}
           <div className="grid grid-cols-2 gap-2.5 pt-0.5 max-w-lg">
-            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700/80 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+            {/* Card 1: AI Sales Copilot */}
+            <div className="group relative flex items-center gap-2.5 p-2.5 rounded-xl bg-[#0D0B14]/85 border border-rose-500/30 hover:border-rose-500/70 shadow-[0_0_12px_rgba(239,68,68,0.08)] hover:shadow-[0_0_20px_rgba(239,68,68,0.25)] backdrop-blur-md transition-all duration-300">
+              <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-500/35 flex items-center justify-center text-rose-400 shrink-0 shadow-[0_0_10px_rgba(244,63,94,0.3)]">
                 <Zap className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">AI Sales Copilot</p>
-                <p className="text-[10px] text-slate-400">Contextual deal guidance</p>
+                <p className="text-xs font-bold text-white tracking-wide">AI Sales Copilot</p>
+                <p className="text-[10px] text-slate-400 font-medium">Contextual deal guidance</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700/80 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+            {/* Card 2: Direct Calling */}
+            <div className="group relative flex items-center gap-2.5 p-2.5 rounded-xl bg-[#0D0B14]/85 border border-emerald-500/30 hover:border-emerald-500/70 shadow-[0_0_12px_rgba(16,185,129,0.08)] hover:shadow-[0_0_20px_rgba(16,185,129,0.25)] backdrop-blur-md transition-all duration-300">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/35 flex items-center justify-center text-emerald-400 shrink-0 shadow-[0_0_10px_rgba(16,185,129,0.3)]">
                 <Phone className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Direct Calling</p>
-                <p className="text-[10px] text-slate-400">In-app dialer & history</p>
+                <p className="text-xs font-bold text-white tracking-wide">Direct Calling</p>
+                <p className="text-[10px] text-slate-400 font-medium">In-app dialer & history</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700/80 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+            {/* Card 3: Kanban Pipelines */}
+            <div className="group relative flex items-center gap-2.5 p-2.5 rounded-xl bg-[#0D0B14]/85 border border-purple-500/30 hover:border-purple-500/70 shadow-[0_0_12px_rgba(168,85,247,0.08)] hover:shadow-[0_0_20px_rgba(168,85,247,0.25)] backdrop-blur-md transition-all duration-300">
+              <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/35 flex items-center justify-center text-purple-400 shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.3)]">
                 <GitBranch className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Kanban Pipelines</p>
-                <p className="text-[10px] text-slate-400">Drag & drop stages</p>
+                <p className="text-xs font-bold text-white tracking-wide">Kanban Pipelines</p>
+                <p className="text-[10px] text-slate-400 font-medium">Drag & drop stages</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80 backdrop-blur-sm hover:border-slate-700/80 transition-colors">
-              <div className="w-8 h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shrink-0">
+            {/* Card 4: Instant Quotes */}
+            <div className="group relative flex items-center gap-2.5 p-2.5 rounded-xl bg-[#0D0B14]/85 border border-amber-500/30 hover:border-amber-500/70 shadow-[0_0_12px_rgba(245,158,11,0.08)] hover:shadow-[0_0_20px_rgba(245,158,11,0.25)] backdrop-blur-md transition-all duration-300">
+              <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/35 flex items-center justify-center text-amber-400 shrink-0 shadow-[0_0_10px_rgba(245,158,11,0.3)]">
                 <FileText className="w-3.5 h-3.5" />
               </div>
               <div>
-                <p className="text-xs font-bold text-white">Instant Quotes</p>
-                <p className="text-[10px] text-slate-400">GST-ready quotations</p>
+                <p className="text-xs font-bold text-white tracking-wide">Instant Quotes</p>
+                <p className="text-[10px] text-slate-400 font-medium">GST-ready quotations</p>
               </div>
             </div>
           </div>
 
-          {/* LIVE CRM PREVIEW CARD */}
-          <div className="mt-1 p-3.5 rounded-xl bg-slate-900/80 border border-slate-800/90 shadow-2xl backdrop-blur-md max-w-xl">
-            <div className="flex items-center justify-between pb-2.5 border-b border-slate-800/80 text-xs">
+          {/* HYPER-DETAILED VISUAL GLASS-DASHBOARD PATTERN (IMAGE_3.PNG PREVIEW) */}
+          <div className="mt-1 p-2.5 xl:p-3 rounded-2xl bg-[#0D0B14]/90 border border-rose-500/30 shadow-[0_0_40px_rgba(239,68,68,0.18)] backdrop-blur-xl max-w-xl group">
+            {/* Window Topbar */}
+            <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-800/80 text-xs">
               <div className="flex items-center gap-2">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#EF4444] shadow-[0_0_6px_#EF4444]" />
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                <span className="ml-2 font-mono text-[10px] text-slate-400">live-pipeline-feed</span>
+                <span className="ml-2 font-mono text-[10px] text-slate-400 flex items-center gap-1.5">
+                  <Sparkles className="w-3 h-3 text-rose-400" />
+                  <span>zigmaa-revenue-cloud • live</span>
+                </span>
               </div>
-              <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50 flex items-center gap-1">
+              <span className="text-[10px] text-emerald-400 font-semibold bg-emerald-950/70 px-2 py-0.5 rounded border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.2)] flex items-center gap-1">
                 <CheckCircle className="w-3 h-3" /> Deal Probability 92%
               </span>
             </div>
 
-            <div className="mt-2.5 grid grid-cols-2 gap-2.5 text-xs">
-              <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80">
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wide">Enterprise Deal</span>
-                  <span className="text-[9px] text-rose-300 font-bold bg-rose-950/80 px-1.5 py-0.5 rounded border border-rose-800/40">
-                    Negotiation
-                  </span>
-                </div>
-                <p className="font-bold text-white text-xs truncate">Apex Global Technologies</p>
-                <p className="text-xs font-extrabold text-slate-100 mt-0.5">₹ 14,80,000 <span className="text-[9px] font-normal text-slate-400">/ ARR</span></p>
-                <div className="mt-1.5 pt-1.5 border-t border-slate-800/60 flex items-center justify-between text-[9px] text-slate-400">
-                  <span>Closing: Oct 28</span>
-                  <span className="text-emerald-400 font-medium">Warm Lead</span>
+            {/* Visual Glass Frame Overlaying image_3.png */}
+            <div className="relative w-full overflow-hidden rounded-xl border border-slate-800/80 bg-[#08070b]">
+              <img 
+                src="/image_3.png" 
+                alt="Zigmaa CRM Dashboard Pattern" 
+                className="w-full h-auto max-h-[165px] xl:max-h-[195px] object-cover object-top filter brightness-[0.98] contrast-[1.08] group-hover:scale-[1.015] transition-transform duration-700" 
+              />
+              {/* Inner ambient vignette overlay */}
+              <div className="absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-[#0D0B14] via-[#0D0B14]/50 to-transparent pointer-events-none" />
+              
+              {/* Floating Live Deal Micro-Badge */}
+              <div className="absolute bottom-2 left-2 flex items-center gap-2 pointer-events-none">
+                <div className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[#0D0B14]/92 border border-rose-500/40 backdrop-blur-md shadow-lg shadow-black/70">
+                  <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse shadow-[0_0_6px_#EF4444]" />
+                  <span className="text-[10px] font-bold text-white">Apex Global Technologies</span>
+                  <span className="text-[9px] text-emerald-400 font-extrabold ml-1">₹ 14,80,000</span>
                 </div>
               </div>
 
-              <div className="p-2.5 rounded-lg bg-slate-950/70 border border-slate-800/80 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center gap-1.5 text-rose-400 text-[10px] font-bold mb-1">
-                    <Sparkles className="w-3 h-3" />
-                    <span>AI Copilot Live Recommendation</span>
-                  </div>
-                  <p className="text-[10px] text-slate-300 leading-snug">
-                    "Decision maker reviewed quotation 4 times today. High intent: Ready for one-click follow-up call."
-                  </p>
-                </div>
-                <div className="mt-1 flex items-center gap-1 text-[9px] text-slate-400 font-mono">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Real-time PostgreSQL sync</span>
+              {/* Floating AI Recommendation Chip */}
+              <div className="absolute top-2 right-2 pointer-events-none">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#0D0B14]/90 border border-purple-500/40 backdrop-blur-md shadow-md text-[9px] font-semibold text-purple-300">
+                  <Zap className="w-2.5 h-2.5 text-rose-400" />
+                  <span>AI Copilot Insight</span>
                 </div>
               </div>
             </div>

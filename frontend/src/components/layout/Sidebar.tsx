@@ -16,7 +16,8 @@ import {
   ArrowLeftToLine,
   Maximize2,
   PanelLeftOpen,
-  FileText
+  FileText,
+  MessageSquare
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -115,21 +116,27 @@ export default function Sidebar() {
       title: "SALES",
       items: [
         { name: "Contacts", href: "/contacts", icon: User },
-        { name: "Deals", href: "/pipeline", icon: Handshake },
-        { name: "Quotes & Invoices", href: "/quotes", icon: FileText }
+        { name: "Deals", href: "/pipeline", icon: Handshake }
       ]
     },
     {
       title: "ACTIVITIES",
       items: [
-        { name: "Calendar & Schedule", href: "/events", icon: CalendarDays },
-        { name: "Tasks", href: "/tasks", icon: ListTodo }
+        { name: "Tasks", href: "/tasks", icon: ListTodo },
+        { name: "Quotes & Invoices", href: "/quotes", icon: FileText },
+        { name: "Calendar & Schedule", href: "/events", icon: CalendarDays }
       ]
     },
     {
       title: "AUTOMATIONS",
       items: [
         { name: "Automations", href: "/automations", icon: Bot }
+      ]
+    },
+    {
+      title: "ENGAGEMENT",
+      items: [
+        { name: "WhatsApp", href: "/whatsapp", icon: MessageSquare }
       ]
     },
     {
@@ -275,15 +282,25 @@ export default function Sidebar() {
               </button>
             </div>
           ) : (
-            /* Collapsed Mode: Show pill button (Image 2) */
-            <button
-              onClick={handleExpand}
-              className="w-full py-1.5 px-1 flex items-center justify-center gap-1.5 rounded-xl bg-red-950/40 border border-red-500/30 text-red-200 hover:text-white hover:bg-red-900/50 transition-all font-semibold text-xs cursor-pointer shadow-xs"
-              title="Expand sidebar"
-            >
-              <PanelLeftOpen className="w-3.5 h-3.5 text-red-400" />
-              <span>Show</span>
-            </button>
+            /* Collapsed Mode: Sleek, high-contrast Show button */
+            <div className="relative group flex justify-center w-full">
+              <button
+                onClick={handleExpand}
+                className="w-11 h-11 rounded-xl bg-slate-900/90 hover:bg-gradient-to-tr hover:from-red-600 hover:to-rose-600 border border-slate-700/80 hover:border-red-500/50 text-slate-300 hover:text-white flex flex-col items-center justify-center gap-0.5 transition-all duration-200 cursor-pointer shadow-md hover:shadow-lg hover:shadow-red-950/60 active:scale-95"
+                title="Expand sidebar"
+              >
+                <PanelLeftOpen className="w-4 h-4 text-slate-400 group-hover:text-white transition-transform group-hover:scale-110" />
+                <span className="text-[9px] font-extrabold uppercase tracking-wider text-slate-400 group-hover:text-white leading-none">
+                  Show
+                </span>
+              </button>
+              
+              {/* Flyout Tooltip on hover */}
+              <div className="opacity-0 group-hover:opacity-100 pointer-events-none absolute left-14 top-1/2 -translate-y-1/2 px-2.5 py-1.5 bg-[#111827] text-white text-xs font-bold rounded-xl shadow-2xl border border-slate-700 whitespace-nowrap z-50 transition-opacity duration-150 flex items-center gap-1.5">
+                <PanelLeftOpen className="w-3.5 h-3.5 text-rose-400" />
+                <span>Expand Sidebar</span>
+              </div>
+            </div>
           )}
         </div>
 

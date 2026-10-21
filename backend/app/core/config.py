@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     SMTP_FROM_NAME: str = os.getenv("SMTP_FROM_NAME", "Zigmaacrm")
     SMTP_FROM_EMAIL: str = os.getenv("SMTP_FROM_EMAIL", "")
 
+    # WhatsApp Meta Cloud API Configuration
+    WHATSAPP_VERIFY_TOKEN: str = os.getenv("WHATSAPP_VERIFY_TOKEN", "zigmaa_wa_secure_webhook_token_2026")
+    WHATSAPP_API_TOKEN: str = os.getenv("WHATSAPP_API_TOKEN", "")
+    WHATSAPP_PHONE_NUMBER_ID: str = os.getenv("WHATSAPP_PHONE_NUMBER_ID", "109847108023456")
+
     class Config:
         env_file = ".env"
         extra = "allow"

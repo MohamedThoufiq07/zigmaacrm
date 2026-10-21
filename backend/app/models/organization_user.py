@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
 from sqlalchemy.orm import relationship
 from app.models.base import TimeStampedBase
 
@@ -7,7 +7,9 @@ class Organization(TimeStampedBase):
 
     name = Column(String(255), nullable=False)
     slug = Column(String(100), unique=True, index=True, nullable=False)
-    plan = Column(String(50), default="PRO")  # FREE, PRO, ENTERPRISE
+    plan = Column(String(50), default="PRO")  # FREE_TRIAL, STARTER, PRO, ENTERPRISE
+    trial_ends_at = Column(DateTime, nullable=True)
+    status = Column(String(50), default="ACTIVE")  # ACTIVE, EXPIRED, SUSPENDED
 
     users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="organization", cascade="all, delete-orphan")
@@ -25,5 +27,7 @@ class User(TimeStampedBase):
     full_name = Column(String(255), nullable=False)
     role = Column(String(50), default="SALES_REP")  # SUPER_ADMIN, ADMIN, SALES_MANAGER, SALES_REP
     is_active = Column(Boolean, default=True)
+    is_super_admin = Column(Boolean, default=False)
 
     organization = relationship("Organization", back_populates="users")
+

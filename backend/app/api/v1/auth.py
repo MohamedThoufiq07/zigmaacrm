@@ -25,10 +25,46 @@ async def google_login(payload: GoogleLoginSchema, db: AsyncSession = Depends(ge
     user = result.scalar_one_or_none()
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"No account found with {clean_email}. Please register or sign up first."
+        # Auto-provision new user and workspace for Google SSO login
+        user_name = (payload.name or clean_email.split("@")[0]).strip()
+        workspace_name = f"{user_name}'s Workspace"
+        org_slug = workspace_name.lower().replace(" ", "-")
+
+        is_super = clean_email in ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"]
+
+        org = Organization(
+            name=workspace_name,
+            slug=f"{org_slug}-{secrets.token_hex(3)}",
+            plan="ENTERPRISE" if is_super else "PRO",
+            status="ACTIVE"
         )
+        db.add(org)
+        await db.flush()
+
+        role = "SUPER_ADMIN" if is_super else "ADMIN"
+
+        user = User(
+            organization_id=org.id,
+            email=clean_email,
+            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+            full_name=user_name,
+            role=role,
+            is_active=True,
+            is_super_admin=is_super
+        )
+        db.add(user)
+        await db.flush()
+
+        initial_settings = OrganizationSetting(
+            organization_id=org.id,
+            company_name=workspace_name,
+            email=clean_email,
+            signatory_name=user_name,
+            signatory_designation="Authorized Signatory"
+        )
+        db.add(initial_settings)
+        await db.commit()
+        await db.refresh(user)
 
     token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
     user_out = await _build_user_out(user, db)
@@ -53,6 +89,12 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
             if org:
                 company_name = org.name
 
+    is_super = bool(
+        getattr(user, "is_super_admin", False)
+        or user.role == "SUPER_ADMIN"
+        or (user.email and user.email.lower() in ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
+    )
+
     return UserOut(
         id=user.id,
         organization_id=user.organization_id or "",
@@ -60,6 +102,7 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         full_name=user.full_name,
         role=user.role,
         is_active=user.is_active,
+        is_super_admin=is_super,
         company_name=company_name or "Zigmaa Workspace",
         organization_name=company_name or "Zigmaa Workspace"
     )

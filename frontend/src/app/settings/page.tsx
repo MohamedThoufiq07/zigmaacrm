@@ -39,7 +39,7 @@ import InviteMemberDrawer from "@/components/settings/InviteMemberDrawer";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
 
-type SettingsTab = "profile" | "team" | "webhooks" | "email-sync" | "integrations" | "telephony";
+type SettingsTab = "profile" | "team" | "webhooks" | "email-sync" | "integrations";
 
 export default function SettingsPage() {
   const { toast, confirm } = useToast();
@@ -73,20 +73,7 @@ export default function SettingsPage() {
   const [showDevGuide, setShowDevGuide] = useState(false);
   const [showMetaModal, setShowMetaModal] = useState(false);
 
-  // Telephony (Twilio Voice) State
-  const [telephonySettings, setTelephonySettings] = useState({
-    is_configured: false,
-    twilio_account_sid: "",
-    twilio_auth_token: "",
-    twilio_caller_id: "",
-    twilio_twiml_app_sid: "",
-    masked_auth_token: ""
-  });
-  const [savingTelephony, setSavingTelephony] = useState(false);
-  const [showAuthToken, setShowAuthToken] = useState(false);
-  const [testPhoneNumber, setTestPhoneNumber] = useState("+91 96004 71080");
-  const [callingTest, setCallingTest] = useState(false);
-  const [testCallResult, setTestCallResult] = useState<any>(null);
+
 
   // Profile Info Fields
   const [fullName, setFullName] = useState("Arsath Thoufiq");
@@ -228,14 +215,12 @@ export default function SettingsPage() {
       const handleSyncUpdate = () => loadEmailSync();
       window.addEventListener("zigmaa_email_sync_updated", handleSyncUpdate);
 
-      // Check URL query param for active tab e.g. /settings?tab=telephony
+      // Check URL query param for active tab e.g. /settings?tab=team
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab") as SettingsTab;
-      if (tabParam && ["profile", "team", "webhooks", "email-sync", "integrations", "telephony"].includes(tabParam)) {
+      if (tabParam && ["profile", "team", "webhooks", "email-sync", "integrations"].includes(tabParam)) {
         setActiveTab(tabParam);
       }
-
-      loadTelephonySettings();
 
       return () => {
         window.removeEventListener("zigmaa_email_sync_updated", handleSyncUpdate);
@@ -244,63 +229,7 @@ export default function SettingsPage() {
     }
   }, []);
 
-  const loadTelephonySettings = async () => {
-    try {
-      const res = await api.getTelephonySettings();
-      if (res) {
-        setTelephonySettings((prev) => ({
-          ...prev,
-          is_configured: res.is_configured || false,
-          twilio_account_sid: res.twilio_account_sid || "",
-          twilio_caller_id: res.twilio_caller_id || "",
-          twilio_twiml_app_sid: res.twilio_twiml_app_sid || "",
-          masked_auth_token: res.masked_auth_token || ""
-        }));
-      }
-    } catch (e) {
-      console.warn("Failed to load telephony settings", e);
-    }
-  };
 
-  const handleSaveTelephony = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setSavingTelephony(true);
-    try {
-      await api.saveTelephonySettings({
-        twilio_account_sid: telephonySettings.twilio_account_sid,
-        twilio_auth_token: telephonySettings.twilio_auth_token,
-        twilio_caller_id: telephonySettings.twilio_caller_id,
-        twilio_twiml_app_sid: telephonySettings.twilio_twiml_app_sid
-      });
-      toast.success("Telephony Configured", "Twilio credentials saved successfully.");
-      loadTelephonySettings();
-    } catch (err: any) {
-      toast.error("Save Failed", err.message || "Failed to update Twilio settings.");
-    } finally {
-      setSavingTelephony(false);
-    }
-  };
-
-  const handleTestCall = async () => {
-    if (!testPhoneNumber.trim()) {
-      toast.error("Validation Error", "Please provide a valid test phone number.");
-      return;
-    }
-    setCallingTest(true);
-    setTestCallResult(null);
-    try {
-      const res = await api.initiateRealCall({
-        to_phone: testPhoneNumber.trim(),
-        custom_message: "Congratulations! Real telephone calling from your Zigmaa CRM via Twilio is working perfectly."
-      });
-      setTestCallResult(res);
-      toast.success("Real Call Dispatched!", `Twilio Call SID: ${res.call_sid}. The phone is now ringing!`);
-    } catch (err: any) {
-      toast.error("Call Failed", err.message || "Could not place Twilio call.");
-    } finally {
-      setCallingTest(false);
-    }
-  };
 
   const handleCopyWebhookUrl = () => {
     navigator.clipboard.writeText(webhookUrl);
@@ -596,21 +525,7 @@ export default function SettingsPage() {
               <span>Integrations</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("telephony")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === "telephony"
-                  ? "bg-red-600 text-white shadow-xs"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
-              }`}
-            >
-              <Phone className="w-4 h-4" />
-              <span>Voice & Telephony (Twilio)</span>
-              {telephonySettings.is_configured && (
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-              )}
-            </button>
+
           </div>
 
           <div className="w-full max-w-5xl mx-auto space-y-6">
@@ -763,122 +678,6 @@ export default function SettingsPage() {
                         value={companyName}
                         onChange={(e) => setCompanyName(e.target.value)}
                         placeholder="Arsath Thoufiq's Workspace"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Official Business Address */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-                        <Building2 className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Registered Business Address</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={address}
-                        onChange={(e) => setAddress(e.target.value)}
-                        placeholder="Chennai Tech Park, Guindy, Chennai, Tamil Nadu 600032"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      />
-                    </div>
-
-                    {/* GSTIN / Tax ID */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-slate-400" />
-                        <span>GSTIN / Tax Registration No.</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={gstin}
-                        onChange={(e) => setGstin(e.target.value)}
-                        placeholder="33AAECZ9920K1ZX"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium uppercase font-mono"
-                      />
-                    </div>
-
-                    {/* Signatory Full Name */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-                        <User className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Authorized Signatory Name</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={signatoryName}
-                        onChange={(e) => setSignatoryName(e.target.value)}
-                        placeholder="Arsath Thoufiq"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Signatory Designation */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5 flex items-center gap-1.5">
-                        <CheckCircle2 className="w-3.5 h-3.5 text-slate-400" />
-                        <span>Signatory Title / Designation</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={signatoryDesignation}
-                        onChange={(e) => setSignatoryDesignation(e.target.value)}
-                        placeholder="Authorized Signatory / Managing Director"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Bank Name */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5">
-                        Settlement Bank Name
-                      </label>
-                      <input
-                        type="text"
-                        value={bankName}
-                        onChange={(e) => setBankName(e.target.value)}
-                        placeholder="HDFC Bank Ltd"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
-                      />
-                    </div>
-
-                    {/* Bank A/C Number */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5">
-                        Bank Account Number
-                      </label>
-                      <input
-                        type="text"
-                        value={accountNumber}
-                        onChange={(e) => setAccountNumber(e.target.value)}
-                        placeholder="50200084729104"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium font-mono"
-                      />
-                    </div>
-
-                    {/* IFSC Code */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5">
-                        IFSC Code
-                      </label>
-                      <input
-                        type="text"
-                        value={ifscCode}
-                        onChange={(e) => setIfscCode(e.target.value)}
-                        placeholder="HDFC0001244"
-                        className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium font-mono uppercase"
-                      />
-                    </div>
-
-                    {/* UPI ID */}
-                    <div>
-                      <label className="block text-slate-700 font-bold mb-1.5">
-                        Settlement UPI ID
-                      </label>
-                      <input
-                        type="text"
-                        value={upiId}
-                        onChange={(e) => setUpiId(e.target.value)}
-                        placeholder="zigmaa@hdfcbank"
                         className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                       />
                     </div>
@@ -1732,244 +1531,7 @@ export default function SettingsPage() {
               </div>
             )}
 
-            {/* ============================================================== */}
-            {/* TAB 6: VOICE & TELEPHONY (TWILIO REAL CALLING)                 */}
-            {/* ============================================================== */}
-            {activeTab === "telephony" && (
-              <div className="space-y-6">
-                {/* Header Status Banner */}
-                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 text-white flex items-center justify-center font-bold text-xl shadow-lg shadow-red-500/20 shrink-0">
-                      <Phone className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h2 className="text-base font-bold text-slate-900">Twilio Cloud Telephony</h2>
-                        <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                            telephonySettings.is_configured
-                              ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-                              : "bg-amber-50 text-amber-800 border border-amber-200"
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              telephonySettings.is_configured ? "bg-emerald-500" : "bg-amber-500"
-                            }`}
-                          />
-                          <span>{telephonySettings.is_configured ? "Twilio Active" : "Not Configured"}</span>
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Connect Twilio Voice to place real outbound phone calls directly from Zigmaa CRM to any mobile or landline worldwide.
-                      </p>
-                    </div>
-                  </div>
 
-                  <a
-                    href="https://www.twilio.com/try-twilio"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    <span>Get Free Twilio Trial ($15)</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                </div>
-
-                {/* Configuration Form Card */}
-                <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-5">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                    <h3 className="text-sm font-bold text-slate-800">Twilio API Credentials</h3>
-                    <span className="text-xs text-slate-400">Available in your Twilio Console</span>
-                  </div>
-
-                  <form onSubmit={handleSaveTelephony} className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Account SID */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Twilio Account SID <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          value={telephonySettings.twilio_account_sid}
-                          onChange={(e) =>
-                            setTelephonySettings({ ...telephonySettings, twilio_account_sid: e.target.value })
-                          }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
-                        />
-                        <p className="text-[11px] text-slate-400 mt-1">Found on the main Twilio dashboard (starts with AC)</p>
-                      </div>
-
-                      {/* Auth Token */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Twilio Auth Token <span className="text-red-500">*</span>
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showAuthToken ? "text" : "password"}
-                            placeholder={telephonySettings.masked_auth_token || "Paste Auth Token here"}
-                            value={telephonySettings.twilio_auth_token}
-                            onChange={(e) =>
-                              setTelephonySettings({ ...telephonySettings, twilio_auth_token: e.target.value })
-                            }
-                            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500 pr-10"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowAuthToken(!showAuthToken)}
-                            className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
-                          >
-                            {showAuthToken ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                        <p className="text-[11px] text-slate-400 mt-1">Keep this secret — encrypted at rest</p>
-                      </div>
-
-                      {/* Caller ID Phone Number */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          Twilio Caller Phone Number (From) <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          required
-                          placeholder="+1234567890 or verified caller ID"
-                          value={telephonySettings.twilio_caller_id}
-                          onChange={(e) =>
-                            setTelephonySettings({ ...telephonySettings, twilio_caller_id: e.target.value })
-                          }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
-                        />
-                        <p className="text-[11px] text-slate-400 mt-1">Your Twilio purchased virtual phone number with country code</p>
-                      </div>
-
-                      {/* Optional TwiML App SID */}
-                      <div>
-                        <label className="block text-xs font-semibold text-slate-700 mb-1">
-                          TwiML App SID <span className="text-slate-400 font-normal">(Optional for WebRTC)</span>
-                        </label>
-                        <input
-                          type="text"
-                          placeholder="APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                          value={telephonySettings.twilio_twiml_app_sid}
-                          onChange={(e) =>
-                            setTelephonySettings({ ...telephonySettings, twilio_twiml_app_sid: e.target.value })
-                          }
-                          className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-900 focus:outline-none focus:ring-1 focus:ring-red-500"
-                        />
-                        <p className="text-[11px] text-slate-400 mt-1">Used if you want direct in-browser microphone softphone</p>
-                      </div>
-                    </div>
-
-                    <div className="pt-2 flex items-center justify-end">
-                      <button
-                        type="submit"
-                        disabled={savingTelephony}
-                        className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                      >
-                        {savingTelephony ? (
-                          <>
-                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                            <span>Saving Credentials...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Check className="w-3.5 h-3.5" />
-                            <span>Save Twilio Credentials</span>
-                          </>
-                        )}
-                      </button>
-                    </div>
-                  </form>
-                </div>
-
-                {/* Live Real Call Test Section */}
-                <div className="p-6 rounded-2xl bg-gradient-to-br from-slate-900 to-slate-800 text-white shadow-xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-700/80 pb-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-                      <h3 className="text-sm font-bold">Place a Real Test Call</h3>
-                    </div>
-                    <span className="text-xs text-slate-400">Verifies live telecom network connection</span>
-                  </div>
-
-                  <p className="text-xs text-slate-300">
-                    Enter your personal physical phone number below (e.g. mobile number) and click "Place Real Test Call".
-                    Twilio will immediately ring your phone!
-                  </p>
-
-                  <div className="flex flex-col sm:flex-row items-center gap-3">
-                    <input
-                      type="tel"
-                      placeholder="+91 96004 71080"
-                      value={testPhoneNumber}
-                      onChange={(e) => setTestPhoneNumber(e.target.value)}
-                      className="w-full sm:flex-1 px-4 py-3 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-mono font-bold text-white focus:outline-none focus:ring-2 focus:ring-red-500"
-                    />
-
-                    <button
-                      type="button"
-                      disabled={callingTest}
-                      onClick={handleTestCall}
-                      className="w-full sm:w-auto px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 cursor-pointer shrink-0 disabled:opacity-50"
-                    >
-                      {callingTest ? (
-                        <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                          <span>Dispatching Real Call...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Phone className="w-4 h-4" />
-                          <span>Place Real Test Call</span>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {testCallResult && (
-                    <div className="p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-200 text-xs flex items-center justify-between">
-                      <div>
-                        <span className="font-bold">Call Queued:</span> {testCallResult.message}
-                      </div>
-                      <span className="font-mono text-[11px] bg-emerald-900/60 px-2 py-0.5 rounded">
-                        SID: {testCallResult.call_sid}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Step-by-Step Twilio Setup Guide */}
-                <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 text-slate-700 space-y-3">
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    How to get Twilio API Keys in 3 minutes (Free Trial Available)
-                  </h4>
-                  <ol className="text-xs space-y-2 list-decimal pl-4 text-slate-600">
-                    <li>
-                      Visit <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noreferrer" className="text-red-600 font-bold hover:underline">twilio.com/try-twilio</a> and create a free account.
-                    </li>
-                    <li>
-                      Verify your email & phone number. Twilio automatically deposits <strong>$15.00 in free trial balance</strong>.
-                    </li>
-                    <li>
-                      On your Twilio Console home screen, click <strong>"Get Phone Number"</strong> to claim your free virtual caller ID.
-                    </li>
-                    <li>
-                      Copy your <strong>Account SID</strong> and <strong>Auth Token</strong> from the console dashboard, paste them above, and click <strong>"Save Twilio Credentials"</strong>.
-                    </li>
-                    <li>
-                      Done! Any phone call initiated from Zigmaa CRM will physically ring the recipient's mobile phone over the telecom network.
-                    </li>
-                  </ol>
-                </div>
-              </div>
-            )}
           </div>
         </main>
       </div>

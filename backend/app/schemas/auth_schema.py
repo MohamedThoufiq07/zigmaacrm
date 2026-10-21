@@ -38,6 +38,7 @@ class UserOut(BaseModel):
     full_name: str
     role: str
     is_active: bool
+    is_super_admin: Optional[bool] = False
     company_name: Optional[str] = None
     organization_name: Optional[str] = None
 

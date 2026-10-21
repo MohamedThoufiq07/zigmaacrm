@@ -87,6 +87,85 @@ export default function DashboardPage() {
   // Local task completion toggle
   const [completedTasks, setCompletedTasks] = useState<Set<string | number>>(new Set());
 
+  // User details & live clock state
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [activeRole, setActiveRole] = useState<string>("ADMIN");
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+  useEffect(() => {
+    // Initialize live running clock
+    setCurrentTime(new Date());
+    const clockTimer = setInterval(() => {
+      setCurrentTime(new Date());
+    }, 1000);
+
+    // Sync logged-in user profile & active role
+    if (typeof window !== "undefined") {
+      setActiveRole(api.getActiveRole());
+      const loadUser = () => {
+        const u = api.getCurrentUser();
+        if (u) setCurrentUser(u);
+      };
+      loadUser();
+      window.addEventListener("zigmaa_user_updated", loadUser);
+      window.addEventListener("zigmaa_role_changed", () => {
+        setActiveRole(api.getActiveRole());
+      });
+      window.addEventListener("storage", loadUser);
+
+      return () => {
+        clearInterval(clockTimer);
+        window.removeEventListener("zigmaa_user_updated", loadUser);
+        window.removeEventListener("storage", loadUser);
+      };
+    }
+
+    return () => clearInterval(clockTimer);
+  }, []);
+
+  const getGreeting = () => {
+    if (!currentTime) return "Good day";
+    const hour = currentTime.getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
+  const getUserDisplayName = () => {
+    let rawName = "";
+    if (currentUser?.full_name) {
+      rawName = currentUser.full_name;
+    } else if (currentUser?.name) {
+      rawName = currentUser.name;
+    } else if (activeRole === "SALES_REP") {
+      rawName = "Sarah Jenkins";
+    } else {
+      rawName = "Alexander Vance";
+    }
+    // Cleanly strip any trailing role in parentheses e.g. "(Admin)" or "(Sales Rep)"
+    return rawName.replace(/\s*[\(\[][^)]*[\)\]]/gi, "").trim();
+  };
+
+  const formattedDate = useMemo(() => {
+    if (!currentTime) return "";
+    return currentTime.toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
+  }, [currentTime]);
+
+  const formattedTime = useMemo(() => {
+    if (!currentTime) return "";
+    return currentTime.toLocaleTimeString("en-US", {
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true
+    });
+  }, [currentTime]);
+
   const fetchDashboardMetrics = async (range: string) => {
     try {
       setLoading(true);
@@ -187,18 +266,27 @@ export default function DashboardPage() {
         <Header />
 
         <main className="flex-1 overflow-y-auto p-5 lg:p-7 space-y-6 custom-scrollbar bg-[#F8FAFC] dark:bg-[#0b0f19]">
-          {/* Executive Header Controls */}
+          {/* Dynamic Greeting & Live Clock Header Controls */}
           <div className="flex flex-wrap items-center justify-between gap-4 pb-1">
             <div>
-              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2">
-                <span>Executive Dashboard</span>
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                  Live PostgreSQL
+              <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+                <span>
+                  {getGreeting()}, <span className="text-red-600 dark:text-rose-500">{getUserDisplayName()}</span>
                 </span>
               </h1>
-              <p className="text-xs text-slate-500 font-medium mt-0.5">
-                Real-time CRM metrics, conversion rates, and revenue pipeline
-              </p>
+              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400 font-medium mt-1">
+                <span className="flex items-center gap-1.5 font-medium">
+                  <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                  <span>{formattedDate || "Today"}</span>
+                </span>
+                <span className="text-slate-300 dark:text-slate-700 font-bold">•</span>
+                <span className="flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200 font-mono">
+                  <Clock className="w-3.5 h-3.5 text-red-600 dark:text-rose-400 animate-pulse" />
+                  <span suppressHydrationWarning>{formattedTime || "--:--:--"}</span>
+                </span>
+                <span className="text-slate-300 dark:text-slate-700 font-bold">•</span>
+                <span>Real-time CRM metrics & revenue pipeline</span>
+              </div>
             </div>
 
             {/* Actions: Date Range Selector + Refresh */}

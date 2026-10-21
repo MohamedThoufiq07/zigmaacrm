@@ -8,6 +8,8 @@ logger = logging.getLogger("zigmaa.database")
 
 # DB Configuration: Preferences settings.DATABASE_URL or environment variable
 db_url = os.getenv("DATABASE_URL", settings.DATABASE_URL)
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 connect_args = {}
 if db_url.startswith("sqlite"):

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router, team, telephony
+from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router, team, telephony, whatsapp
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -38,6 +38,7 @@ app.include_router(activities.router, prefix=settings.API_V1_STR, tags=["Activit
 app.include_router(calendar.router, prefix=settings.API_V1_STR, tags=["Calendar"])
 app.include_router(webhooks.router, prefix=f"{settings.API_V1_STR}/webhooks", tags=["Webhooks"])
 app.include_router(webhooks.router, prefix=settings.API_V1_STR, tags=["Webhooks-Direct"])
+app.include_router(whatsapp.router, prefix=f"{settings.API_V1_STR}/whatsapp", tags=["WhatsApp"])
 app.include_router(automations.router, prefix=settings.API_V1_STR, tags=["Automations"])
 app.include_router(invoices.router, prefix=settings.API_V1_STR, tags=["Invoices"])
 app.include_router(copilot.router, prefix=settings.API_V1_STR, tags=["AI Copilot"])

@@ -8,8 +8,12 @@ from app.core.database import get_db
 from app.models.contact import Contact
 from app.models.organization_user import Organization
 from app.services.webhook_service import WebhookService
+from app.api.v1.webhooks.whatsapp import router as whatsapp_webhook_router
 
 router = APIRouter()
+
+# Include whatsapp webhook sub-router
+router.include_router(whatsapp_webhook_router, tags=["WhatsApp Webhook"])
 
 class InboundLeadPayload(BaseModel):
     full_name: str

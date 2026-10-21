@@ -11,6 +11,7 @@ from app.models.workflow import Workflow, WorkflowLog
 from app.models.task import Task
 from app.models.calendar_event import CalendarEvent
 from app.models.organization_setting import OrganizationSetting
+from app.models.whatsapp import WhatsAppMessage
 
 __all__ = [
     "Base",
@@ -32,5 +33,6 @@ __all__ = [
     "Task",
     "CalendarEvent",
     "OrganizationSetting",
+    "WhatsAppMessage",
 ]
 

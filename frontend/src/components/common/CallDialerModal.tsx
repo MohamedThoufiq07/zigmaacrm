@@ -471,7 +471,7 @@ export default function CallDialerModal({
             </div>
             <div className="flex items-center gap-2 pl-5 pt-0.5">
               <Link
-                href="/settings?tab=telephony"
+                href="/settings"
                 onClick={() => {
                   stopRingtone();
                   onClose();
@@ -479,7 +479,7 @@ export default function CallDialerModal({
                 className="px-2.5 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[11px] font-bold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
               >
                 <Settings className="w-3 h-3" />
-                <span>Configure Twilio</span>
+                <span>Settings</span>
               </Link>
               <span className="text-[10px] text-amber-700">or use WhatsApp free</span>
             </div>

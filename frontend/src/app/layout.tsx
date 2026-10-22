@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ToastProvider } from "@/components/common/ToastProvider";
 import AuthGuard from "@/components/common/AuthGuard";
+import TopProgressBar from "@/components/common/TopProgressBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -57,6 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-full flex flex-col antialiased">
+        <TopProgressBar />
         <ThemeProvider>
           <AuthProvider>
             <ToastProvider>

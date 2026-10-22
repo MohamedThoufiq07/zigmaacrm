@@ -101,6 +101,7 @@ async def get_deals_board(
                     "assigned_user_id": d.assigned_user_id,
                     "status": d.status,
                     "custom_data": d.custom_data or {},
+                    "custom_properties": d.custom_properties or d.custom_data or {},
                     "created_at": d.created_at.isoformat() if d.created_at else None
                 })
         board_stages.append({
@@ -161,6 +162,7 @@ async def create_deal(
     owner_id = deal_in.owner_id or (current_user.id if current_user else None)
     owner_name = deal_in.owner_name or deal_in.assigned_user_name or (current_user.full_name if current_user else "Mohamed Thoufiq")
     assigned_user_id = deal_in.assigned_user_id or owner_id
+    custom_props = deal_in.custom_properties or deal_in.custom_data or {}
 
     deal = Deal(
         organization_id=org_id,
@@ -173,12 +175,39 @@ async def create_deal(
         currency=deal_in.currency,
         expected_close_date=deal_in.expected_close_date,
         status=deal_in.status or "OPEN",
-        custom_data=deal_in.custom_data or {},
+        custom_data=custom_props,
+        custom_properties=custom_props,
         assigned_user_id=assigned_user_id,
         owner_id=owner_id,
         owner_name=owner_name
     )
     db.add(deal)
+    await db.commit()
+    await db.refresh(deal)
+    return deal
+
+@router.patch("/deals/{deal_id}")
+async def update_deal(
+    deal_id: str,
+    deal_in: dict,
+    db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(Deal).where(Deal.id == deal_id))
+    deal = result.scalar_one_or_none()
+    if not deal:
+        raise HTTPException(status_code=404, detail="Deal not found")
+
+    if "custom_properties" in deal_in:
+        deal.custom_properties = deal_in["custom_properties"]
+        deal.custom_data = deal_in["custom_properties"]
+    elif "custom_data" in deal_in:
+        deal.custom_data = deal_in["custom_data"]
+        deal.custom_properties = deal_in["custom_data"]
+
+    for key, val in deal_in.items():
+        if key not in ["id", "created_at", "custom_properties", "custom_data"] and hasattr(deal, key):
+            setattr(deal, key, val)
+
     await db.commit()
     await db.refresh(deal)
     return deal

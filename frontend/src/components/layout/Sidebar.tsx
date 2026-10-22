@@ -228,8 +228,14 @@ export default function Sidebar() {
                   >
                     <Link
                       href={item.href}
+                      prefetch={true}
+                      onClick={() => {
+                        if (typeof window !== "undefined" && currentPath !== item.href) {
+                          window.dispatchEvent(new CustomEvent("zigmaa_nav_start", { detail: { to: item.href } }));
+                        }
+                      }}
                       className={cn(
-                        "rounded-xl transition-colors relative flex items-center font-semibold text-xs",
+                        "rounded-xl transition-all duration-150 relative flex items-center font-semibold text-xs active:scale-[0.98]",
                         expanded
                           ? "w-full px-3.5 py-2.5 justify-start gap-3"
                           : "w-11 h-11 justify-center p-2.5",

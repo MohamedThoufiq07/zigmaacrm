@@ -45,8 +45,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const refreshUser = useCallback(async () => {
     if (typeof window === "undefined") return;
-    const storedToken = localStorage.getItem("zigmaa_token");
-    if (!storedToken) {
+    let storedToken = localStorage.getItem("zigmaa_token");
+    if (storedToken && storedToken.startsWith('"') && storedToken.endsWith('"')) {
+      storedToken = storedToken.slice(1, -1).trim();
+      localStorage.setItem("zigmaa_token", storedToken);
+    }
+    const cachedUser = api.getCurrentUser();
+
+    if (!storedToken && (!cachedUser || !cachedUser.email)) {
       setUser(null);
       setToken(null);
       setRole("ADMIN");
@@ -54,7 +60,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    setToken(storedToken);
+    if (cachedUser) {
+      setUser(cachedUser);
+      setRole(cachedUser.role || "ADMIN");
+    }
+    if (storedToken) {
+      setToken(storedToken);
+    }
+
     try {
       const me = await api.getMe();
       if (me) {
@@ -63,21 +76,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setRole(resolvedRole);
         localStorage.setItem("zigmaa_active_role", resolvedRole);
       }
-    } catch (err) {
-      console.warn("Failed to verify active session via /api/v1/auth/me:", err);
+    } catch (err: any) {
+      console.warn("Session verification warning via /api/v1/auth/me:", err?.message || err);
+      // Keep cached user if present to prevent bouncing back to login
       const cached = api.getCurrentUser();
-      if (cached) {
+      if (cached && (cached.email || cached.id)) {
         setUser(cached);
-        setRole(cached.role || "ADMIN");
+        const resolvedRole = cached.role || localStorage.getItem("zigmaa_active_role") || "ADMIN";
+        setRole(resolvedRole);
       } else {
         api.logout();
         setUser(null);
         setToken(null);
+        setRole("ADMIN");
+        if (typeof window !== "undefined" && !["/login", "/signup", "/invite/accept", "/forgot-password"].includes(window.location.pathname)) {
+          router.replace("/login");
+        }
       }
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     refreshUser();

@@ -22,6 +22,7 @@ class Contact(TimeStampedBase):
     status = Column(String(50), default="NEW", index=True)
     lifecycle_stage = Column(String(50), default="NEW")
     custom_data = Column(JsonType, default=dict)
+    custom_properties = Column(JsonType, default=dict)
     assigned_user_name = Column(String(255), default="Mohamed Thoufiq")
     assigned_user_id = Column(String(36), ForeignKey("users.id"), nullable=True)
     owner_id = Column(String(36), ForeignKey("users.id"), nullable=True, index=True)

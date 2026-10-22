@@ -27,7 +27,7 @@ async def google_login(payload: GoogleLoginSchema, db: AsyncSession = Depends(ge
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"This Gmail account ({clean_email}) is not registered with Zigmaa CRM. Please register first or sign in with your registered account."
+            detail=f"This Gmail account ({clean_email}) is not registered with Zigmaa CRM. Please sign up or contact your administrator."
         )
 
     if not user.is_active:
@@ -397,7 +397,24 @@ async def update_profile(payload: UpdateProfileRequest, db: AsyncSession = Depen
     if payload.picture is not None:
         user.avatar_url = payload.picture.strip() if payload.picture else None
 
+    # Synchronize OrganizationSetting for this user's organization
+    if user.organization_id:
+        setting_res = await db.execute(
+            select(OrganizationSetting).where(OrganizationSetting.organization_id == user.organization_id)
+        )
+        setting = setting_res.scalars().first()
+        if setting:
+            if payload.full_name:
+                setting.signatory_name = payload.full_name.strip()
+            if payload.organization_name:
+                setting.company_name = payload.organization_name.strip()
+            if payload.new_email:
+                setting.email = payload.new_email.lower().strip()
+            if payload.picture is not None:
+                setting.logo_url = payload.picture.strip() if payload.picture else None
+
     await db.commit()
     await db.refresh(user)
 
     return await _build_user_out(user, db)
+

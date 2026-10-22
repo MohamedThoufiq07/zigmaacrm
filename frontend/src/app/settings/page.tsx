@@ -7,6 +7,7 @@ import {
   Calendar,
   Globe,
   RotateCcw,
+  Sliders,
   CheckCircle2,
   ExternalLink,
   ShieldCheck,
@@ -36,10 +37,11 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import ConnectEmailModal from "@/components/settings/ConnectEmailModal";
 import InviteMemberDrawer from "@/components/settings/InviteMemberDrawer";
+import ModulesAndFieldsManager from "@/components/settings/ModulesAndFieldsManager";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
 
-type SettingsTab = "profile" | "team" | "webhooks" | "email-sync" | "integrations";
+type SettingsTab = "profile" | "team" | "modules" | "webhooks" | "email-sync" | "integrations";
 
 export default function SettingsPage() {
   const { toast, confirm } = useToast();
@@ -76,14 +78,14 @@ export default function SettingsPage() {
 
 
   // Profile Info Fields
-  const [fullName, setFullName] = useState("Arsath Thoufiq");
-  const [email, setEmail] = useState("thoufiqarsath84@gmail.com");
-  const [phone, setPhone] = useState("9876543210");
-  const [companyName, setCompanyName] = useState("Arsath Thoufiq's Workspace");
+  const [fullName, setFullName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
   const [userPhoto, setUserPhoto] = useState<string>("");
   const [address, setAddress] = useState("Chennai Tech Park, Guindy, Chennai, Tamil Nadu 600032");
   const [gstin, setGstin] = useState("33AAECZ9920K1ZX");
-  const [signatoryName, setSignatoryName] = useState("Arsath Thoufiq");
+  const [signatoryName, setSignatoryName] = useState("");
   const [signatoryDesignation, setSignatoryDesignation] = useState("Authorized Signatory");
   const [bankName, setBankName] = useState("HDFC Bank Ltd");
   const [accountNumber, setAccountNumber] = useState("50200084729104");
@@ -184,26 +186,33 @@ export default function SettingsPage() {
       const user = api.getCurrentUser();
       if (user) {
         setCurrentUser(user);
-        if (user.full_name) setFullName(user.full_name);
+        if (user.full_name) {
+          setFullName(user.full_name);
+          setSignatoryName(user.full_name);
+        }
         if (user.email) setEmail(user.email);
         if (user.phone) setPhone(user.phone);
         if (user.organization_name) setCompanyName(user.organization_name);
-        if (user.picture) setUserPhoto(user.picture);
+        if (user.picture || user.avatar_url) setUserPhoto(user.picture || user.avatar_url);
       }
 
       // Load persistent organization settings
       api.getOrganizationSettings().then((org) => {
         if (org) {
           if (org.company_name) setCompanyName(org.company_name);
-          if (org.logo_url) setUserPhoto(org.logo_url);
-          if (org.email) setEmail(org.email);
-          if (org.phone) {
+          // Only use org logo if user doesn't already have their personal photo
+          if (org.logo_url && !user?.picture && !user?.avatar_url) {
+            setUserPhoto(org.logo_url);
+          }
+          // Do NOT overwrite user's personal email with org.email
+          if (!user?.email && org.email) setEmail(org.email);
+          if (org.phone && !user?.phone) {
             const cleanPhone = org.phone.replace("+91", "").trim();
             setPhone(cleanPhone);
           }
           if (org.address) setAddress(org.address);
           if (org.gstin) setGstin(org.gstin);
-          if (org.signatory_name) setSignatoryName(org.signatory_name);
+          if (org.signatory_name && !user?.full_name) setSignatoryName(org.signatory_name);
           if (org.signatory_designation) setSignatoryDesignation(org.signatory_designation);
           if (org.bank_name) setBankName(org.bank_name);
           if (org.account_number) setAccountNumber(org.account_number);
@@ -215,10 +224,10 @@ export default function SettingsPage() {
       const handleSyncUpdate = () => loadEmailSync();
       window.addEventListener("zigmaa_email_sync_updated", handleSyncUpdate);
 
-      // Check URL query param for active tab e.g. /settings?tab=team
+      // Check URL query param for active tab e.g. /settings?tab=modules
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab") as SettingsTab;
-      if (tabParam && ["profile", "team", "webhooks", "email-sync", "integrations"].includes(tabParam)) {
+      if (tabParam && ["profile", "team", "modules", "webhooks", "email-sync", "integrations"].includes(tabParam)) {
         setActiveTab(tabParam);
       }
 
@@ -485,6 +494,19 @@ export default function SettingsPage() {
 
             <button
               type="button"
+              onClick={() => setActiveTab("modules")}
+              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                activeTab === "modules"
+                  ? "bg-red-600 text-white shadow-xs"
+                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>Modules & Fields</span>
+            </button>
+
+            <button
+              type="button"
               onClick={() => setActiveTab("webhooks")}
               className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
                 activeTab === "webhooks"
@@ -625,7 +647,7 @@ export default function SettingsPage() {
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        placeholder="Arsath Thoufiq"
+                        placeholder={currentUser?.full_name || "Your Full Name"}
                         className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                         required
                       />
@@ -640,7 +662,7 @@ export default function SettingsPage() {
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        placeholder="thoufiqarsath84@gmail.com"
+                        placeholder={currentUser?.email || "your.email@example.com"}
                         className="w-full bg-slate-50 text-slate-900 p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-red-500 font-medium"
                         required
                       />
@@ -1073,6 +1095,13 @@ export default function SettingsPage() {
             )}
 
             {/* ============================================================== */}
+            {/* TAB: MODULES & CUSTOM FIELDS (TWOZO STYLE)                     */}
+            {/* ============================================================== */}
+            {activeTab === "modules" && (
+              <ModulesAndFieldsManager />
+            )}
+
+            {/* ============================================================== */}
             {/* TAB 2: LEAD SOURCES & FORMS (CLEAN ZIGMAA STYLE)               */}
             {/* ============================================================== */}
             {activeTab === "webhooks" && (
@@ -1406,7 +1435,7 @@ export default function SettingsPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <h3 className="text-sm font-bold text-slate-900">
-                                {emailSync.email || "mdthoufiq0507@gmail.com"}
+                                {emailSync.email || email || currentUser?.email || "Connected Email"}
                               </h3>
                               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1.5">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -1552,11 +1581,11 @@ export default function SettingsPage() {
       <ConnectEmailModal
         isOpen={showConnectModal}
         onClose={() => setShowConnectModal(false)}
-        defaultEmail="mdthoufiq0507@gmail.com"
+        defaultEmail={email || currentUser?.email || ""}
         onConnected={(data) => {
           setEmailSync({
             is_connected: true,
-            email: data.email || "mdthoufiq0507@gmail.com",
+            email: data.email || email || currentUser?.email || "",
             provider: data.provider || "GMAIL",
             last_synced_at: "Just now"
           });

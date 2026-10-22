@@ -19,6 +19,7 @@ class Deal(TimeStampedBase):
     owner_name = Column(String(255), nullable=True)
     status = Column(String(50), default="OPEN")  # OPEN, WON, LOST
     custom_data = Column(JSON, default=dict)
+    custom_properties = Column(JSON, default=dict)
 
     organization = relationship("Organization", back_populates="deals")
     stage = relationship("PipelineStage", back_populates="deals")

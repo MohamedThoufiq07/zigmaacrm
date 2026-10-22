@@ -14,28 +14,33 @@ export default function AuthGuard({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const isPublic = PUBLIC_PATHS.some((p) => pathname === p || pathname?.startsWith("/invite/"));
 
-    const token = typeof window !== "undefined" ? localStorage.getItem("zigmaa_token") : null;
+    let token = typeof window !== "undefined" ? localStorage.getItem("zigmaa_token") : null;
+    if (token && token.startsWith('"') && token.endsWith('"')) {
+      token = token.slice(1, -1).trim();
+    }
     const user = api.getCurrentUser();
 
     // Validate token expiration if token exists
     let isTokenExpired = false;
     if (token) {
       try {
-        const payloadBase64 = token.split(".")[1];
-        if (payloadBase64) {
-          const payloadJson = JSON.parse(atob(payloadBase64.replace(/-/g, "+").replace(/_/g, "/")));
+        const parts = token.split(".");
+        if (parts.length === 3 && parts[1]) {
+          const base64 = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+          const padded = base64.padEnd(base64.length + (4 - (base64.length % 4)) % 4, "=");
+          const payloadJson = JSON.parse(atob(padded));
           if (payloadJson.exp && Date.now() >= payloadJson.exp * 1000) {
             isTokenExpired = true;
           }
         }
       } catch (e) {
-        isTokenExpired = true;
+        // Don't treat minor parsing hiccups as token expiration
       }
     }
 
-    const hasValidSession = Boolean(token && user && !isTokenExpired);
+    const hasValidToken = Boolean((token && !isTokenExpired) || (user && user.email));
 
-    if (hasValidSession) {
+    if (hasValidToken) {
       // If user is already authenticated and visits login or signup, redirect to dashboard
       if (pathname === "/login" || pathname === "/signup") {
         router.replace("/");

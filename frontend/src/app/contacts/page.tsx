@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
   UserCheck,
   Plus,
@@ -42,6 +42,19 @@ import { api } from "@/lib/api";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { Contact } from "@/lib/mockData";
 import { useToast } from "@/components/common/ToastProvider";
+import ColumnCustomizerPopover, { ColumnDefinition, useColumnVisibility } from "@/components/common/ColumnCustomizerPopover";
+import { SourceBadge } from "@/components/common/SourceBadge";
+
+const CONTACT_COLUMNS: ColumnDefinition[] = [
+  { id: "name", label: "Contact Name", locked: true },
+  { id: "email", label: "Email" },
+  { id: "phone", label: "Phone", locked: true },
+  { id: "company", label: "Company" },
+  { id: "source", label: "Source" },
+  { id: "lifecycleStage", label: "Lifecycle Stage" },
+  { id: "owner", label: "Owner" },
+  { id: "actions", label: "Actions", locked: true }
+];
 
 const LIFECYCLE_STAGES = [
   "New",
@@ -130,6 +143,21 @@ export default function ContactsPage() {
   const [dealStage, setDealStage] = useState("Discovery");
   const [savingDeal, setSavingDeal] = useState(false);
 
+  const dynamicContactColumns = useMemo(() => {
+    return customFields.map((cf) => ({
+      id: cf.key || cf.field_key,
+      label: cf.label,
+      isCustom: true
+    }));
+  }, [customFields]);
+
+  // Column Visibility State persisted in localStorage
+  const {
+    visibleColumns,
+    toggleColumn,
+    resetColumns
+  } = useColumnVisibility("zigmaa_contacts_columns", CONTACT_COLUMNS, dynamicContactColumns);
+
   // In-App Phone Call Dialer Modal
   const [callModalContact, setCallModalContact] = useState<Contact | null>(null);
 
@@ -142,10 +170,22 @@ export default function ContactsPage() {
     }
   };
 
+  const handleCustomFieldsLoaded = useCallback((cfs: any[]) => {
+    setCustomFields((prev) => {
+      if (
+        prev.length === cfs.length &&
+        prev.every((p, i) => (p.key || p.id) === (cfs[i]?.key || cfs[i]?.id))
+      ) {
+        return prev;
+      }
+      return cfs;
+    });
+  }, []);
+
   const loadCustomFields = async () => {
     try {
       const cfs = await api.getCustomFields("CONTACT");
-      setCustomFields(cfs || []);
+      handleCustomFieldsLoaded(cfs || []);
     } catch {}
   };
 
@@ -529,42 +569,9 @@ export default function ContactsPage() {
     }).length;
   }, [filteredContacts]);
 
-  // Helper for source badge
+  // Helper for source badge with exact branded icon and pill styling
   const renderSourceBadge = (src?: string) => {
-    const s = (src || "Manual").toUpperCase();
-    if (s.includes("WHATSAPP")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-          WhatsApp
-        </span>
-      );
-    }
-    if (s.includes("META")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-          Meta Ads
-        </span>
-      );
-    }
-    if (s.includes("GOOGLE")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700 border border-amber-200">
-          Google Ads
-        </span>
-      );
-    }
-    if (s.includes("WEB")) {
-      return (
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-purple-50 text-purple-700 border border-purple-200">
-          Website Form
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
-        {src || "Manual"}
-      </span>
-    );
+    return <SourceBadge source={src} />;
   };
 
   return (
@@ -716,23 +723,17 @@ export default function ContactsPage() {
                 Export
               </button>
 
-              {/* Manage Custom Fields Icon Button with Tooltip */}
-              <div className="relative group/fields shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setShowCustomFields(true)}
-                  className="w-9 h-9 bg-white border border-slate-200 text-slate-600 hover:text-slate-900 hover:bg-slate-50 rounded-xl shadow-2xs transition-colors cursor-pointer flex items-center justify-center"
-                  aria-label="Fields"
-                >
-                  <Sliders className="w-4 h-4" />
-                </button>
-                {/* Sleek Tooltip on Hover */}
-                <div className="absolute right-0 top-full mt-1.5 pointer-events-none opacity-0 group-hover/fields:opacity-100 transition-opacity duration-150 z-30">
-                  <div className="bg-slate-800 text-white text-[11px] font-medium py-1 px-2.5 rounded-lg shadow-md whitespace-nowrap">
-                    Fields
-                  </div>
-                </div>
-              </div>
+              {/* Table Column Customizer Dropdown */}
+              <ColumnCustomizerPopover
+                storageKey="zigmaa_contacts_columns"
+                module="contacts"
+                columns={CONTACT_COLUMNS}
+                visibleColumns={visibleColumns}
+                onToggle={toggleColumn}
+                onReset={resetColumns}
+                onCustomFieldsLoaded={handleCustomFieldsLoaded}
+                onOpenCustomFields={() => setShowCustomFields(true)}
+              />
             </div>
           </div>
 
@@ -740,10 +741,10 @@ export default function ContactsPage() {
           <div className="bg-white border border-slate-200/80 rounded-xl shadow-xs flex-1 flex flex-col min-h-0 overflow-hidden">
             {/* Scrollable table body area */}
             <div className="flex-1 overflow-auto custom-scrollbar">
-              <table className="w-full border-separate border-spacing-0 text-left text-sm min-w-[1150px]">
+              <table className="w-full border-separate border-spacing-0 text-left text-sm min-w-max">
                 <thead className="sticky top-0 z-20 bg-white shadow-[0_1px_0_0_#f1f5f9]">
                   <tr className="bg-white text-[12px] font-medium text-slate-500 tracking-normal capitalize select-none">
-                    <th className="py-3 px-3 w-12 text-center border-b border-r border-slate-200/70 bg-white">
+                    <th className="py-3.5 px-4 w-14 min-w-[56px] text-center border-b border-r border-slate-200/70 bg-white">
                       <div className="flex items-center justify-center">
                         <button
                           type="button"
@@ -759,463 +760,511 @@ export default function ContactsPage() {
                       </div>
                     </th>
                     {/* Contact Name Header (Standard Flow) */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Contact Name</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "name" ? null : "name");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "name" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Contact Name"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.name !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Contact Name</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "name" ? null : "name");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "name" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Contact Name"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {/* Asc / Desc Popover Menu */}
-                        {activeSortMenuColumn === "name" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute left-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {/* Asc / Desc Popover Menu */}
+                          {activeSortMenuColumn === "name" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("name");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "name" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("name");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "name" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute left-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("name");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "name" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("name");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "name" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Email Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[200px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Email</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "email" ? null : "email");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "email" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Email"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.email !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Email</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "email" ? null : "email");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "email" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Email"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "email" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "email" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("email");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "email" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("email");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "email" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("email");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "email" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("email");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "email" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Phone Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[150px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Phone</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "phone" ? null : "phone");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "phone" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Phone"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.phone !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Phone</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "phone" ? null : "phone");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "phone" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Phone"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "phone" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "phone" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("phone");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "phone" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("phone");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "phone" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("phone");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "phone" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("phone");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "phone" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Company Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[140px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Company</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "company_name" ? null : "company_name");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "company_name" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Company"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.company !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Company</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "company_name" ? null : "company_name");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "company_name" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Company"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "company_name" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "company_name" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("company_name");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "company_name" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("company_name");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "company_name" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("company_name");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "company_name" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("company_name");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "company_name" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Source Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[120px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Source</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "source" ? null : "source");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "source" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Source"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.source !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Source</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "source" ? null : "source");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "source" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Source"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "source" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "source" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("source");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "source" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("source");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "source" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("source");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "source" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("source");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "source" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Lifecycle Stage Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[130px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Lifecycle Stage</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "lifecycle_stage" ? null : "lifecycle_stage");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "lifecycle_stage" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Stage"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.lifecycleStage !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Lifecycle Stage</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "lifecycle_stage" ? null : "lifecycle_stage");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "lifecycle_stage" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Stage"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "lifecycle_stage" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "lifecycle_stage" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("lifecycle_stage");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "lifecycle_stage" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("lifecycle_stage");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "lifecycle_stage" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("lifecycle_stage");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "lifecycle_stage" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("lifecycle_stage");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "lifecycle_stage" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
 
                     {/* Owner Header */}
-                    <th className="py-3 px-4 border-b border-r border-slate-200/70 min-w-[160px] bg-white">
-                      <div className="flex items-center justify-between relative">
-                        <span className="font-medium text-slate-700">Owner</span>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActiveSortMenuColumn(activeSortMenuColumn === "assigned_to" ? null : "assigned_to");
-                          }}
-                          className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
-                            sortField === "assigned_to" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
-                          }`}
-                          title="Sort Owner"
-                        >
-                          <Menu className="w-3.5 h-3.5" />
-                        </button>
+                    {visibleColumns.owner !== false && (
+                      <th className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150">
+                        <div className="flex items-center justify-between relative">
+                          <span className="font-medium text-slate-700">Owner</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveSortMenuColumn(activeSortMenuColumn === "assigned_to" ? null : "assigned_to");
+                            }}
+                            className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors cursor-pointer ${
+                              sortField === "assigned_to" ? "bg-red-50 text-red-600" : "text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                            }`}
+                            title="Sort Owner"
+                          >
+                            <Menu className="w-3.5 h-3.5" />
+                          </button>
 
-                        {activeSortMenuColumn === "assigned_to" && (
-                          <>
-                            <div
-                              className="fixed inset-0 z-30"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveSortMenuColumn(null);
-                              }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
-                              <button
-                                type="button"
+                          {activeSortMenuColumn === "assigned_to" && (
+                            <>
+                              <div
+                                className="fixed inset-0 z-30"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSortField("assigned_to");
-                                  setSortOrder("asc");
                                   setActiveSortMenuColumn(null);
                                 }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "assigned_to" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Asc</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSortField("assigned_to");
-                                  setSortOrder("desc");
-                                  setActiveSortMenuColumn(null);
-                                }}
-                                className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
-                                  sortField === "assigned_to" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
-                                }`}
-                              >
-                                <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
-                                <span>Desc</span>
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </th>
+                              />
+                              <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 font-normal text-slate-700">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("assigned_to");
+                                    setSortOrder("asc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "assigned_to" && sortOrder === "asc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Asc</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSortField("assigned_to");
+                                    setSortOrder("desc");
+                                    setActiveSortMenuColumn(null);
+                                  }}
+                                  className={`w-full px-3 py-1.5 flex items-center gap-2 hover:bg-slate-50 cursor-pointer ${
+                                    sortField === "assigned_to" && sortOrder === "desc" ? "text-red-600 font-bold bg-red-50/50" : ""
+                                  }`}
+                                >
+                                  <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                                  <span>Desc</span>
+                                </button>
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </th>
+                    )}
+
+                    {/* Dynamic Custom Fields */}
+                    {customFields.map((cf) => {
+                      const colKey = cf.key || cf.field_key;
+                      if (!colKey || visibleColumns[colKey] === false) return null;
+                      return (
+                        <th
+                          key={cf.id}
+                          className="py-3.5 px-6 border-b border-r border-slate-200/70 w-[210px] min-w-[210px] bg-white transition-all duration-150"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-slate-700">{cf.label}</span>
+                          </div>
+                        </th>
+                      );
+                    })}
 
                     {/* Actions Header (Standard Flow) */}
-                    <th className="py-3 px-4 text-right border-b border-slate-100 w-28 bg-white">Actions</th>
+                    {visibleColumns.actions !== false && (
+                      <th className="py-3.5 px-6 text-right border-b border-slate-100 w-28 min-w-[112px] bg-white transition-all duration-150">Actions</th>
+                    )}
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 text-slate-700">
                   {paginatedContacts.length === 0 ? (
                     <tr>
-                      <td colSpan={9} className="py-24 text-center">
+                      <td
+                        colSpan={
+                          1 +
+                          [
+                            visibleColumns.name !== false,
+                            visibleColumns.email !== false,
+                            visibleColumns.phone !== false,
+                            visibleColumns.company !== false,
+                            visibleColumns.source !== false,
+                            visibleColumns.lifecycleStage !== false,
+                            visibleColumns.owner !== false,
+                            ...customFields.map((cf) => visibleColumns[cf.key || cf.field_key] !== false),
+                            visibleColumns.actions !== false
+                          ].filter(Boolean).length
+                        }
+                        className="py-24 text-center"
+                      >
                         <div className="max-w-md mx-auto space-y-1.5">
                           <p className="text-sm font-semibold text-slate-800">No contacts found</p>
                           <p className="text-xs text-slate-400">Inbound enquiries and verified clients will appear in this unified directory.</p>
@@ -1249,7 +1298,7 @@ export default function ContactsPage() {
                         >
                           {/* Checkbox (Standard Flow) */}
                           <td
-                            className="py-3.5 px-3 w-12 text-center border-b border-slate-100 transition-colors"
+                            className="py-4 px-4 w-14 min-w-[56px] text-center border-b border-slate-100 transition-colors"
                             onClick={(e) => {
                               e.stopPropagation();
                               toggleSelectOne(contact.id);
@@ -1265,67 +1314,51 @@ export default function ContactsPage() {
                           </td>
 
                           {/* Contact Name (Single Column with Initials Circle Avatar + designation/company subtext - Standard Flow) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[200px] transition-colors">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 border border-slate-200/80">
-                                {initials || "C"}
-                              </div>
-                              <div className="min-w-0 flex flex-col">
-                                <span className="font-medium text-slate-800 group-hover:text-red-600 transition-colors text-[13px] truncate">
-                                  {contact.name || "—"}
-                                </span>
-                                {contact.designation ? (
-                                  <span className="text-[11px] text-slate-400 truncate">
-                                    {contact.designation}
+                          {visibleColumns.name !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] transition-all duration-150">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-7 h-7 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 border border-slate-200/80">
+                                  {initials || "C"}
+                                </div>
+                                <div className="min-w-0 flex flex-col">
+                                  <span className="font-medium text-slate-800 group-hover:text-red-600 transition-colors text-[13px] truncate">
+                                    {contact.name || "—"}
                                   </span>
-                                ) : contact.company_name ? (
-                                  <span className="text-[11px] text-slate-400 truncate">
-                                    {contact.company_name}
-                                  </span>
-                                ) : null}
+                                  {contact.designation ? (
+                                    <span className="text-[11px] text-slate-400 truncate">
+                                      {contact.designation}
+                                    </span>
+                                  ) : contact.company_name ? (
+                                    <span className="text-[11px] text-slate-400 truncate">
+                                      {contact.company_name}
+                                    </span>
+                                  ) : null}
+                                </div>
                               </div>
-                            </div>
-                          </td>
+                            </td>
+                          )}
 
                           {/* Email (Clean slate styling, no red) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[200px] text-slate-600 text-[12px]" onClick={(e) => e.stopPropagation()}>
-                            {contact.email ? (
-                              <a
-                                href={`mailto:${contact.email}`}
-                                className="font-normal text-slate-600 hover:text-slate-900 hover:underline block truncate"
-                              >
-                                {contact.email}
-                              </a>
-                            ) : (
-                              <span className="text-slate-400 font-normal">—</span>
-                            )}
-                          </td>
-
-                          {/* Phones (Strict single line, clean straight alignment) */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[150px] text-slate-700 text-[13px]" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-2 font-sans whitespace-nowrap">
-                              {contact.phone ? (
+                          {visibleColumns.email !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] text-slate-600 text-[12px] transition-all duration-150" onClick={(e) => e.stopPropagation()}>
+                              {contact.email ? (
                                 <a
-                                  href={`tel:${contact.phone}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    api.createActivity({
-                                      contact_id: String(contact.id),
-                                      type: "CALL",
-                                      notes: `Call Clicked: Outbound call triggered for ${contact.name || contact.phone}`,
-                                      status: "COMPLETED"
-                                    }).catch(() => {});
-                                  }}
-                                  className="font-mono tracking-tight select-text text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
-                                  title={`Call ${contact.phone}`}
+                                  href={`mailto:${contact.email}`}
+                                  className="font-normal text-slate-600 hover:text-slate-900 hover:underline block truncate"
                                 >
-                                  {contact.phone}
+                                  {contact.email}
                                 </a>
                               ) : (
-                                <span className="font-mono tracking-tight text-slate-400 select-text">—</span>
+                                <span className="text-slate-400 font-normal">—</span>
                               )}
-                              {contact.phone && (
-                                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            </td>
+                          )}
+
+                          {/* Phones (Strict single line, clean straight alignment) */}
+                          {visibleColumns.phone !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] text-slate-700 text-[13px] transition-all duration-150" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center gap-2 font-sans whitespace-nowrap">
+                                {contact.phone ? (
                                   <a
                                     href={`tel:${contact.phone}`}
                                     onClick={(e) => {
@@ -1337,144 +1370,211 @@ export default function ContactsPage() {
                                         status: "COMPLETED"
                                       }).catch(() => {});
                                     }}
-                                    className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
-                                    title="Call Contact"
+                                    className="font-mono tracking-tight select-text text-blue-600 hover:text-blue-800 hover:underline cursor-pointer text-left"
+                                    title={`Call ${contact.phone}`}
                                   >
-                                    <Phone className="w-3 h-3" />
+                                    {contact.phone}
                                   </a>
-                                  <a
-                                    href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
-                                    title="WhatsApp"
-                                  >
-                                    <MessageSquare className="w-3 h-3" />
-                                  </a>
-                                </div>
-                              )}
-                            </div>
-                          </td>
-
-                          {/* Company */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[140px] text-[13px] text-slate-600">
-                            {contact.company_name ? (
-                              <span className="inline-flex items-center gap-1.5 truncate">
-                                <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                                <span className="truncate">{contact.company_name}</span>
-                              </span>
-                            ) : (
-                              <span className="text-slate-400">—</span>
-                            )}
-                          </td>
-
-                          {/* Source Tag */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[120px]">
-                            {renderSourceBadge(contact.source)}
-                          </td>
-
-                          {/* Lifecycle Stage */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[130px]" onClick={(e) => e.stopPropagation()}>
-                            <div className="relative inline-block">
-                              <select
-                                value={currentStage}
-                                onChange={(e) => handleStageChange(contact.id, e.target.value)}
-                                className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium py-1 pl-2.5 pr-6 rounded-full focus:outline-none focus:ring-1 focus:ring-red-400 cursor-pointer transition-colors shadow-2xs"
-                              >
-                                {LIFECYCLE_STAGES.map((st) => (
-                                  <option key={st} value={st}>{st}</option>
-                                ))}
-                              </select>
-                              <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-                            </div>
-                          </td>
-
-                          {/* Owner */}
-                          <td className="py-3.5 px-4 border-b border-slate-100 min-w-[160px]">
-                            <div className="flex items-center gap-2 text-[13px] text-slate-700">
-                              <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold flex items-center justify-center shrink-0 border border-slate-200">
-                                {(contact.assigned_to || "M").substring(0, 1).toUpperCase()}
-                              </div>
-                              <span className="truncate">{contact.assigned_to || "Mohamed Thoufiq"}</span>
-                            </div>
-                          </td>
-
-                          {/* Actions (Standard Flow) */}
-                          <td
-                            className="py-3.5 px-4 border-b border-slate-100 text-right w-28 transition-colors"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <div className="flex items-center justify-end gap-1.5 relative">
-                              <button
-                                type="button"
-                                onClick={() => handleOpenDealModal(contact)}
-                                className="text-red-600 border border-red-200/90 hover:bg-red-50 hover:border-red-300 text-[11px] px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
-                                title="Attach Deal"
-                              >
-                                <Plus className="w-3 h-3" />
-                                <span>Deal</span>
-                              </button>
-
-                              {/* Three-dots menu */}
-                              <div className="relative">
-                                <button
-                                  type="button"
-                                  onClick={() => setActiveActionMenuId(isMenuOpen ? null : contact.id)}
-                                  className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
-                                  title="Options"
-                                >
-                                  <MoreVertical className="w-4 h-4" />
-                                </button>
-
-                                {isMenuOpen && (
-                                  <>
-                                    <div
-                                      className="fixed inset-0 z-30"
-                                      onClick={() => setActiveActionMenuId(null)}
-                                    />
-                                    <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 text-left">
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveActionMenuId(null);
-                                          setOpenDrawerInEditMode(false);
-                                          setSelectedContact(contact);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
-                                      >
-                                        <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
-                                        <span>View Details</span>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveActionMenuId(null);
-                                          setOpenDrawerInEditMode(true);
-                                          setSelectedContact(contact);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5 text-red-600" />
-                                        <span className="font-semibold text-slate-900">Edit Contact</span>
-                                      </button>
-                                      <div className="my-1 border-t border-slate-100" />
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          setActiveActionMenuId(null);
-                                          handleDelete(contact.id);
-                                        }}
-                                        className="w-full px-3.5 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                                        <span>Delete Contact</span>
-                                      </button>
-                                    </div>
-                                  </>
+                                ) : (
+                                  <span className="font-mono tracking-tight text-slate-400 select-text">—</span>
+                                )}
+                                {contact.phone && (
+                                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <a
+                                      href={`tel:${contact.phone}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        api.createActivity({
+                                          contact_id: String(contact.id),
+                                          type: "CALL",
+                                          notes: `Call Clicked: Outbound call triggered for ${contact.name || contact.phone}`,
+                                          status: "COMPLETED"
+                                        }).catch(() => {});
+                                      }}
+                                      className="p-1 rounded text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                                      title="Call Contact"
+                                    >
+                                      <Phone className="w-3 h-3" />
+                                    </a>
+                                    <a
+                                      href={`https://wa.me/${contact.phone.replace(/[^0-9]/g, "")}`}
+                                      target="_blank"
+                                      rel="noreferrer"
+                                      className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors"
+                                      title="WhatsApp"
+                                    >
+                                      <MessageSquare className="w-3 h-3" />
+                                    </a>
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          </td>
+                            </td>
+                          )}
+
+                          {/* Company */}
+                          {visibleColumns.company !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] text-[13px] text-slate-600 transition-all duration-150">
+                              {contact.company_name ? (
+                                <span className="inline-flex items-center gap-1.5 truncate">
+                                  <Building2 className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                                  <span className="truncate">{contact.company_name}</span>
+                                </span>
+                              ) : (
+                                <span className="text-slate-400">—</span>
+                              )}
+                            </td>
+                          )}
+
+                          {/* Source Tag */}
+                          {visibleColumns.source !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] transition-all duration-150">
+                              {renderSourceBadge(contact.source)}
+                            </td>
+                          )}
+
+                          {/* Lifecycle Stage */}
+                          {visibleColumns.lifecycleStage !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] transition-all duration-150" onClick={(e) => e.stopPropagation()}>
+                              <div className="relative inline-block">
+                                <select
+                                  value={currentStage}
+                                  onChange={(e) => handleStageChange(contact.id, e.target.value)}
+                                  className="appearance-none bg-slate-50 hover:bg-slate-100 border border-slate-200 text-slate-700 text-[11px] font-medium py-1 pl-2.5 pr-6 rounded-full focus:outline-none focus:ring-1 focus:ring-red-400 cursor-pointer transition-colors shadow-2xs"
+                                >
+                                  {LIFECYCLE_STAGES.map((st) => (
+                                    <option key={st} value={st}>{st}</option>
+                                  ))}
+                                </select>
+                                <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Owner */}
+                          {visibleColumns.owner !== false && (
+                            <td className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] transition-all duration-150">
+                              <div className="flex items-center gap-2 text-[13px] text-slate-700">
+                                <div className="w-5 h-5 rounded-full bg-slate-100 text-slate-600 text-[10px] font-semibold flex items-center justify-center shrink-0 border border-slate-200">
+                                  {(contact.assigned_to || "M").substring(0, 1).toUpperCase()}
+                                </div>
+                                <span className="truncate">{contact.assigned_to || "Mohamed Thoufiq"}</span>
+                              </div>
+                            </td>
+                          )}
+
+                          {/* Dynamic Custom Fields Values */}
+                          {customFields.map((cf) => {
+                            const colKey = cf.key || cf.field_key;
+                            if (!colKey || visibleColumns[colKey] === false) return null;
+                            const customProps = (contact as any).custom_properties || (contact as any).custom_data || {};
+                            const val = customProps[colKey] ?? customProps[cf.label];
+
+                            return (
+                              <td
+                                key={cf.id}
+                                className="py-4 px-6 border-b border-slate-100 w-[210px] min-w-[210px] text-[13px] text-slate-700 transition-all duration-150"
+                              >
+                                {val !== undefined && val !== null && String(val).trim() !== "" ? (
+                                  typeof val === "boolean" ? (
+                                    val ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                        Yes
+                                      </span>
+                                    ) : (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 text-slate-600">
+                                        No
+                                      </span>
+                                    )
+                                  ) : (
+                                    <span className="truncate block max-w-[180px] font-medium text-slate-800">
+                                      {String(val)}
+                                    </span>
+                                  )
+                                ) : (
+                                  <span className="text-slate-300 font-normal">—</span>
+                                )}
+                              </td>
+                            );
+                          })}
+
+                          {/* Actions (Standard Flow) */}
+                          {visibleColumns.actions !== false && (
+                            <td
+                              className="py-4 px-6 border-b border-slate-100 text-right w-28 min-w-[112px] transition-all duration-150"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <div className="flex items-center justify-end gap-1.5 relative">
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenDealModal(contact)}
+                                  className="text-red-600 border border-red-200/90 hover:bg-red-50 hover:border-red-300 text-[11px] px-2 py-0.5 rounded-lg font-semibold transition-all cursor-pointer flex items-center gap-1 shadow-2xs"
+                                  title="Attach Deal"
+                                >
+                                  <Plus className="w-3 h-3" />
+                                  <span>Deal</span>
+                                </button>
+
+                                {/* Three-dots menu */}
+                                <div className="relative">
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveActionMenuId(isMenuOpen ? null : contact.id)}
+                                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                    title="Options"
+                                  >
+                                    <MoreVertical className="w-4 h-4" />
+                                  </button>
+
+                                  {isMenuOpen && (
+                                    <>
+                                      <div
+                                        className="fixed inset-0 z-30"
+                                        onClick={() => setActiveActionMenuId(null)}
+                                      />
+                                      <div className="absolute right-0 mt-1 w-44 bg-white rounded-xl shadow-xl border border-slate-200 py-1 z-40 text-xs animate-in fade-in zoom-in-95 duration-100 text-left">
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveActionMenuId(null);
+                                            setOpenDrawerInEditMode(false);
+                                            setSelectedContact(contact);
+                                          }}
+                                          className="w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                                        >
+                                          <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                          <span>View Details</span>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveActionMenuId(null);
+                                            setOpenDrawerInEditMode(true);
+                                            setSelectedContact(contact);
+                                          }}
+                                          className="w-full px-3.5 py-2 text-slate-700 hover:bg-slate-50 flex items-center gap-2 cursor-pointer font-medium"
+                                        >
+                                          <Edit2 className="w-3.5 h-3.5 text-red-600" />
+                                          <span className="font-semibold text-slate-900">Edit Contact</span>
+                                        </button>
+                                        <div className="my-1 border-t border-slate-100" />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setActiveActionMenuId(null);
+                                            handleDelete(contact.id);
+                                          }}
+                                          className="w-full px-3.5 py-2 text-rose-600 hover:bg-rose-50 flex items-center gap-2 cursor-pointer font-medium"
+                                        >
+                                          <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                                          <span>Delete Contact</span>
+                                        </button>
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       );
                     })

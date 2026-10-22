@@ -22,6 +22,7 @@ interface NewDealDrawerProps {
   onSubmit: (dealData: Partial<Deal>) => Promise<void>;
   customFields?: any[];
   currentUser?: any;
+  stages?: string[];
 }
 
 const PIPELINE_STAGES = [
@@ -38,10 +39,12 @@ export default function NewDealDrawer({
   onClose,
   onSubmit,
   customFields = [],
-  currentUser
+  currentUser,
+  stages = []
 }: NewDealDrawerProps) {
   const { toast } = useToast();
   const [submitting, setSubmitting] = useState(false);
+  const activeStages = stages && stages.length > 0 ? stages : PIPELINE_STAGES;
 
   // Form State
   const [title, setTitle] = useState("");
@@ -146,8 +149,9 @@ export default function NewDealDrawer({
         probability: Number(probability) || 50,
         close_date: closeDate || new Date().toISOString().split("T")[0],
         expected_close_date: closeDate || new Date().toISOString().split("T")[0],
-        custom_data: customData
-      });
+        custom_data: customData,
+        custom_properties: customData
+      } as any);
 
       // Reset Form
       setTitle("");
@@ -259,7 +263,7 @@ export default function NewDealDrawer({
                     onChange={(e) => setStage(e.target.value)}
                     className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2.5 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400 font-medium cursor-pointer transition-all pr-8"
                   >
-                    {PIPELINE_STAGES.map((s) => (
+                    {activeStages.map((s) => (
                       <option key={s} value={s}>
                         {s}
                       </option>
@@ -414,41 +418,56 @@ export default function NewDealDrawer({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                {customFields.map((cf) => (
-                  <div key={cf.id}>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      {cf.label} {cf.is_required && <span className="text-red-500">*</span>}
-                    </label>
-                    {cf.field_type === "SELECT" ? (
-                      <select
-                        value={customData[cf.field_key] || ""}
-                        onChange={(e) =>
-                          setCustomData({ ...customData, [cf.field_key]: e.target.value })
-                        }
-                        required={cf.is_required}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 font-medium"
-                      >
-                        <option value="">Select option</option>
-                        {(cf.options || []).map((opt: string) => (
-                          <option key={opt} value={opt}>
-                            {opt}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        type={cf.field_type === "NUMBER" ? "number" : cf.field_type === "DATE" ? "date" : "text"}
-                        value={customData[cf.field_key] || ""}
-                        onChange={(e) =>
-                          setCustomData({ ...customData, [cf.field_key]: e.target.value })
-                        }
-                        required={cf.is_required}
-                        placeholder={cf.label}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 font-medium"
-                      />
-                    )}
-                  </div>
-                ))}
+                {customFields.map((cf) => {
+                  const fKey = cf.key || cf.field_key || cf.label.toLowerCase().replace(/[^a-z0-9]/g, "_");
+                  const fType = (cf.field_type || "TEXT").toUpperCase();
+
+                  return (
+                    <div key={cf.id || fKey}>
+                      <label className="block text-xs font-bold text-slate-700 mb-1">
+                        {cf.label} {cf.is_required && <span className="text-red-500">*</span>}
+                      </label>
+                      {fType === "SELECT" ? (
+                        <select
+                          value={customData[fKey] || ""}
+                          onChange={(e) =>
+                            setCustomData({ ...customData, [fKey]: e.target.value })
+                          }
+                          required={cf.is_required}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 font-medium"
+                        >
+                          <option value="">Select option</option>
+                          {(cf.options || []).map((opt: string) => (
+                            <option key={opt} value={opt}>
+                              {opt}
+                            </option>
+                          ))}
+                        </select>
+                      ) : fType === "BOOLEAN" ? (
+                        <label className="flex items-center gap-2 pt-2 text-xs font-semibold text-slate-700 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!!customData[fKey]}
+                            onChange={(e) => setCustomData({ ...customData, [fKey]: e.target.checked })}
+                            className="w-4 h-4 rounded text-red-600 focus:ring-red-500 border-slate-300"
+                          />
+                          <span>Yes / Enabled</span>
+                        </label>
+                      ) : (
+                        <input
+                          type={fType === "NUMBER" ? "number" : fType === "DATE" ? "date" : "text"}
+                          value={customData[fKey] || ""}
+                          onChange={(e) =>
+                            setCustomData({ ...customData, [fKey]: e.target.value })
+                          }
+                          required={cf.is_required}
+                          placeholder={cf.label}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 font-medium"
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

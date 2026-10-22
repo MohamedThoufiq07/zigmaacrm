@@ -1,6 +1,9 @@
+import os
 import re
 import uuid
 import logging
+from pathlib import Path
+from dotenv import dotenv_values
 import httpx
 from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -10,7 +13,7 @@ from sqlalchemy import select, desc, or_
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.api.deps import get_current_user
+from app.api.deps import get_optional_current_user
 from app.models.organization_user import User, Organization
 from app.models.contact import Contact
 from app.models.whatsapp import WhatsAppMessage
@@ -19,6 +22,27 @@ from app.models.activity import Activity
 logger = logging.getLogger("zigmaa.whatsapp")
 
 router = APIRouter()
+
+def get_whatsapp_credentials():
+    """Read credentials dynamically from .env to pick up any changes without server restart."""
+    backend_env = Path(__file__).resolve().parent.parent.parent.parent / ".env"
+    env_vals = dotenv_values(backend_env) if backend_env.exists() else {}
+    api_token = (
+        env_vals.get("WHATSAPP_ACCESS_TOKEN")
+        or env_vals.get("WHATSAPP_API_TOKEN")
+        or os.getenv("WHATSAPP_ACCESS_TOKEN")
+        or os.getenv("WHATSAPP_API_TOKEN")
+        or settings.WHATSAPP_ACCESS_TOKEN
+        or settings.WHATSAPP_API_TOKEN
+        or ""
+    ).strip()
+    phone_number_id = (
+        env_vals.get("WHATSAPP_PHONE_NUMBER_ID")
+        or os.getenv("WHATSAPP_PHONE_NUMBER_ID")
+        or settings.WHATSAPP_PHONE_NUMBER_ID
+        or ""
+    ).strip()
+    return api_token, phone_number_id
 
 def normalize_phone(phone: str) -> str:
     """Normalize phone number by stripping pluses, spaces, dashes."""
@@ -86,7 +110,7 @@ class WhatsAppMessageOut(BaseModel):
 @router.post("/messages", status_code=status.HTTP_201_CREATED)
 async def send_whatsapp_message(
     payload: SendWhatsAppMessageRequest,
-    current_user: Optional[User] = Depends(get_current_user),
+    current_user: Optional[User] = Depends(get_optional_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     """
@@ -127,10 +151,10 @@ async def send_whatsapp_message(
 
     meta_message_id = None
     delivery_status = "SENT"
+    dispatch_error_msg = None
 
-    # Meta Graph API Call
-    api_token = settings.WHATSAPP_ACCESS_TOKEN or settings.WHATSAPP_API_TOKEN
-    phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
+    # Meta Graph API Call with Dynamic Credential Resolution
+    api_token, phone_number_id = get_whatsapp_credentials()
 
     if api_token and phone_number_id:
         url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"
@@ -165,24 +189,28 @@ async def send_whatsapp_message(
                 else:
                     delivery_status = "FAILED"
                     meta_message_id = f"wamid.failed_{uuid.uuid4().hex[:18]}"
-                    err_msg = data.get("error", {}).get("message") or res.text
+                    raw_err = data.get("error", {})
+                    err_msg = raw_err.get("message") or res.text
+                    err_code = raw_err.get("code")
+                    dispatch_error_msg = f"{err_msg} (code: {err_code})" if err_code else err_msg
                     logger.error(
-                        f"[OUTBOUND META API ERROR] Status {res.status_code}: {err_msg} | "
+                        f"[OUTBOUND META API ERROR] Status {res.status_code}: {dispatch_error_msg} | "
                         f"Recipient: {clean_phone} | PhoneID: {phone_number_id}"
                     )
                     print(
-                        f"[OUTBOUND META API ERROR] Status {res.status_code}: {err_msg} | "
+                        f"[OUTBOUND META API ERROR] Status {res.status_code}: {dispatch_error_msg} | "
                         f"Recipient: {clean_phone} | PhoneID: {phone_number_id}"
                     )
         except Exception as e:
             delivery_status = "FAILED"
             meta_message_id = f"wamid.sim_{uuid.uuid4().hex[:18]}"
+            dispatch_error_msg = str(e)
             logger.error(f"[OUTBOUND CONNECTION ERROR] Failed to connect to Meta Graph API: {e}")
             print(f"[OUTBOUND CONNECTION ERROR] Failed to connect to Meta Graph API: {e}")
     else:
-        logger.warning("[OUTBOUND WARNING] WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured. Simulating outbound delivery.")
-        print("[OUTBOUND WARNING] WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured. Simulating outbound delivery.")
-        meta_message_id = f"wamid.dev_{uuid.uuid4().hex[:18]}"
+        logger.warning("[OUTBOUND WARNING] WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured.")
+        print("[OUTBOUND WARNING] WHATSAPP_ACCESS_TOKEN or WHATSAPP_PHONE_NUMBER_ID not configured.")
+        meta_message_id = f"wamid.sim_{uuid.uuid4().hex[:18]}"
         delivery_status = "SENT"
 
     # Store record in whatsapp_messages table
@@ -205,12 +233,18 @@ async def send_whatsapp_message(
             contact_id=contact_id,
             type="NOTE",
             notes=f"💬 WhatsApp Outbound: {payload.message[:250]}",
-            status="COMPLETED"
+            status="COMPLETED" if delivery_status == "SENT" else "FAILED"
         )
         db.add(activity)
 
     await db.commit()
     await db.refresh(wa_message)
+
+    if delivery_status == "FAILED" and dispatch_error_msg:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Meta WhatsApp Cloud API error: {dispatch_error_msg}"
+        )
 
     return {
         "status": "success",

@@ -186,7 +186,7 @@ export default function ConnectEmailModal({
               required
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="e.g. mdthoufiq0507@gmail.com"
+              placeholder="e.g. user@yourcompany.com"
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#e11d48] focus:bg-white transition-all shadow-2xs"
             />
             <p className="text-[11px] text-slate-400">

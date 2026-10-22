@@ -13,6 +13,7 @@ class ContactBase(BaseModel):
     lifecycle_stage: Optional[str] = "NEW"
     source: Optional[str] = "MANUAL"
     custom_data: Optional[Dict[str, Any]] = {}
+    custom_properties: Optional[Dict[str, Any]] = {}
     assigned_user_name: Optional[str] = "Mohamed Thoufiq"
 
 class ContactCreate(ContactBase):

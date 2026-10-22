@@ -16,6 +16,7 @@ from app.models.lead_pipeline import Lead
 from app.models.organization_user import Organization
 from app.models.whatsapp import WhatsAppMessage
 from app.models.activity import Activity
+from app.api.v1.whatsapp import get_whatsapp_credentials
 
 logger = logging.getLogger("zigmaa.whatsapp")
 
@@ -152,8 +153,7 @@ async def send_welcome_auto_reply(
     delivery_status = "SENT"
 
     # 1. Dispatch to Meta Cloud API if credentials exist
-    api_token = settings.WHATSAPP_ACCESS_TOKEN or settings.WHATSAPP_API_TOKEN
-    phone_number_id = settings.WHATSAPP_PHONE_NUMBER_ID
+    api_token, phone_number_id = get_whatsapp_credentials()
 
     if api_token and phone_number_id:
         url = f"https://graph.facebook.com/v20.0/{phone_number_id}/messages"

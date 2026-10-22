@@ -34,6 +34,7 @@ interface DealDetailsDrawerProps {
   onClose: () => void;
   onStageChange?: (dealId: number | string, newStage: string) => Promise<void>;
   onDelete?: (dealId: number | string) => Promise<void>;
+  stages?: string[];
 }
 
 const STAGES = [
@@ -50,9 +51,11 @@ export default function DealDetailsDrawer({
   isOpen,
   onClose,
   onStageChange,
-  onDelete
+  onDelete,
+  stages = []
 }: DealDetailsDrawerProps) {
   const { toast } = useToast();
+  const activeStages = stages && stages.length > 0 ? stages : STAGES;
   const [showQuoteDrawer, setShowQuoteDrawer] = useState(false);
   const [dealQuotes, setDealQuotes] = useState<Invoice[]>([]);
   const [previewInvoice, setPreviewInvoice] = useState<Invoice | null>(null);
@@ -159,7 +162,7 @@ export default function DealDetailsDrawer({
               Stage Progress
             </span>
             <div className="grid grid-cols-3 gap-2">
-              {STAGES.map((st) => {
+              {activeStages.map((st) => {
                 const isActive = currentStage.toLowerCase().includes(st.toLowerCase());
                 return (
                   <button

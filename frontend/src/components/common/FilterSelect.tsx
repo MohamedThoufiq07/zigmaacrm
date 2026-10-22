@@ -6,17 +6,9 @@ import {
   X,
   Check,
   Search,
-  Tag,
-  Globe,
-  Share2,
-  Mail,
-  MessageCircle,
-  Instagram,
-  Linkedin,
-  Youtube,
-  Megaphone,
-  UserCheck
+  Tag
 } from "lucide-react";
+import { SourceIcon } from "@/components/common/SourceBadge";
 
 export interface FilterSelectProps {
   placeholder: string;
@@ -78,19 +70,7 @@ export default function FilterSelect({
   }, [options, search]);
 
   const getSourceIcon = (name: string) => {
-    const lower = name.toLowerCase();
-    if (lower.includes("meta")) return <span className="w-5 h-5 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 text-[11px] font-bold">M</span>;
-    if (lower.includes("google")) return <span className="w-5 h-5 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 text-[11px] font-bold">G</span>;
-    if (lower.includes("web")) return <Globe className="w-4 h-4 text-emerald-600 shrink-0" />;
-    if (lower.includes("referral")) return <Share2 className="w-4 h-4 text-purple-600 shrink-0" />;
-    if (lower.includes("cold")) return <Mail className="w-4 h-4 text-indigo-600 shrink-0" />;
-    if (lower.includes("whatsapp")) return <MessageCircle className="w-4 h-4 text-emerald-500 shrink-0" />;
-    if (lower.includes("instagram")) return <Instagram className="w-4 h-4 text-pink-600 shrink-0" />;
-    if (lower.includes("linkedin")) return <Linkedin className="w-4 h-4 text-blue-700 shrink-0" />;
-    if (lower.includes("youtube")) return <Youtube className="w-4 h-4 text-red-600 shrink-0" />;
-    if (lower.includes("advert")) return <Megaphone className="w-4 h-4 text-amber-500 shrink-0" />;
-    if (lower.includes("manual")) return <UserCheck className="w-4 h-4 text-slate-600 shrink-0" />;
-    return <Tag className="w-4 h-4 text-slate-400 shrink-0" />;
+    return <SourceIcon source={name} className="w-4.5 h-4.5 shrink-0" />;
   };
 
   return (

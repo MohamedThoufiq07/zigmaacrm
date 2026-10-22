@@ -29,7 +29,7 @@ async def get_current_user(
             headers={"WWW-Authenticate": "Bearer"}
         )
 
-    token = auth.credentials.strip()
+    token = auth.credentials.strip().strip('"').strip("'")
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
@@ -94,3 +94,31 @@ async def get_current_admin(
             detail="Admin privileges required to perform this action."
         )
     return current_user
+
+async def get_optional_current_user(
+    auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
+    db: AsyncSession = Depends(get_db)
+) -> Optional[User]:
+    """
+    Optional user dependency. If a valid Bearer token is provided, returns the active User.
+    If no token or invalid token, returns None without raising an HTTPException.
+    """
+    if not auth or not auth.credentials:
+        return None
+    token = auth.credentials.strip()
+    try:
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id = payload.get("sub")
+        if not user_id:
+            return None
+        res = await db.execute(select(User).where(User.id == str(user_id)))
+        user = res.scalar_one_or_none()
+        if not user and payload.get("email"):
+            res = await db.execute(select(User).where(User.email == payload.get("email").lower().strip()))
+            user = res.scalar_one_or_none()
+        if user and user.is_active:
+            return user
+    except Exception:
+        return None
+    return None
+

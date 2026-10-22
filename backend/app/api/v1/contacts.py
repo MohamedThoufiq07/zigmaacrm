@@ -120,6 +120,7 @@ async def get_contacts(
             "lifecycle_stage": c.lifecycle_stage or c.status or "NEW",
             "source": c.source or "MANUAL",
             "custom_data": c.custom_data or {},
+            "custom_properties": c.custom_properties or c.custom_data or {},
             "assigned_user_name": c.assigned_user_name or "Mohamed Thoufiq",
             "assigned_user_id": c.assigned_user_id,
             "created_at": c.created_at,
@@ -319,6 +320,7 @@ async def create_contact(
     assigned_name = contact_in.assigned_user_name or (current_user.full_name if current_user else "Mohamed Thoufiq")
     owner_id = current_user.id if current_user else None
     owner_name = current_user.full_name if current_user else assigned_name
+    custom_props = contact_in.custom_properties or contact_in.custom_data or {}
 
     try:
         contact = Contact(
@@ -332,7 +334,8 @@ async def create_contact(
             status=contact_in.status or contact_in.lifecycle_stage or "NEW",
             lifecycle_stage=contact_in.lifecycle_stage or contact_in.status or "NEW",
             source=contact_in.source or "MANUAL",
-            custom_data=contact_in.custom_data or {},
+            custom_data=custom_props,
+            custom_properties=custom_props,
             assigned_user_name=assigned_name,
             assigned_user_id=owner_id,
             owner_id=owner_id,
@@ -361,6 +364,7 @@ async def create_contact(
         "lifecycle_stage": contact.lifecycle_stage,
         "source": contact.source,
         "custom_data": contact.custom_data or {},
+        "custom_properties": contact.custom_properties or contact.custom_data or {},
         "assigned_user_name": contact.assigned_user_name,
         "assigned_user_id": contact.assigned_user_id,
         "created_at": contact.created_at,
@@ -380,8 +384,15 @@ async def update_contact(
     if not contact:
         raise HTTPException(status_code=404, detail="Contact not found")
 
+    if "custom_properties" in contact_in:
+        contact.custom_properties = contact_in["custom_properties"]
+        contact.custom_data = contact_in["custom_properties"]
+    elif "custom_data" in contact_in:
+        contact.custom_data = contact_in["custom_data"]
+        contact.custom_properties = contact_in["custom_data"]
+
     for key, val in contact_in.items():
-        if hasattr(contact, key) and key not in ["id", "created_at"]:
+        if key not in ["id", "created_at", "custom_properties", "custom_data"] and hasattr(contact, key):
             setattr(contact, key, val)
 
     await db.commit()

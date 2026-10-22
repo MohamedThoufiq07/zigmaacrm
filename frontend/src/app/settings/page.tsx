@@ -848,7 +848,7 @@ export default function SettingsPage() {
                     className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
                   >
                     <UserPlus className="w-4 h-4" />
-                    <span>+ Invite Team Member</span>
+                    <span>Invite Team Member</span>
                   </button>
                 </div>
 
@@ -1087,7 +1087,7 @@ export default function SettingsPage() {
 
                   {teamMembers.length === 0 && !loadingTeam && (
                     <div className="py-12 text-center text-slate-400 text-xs">
-                      No team members found. Click &quot;+ Invite Team Member&quot; to invite your sales team.
+                      No team members found. Click &quot;Invite Team Member&quot; to invite your sales team.
                     </div>
                   )}
                 </div>

@@ -584,46 +584,49 @@ export default function WhatsAppPage() {
           {/* COLUMN A: Chat Conversation Thread List (~320px width)    */}
           {/* ========================================================= */}
           <div className={cn(
-            "w-80 lg:w-88 shrink-0 flex flex-col transition-colors border-r",
+            "w-72 xl:w-80 shrink-0 flex flex-col transition-colors border-r z-10",
             isDark ? "bg-[#090A0F] border-[#1E293B]" : "bg-white border-slate-200"
           )}>
             {/* Top Header */}
             <div className={cn(
-              "p-4 border-b flex flex-col gap-3 transition-colors",
-              isDark ? "bg-[#0D0F17]/60 border-[#1E293B]/80" : "bg-slate-50/80 border-slate-200"
+              "p-3.5 sm:p-4 border-b flex flex-col gap-3 transition-colors shrink-0",
+              isDark ? "bg-[#0D0F17]/80 border-[#1E293B]" : "bg-slate-50/90 border-slate-200"
             )}>
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5 min-w-0">
                   <div className={cn(
-                    "p-2 rounded-xl border",
+                    "p-2 rounded-xl border shrink-0 shadow-2xs",
                     isDark ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" : "bg-emerald-50 border-emerald-200 text-emerald-600"
                   )}>
-                    <MessageSquare className="w-4.5 h-4.5" />
+                    <MessageSquare className="w-4 h-4" />
                   </div>
-                  <div>
-                    <h2 className={cn("font-bold text-base tracking-tight", isDark ? "text-white" : "text-slate-900")}>
+                  <div className="min-w-0">
+                    <h2 className={cn("font-bold text-sm sm:text-base tracking-tight truncate", isDark ? "text-white" : "text-slate-900")}>
                       WhatsApp Inbox
                     </h2>
-                    <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <div className="flex items-center gap-1.5 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold truncate">
+                      <span className="relative flex h-2 w-2 shrink-0">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
                       <span>Live • Meta Cloud API</span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => loadConversations(false)}
                     className={cn(
-                      "p-1.5 rounded-lg transition-colors",
-                      isDark ? "text-slate-400 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-200/60"
+                      "p-1.5 rounded-lg border transition-all cursor-pointer hover:scale-105 active:scale-95",
+                      isDark ? "text-slate-400 hover:text-white border-white/5 hover:bg-white/5" : "text-slate-500 hover:text-slate-900 border-slate-200/80 hover:bg-slate-100"
                     )}
                     title="Refresh conversations"
                   >
                     <RefreshCw className={cn("w-3.5 h-3.5", isRefreshing && "animate-spin text-emerald-500")} />
                   </button>
                   <span className={cn(
-                    "px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-full border",
+                    "px-2 py-0.5 text-[10px] uppercase font-bold tracking-wider rounded-full border shadow-2xs",
                     isDark ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/30" : "bg-emerald-50 text-emerald-700 border-emerald-200"
                   )}>
                     v20.0
@@ -640,10 +643,10 @@ export default function WhatsAppPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={cn(
-                    "w-full rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none transition-colors border",
+                    "w-full rounded-xl pl-9 pr-8 py-2 text-xs focus:outline-none transition-all border shadow-2xs",
                     isDark
-                      ? "bg-[#131B2E]/90 border-[#1E293B] text-white placeholder-slate-400 focus:border-emerald-500/50"
-                      : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500 shadow-2xs"
+                      ? "bg-[#131B2E]/90 border-[#1E293B] text-white placeholder-slate-400 focus:border-emerald-500/60"
+                      : "bg-white border-slate-200 text-slate-900 placeholder-slate-400 focus:border-emerald-500"
                   )}
                 />
                 {searchQuery && (
@@ -656,8 +659,11 @@ export default function WhatsAppPage() {
                 )}
               </div>
 
-              {/* Filter Pills */}
-              <div className="flex items-center gap-1.5 pt-0.5">
+              {/* Segmented Filter Control */}
+              <div className={cn(
+                "flex items-center gap-1 p-1 rounded-xl border transition-colors",
+                isDark ? "bg-[#131B2E]/60 border-[#1E293B]" : "bg-slate-100/90 border-slate-200/80"
+              )}>
                 {(["All", "My Chats", "Unassigned"] as const).map((tab) => {
                   const count =
                     tab === "All"
@@ -671,23 +677,23 @@ export default function WhatsAppPage() {
                       key={tab}
                       onClick={() => setFilterTab(tab)}
                       className={cn(
-                        "px-2.5 py-1 rounded-lg text-xs font-medium transition-all flex items-center gap-1.5 cursor-pointer",
+                        "flex-1 py-1.5 px-1.5 rounded-lg text-xs font-semibold transition-all flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap",
                         filterTab === tab
-                          ? "bg-emerald-600 text-white shadow-xs shadow-emerald-500/20"
-                          : isDark
-                          ? "bg-white/5 text-slate-400 hover:text-slate-200 hover:bg-white/10"
-                          : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200/70 border border-slate-200/60"
+                          ? (isDark
+                              ? "bg-emerald-600 text-white shadow-xs"
+                              : "bg-white text-slate-900 shadow-xs")
+                          : (isDark
+                              ? "text-slate-400 hover:text-slate-200 hover:bg-white/5"
+                              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60")
                       )}
                     >
                       <span>{tab}</span>
                       <span
                         className={cn(
-                          "text-[10px] px-1.5 py-0.2 rounded-full font-semibold",
+                          "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                           filterTab === tab
-                            ? "bg-emerald-700/80 text-white"
-                            : isDark
-                            ? "bg-white/10 text-slate-400"
-                            : "bg-slate-200 text-slate-600"
+                            ? (isDark ? "bg-emerald-700 text-white" : "bg-slate-100 text-slate-800")
+                            : (isDark ? "bg-white/10 text-slate-400" : "bg-slate-200 text-slate-600")
                         )}
                       >
                         {count}
@@ -700,7 +706,7 @@ export default function WhatsAppPage() {
 
             {/* Conversation List */}
             <div className={cn(
-              "flex-1 overflow-y-auto divide-y scrollbar-thin transition-colors",
+              "flex-1 overflow-y-auto divide-y scrollbar-thin transition-colors pt-0.5",
               isDark
                 ? "divide-[#1E293B]/40 scrollbar-thumb-slate-800"
                 : "divide-slate-100 scrollbar-thumb-slate-200"
@@ -818,85 +824,89 @@ export default function WhatsAppPage() {
               <>
                 {/* Chat Header */}
                 <div className={cn(
-                  "h-16 px-5 border-b backdrop-blur-md flex items-center justify-between shrink-0 z-10 transition-colors",
-                  isDark ? "border-[#1E293B] bg-[#090A0F]/80 text-white" : "border-slate-200 bg-white/95 text-slate-900 shadow-2xs"
+                  "h-16 px-4 sm:px-5 border-b backdrop-blur-md flex items-center justify-between shrink-0 z-10 transition-colors gap-3 overflow-hidden",
+                  isDark ? "border-[#1E293B] bg-[#090A0F]/90 text-white" : "border-slate-200 bg-white/95 text-slate-900 shadow-2xs"
                 )}>
-                  <div className="flex items-center gap-3 min-w-0">
+                  {/* Contact Identity (Protected from shrinking/overlapping) */}
+                  <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
                     <div
                       className={cn(
-                        "w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs",
+                        "w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center font-bold text-xs text-white shrink-0 shadow-xs ring-2 ring-emerald-500/20",
                         activeChat.avatarColor
                       )}
                     >
                       {activeChat.avatarInitials}
                     </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <h3 className={cn("font-bold text-sm truncate", isDark ? "text-white" : "text-slate-900")}>
+                    <div className="min-w-0 flex-1 overflow-hidden">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 className={cn("font-bold text-sm sm:text-base truncate leading-snug shrink min-w-0", isDark ? "text-white" : "text-slate-900")}>
                           {activeChat.contactName}
                         </h3>
                         <span className={cn(
-                          "text-[10px] font-semibold px-2 py-0.5 rounded-full border",
+                          "text-[10px] font-bold px-2 py-0.5 rounded-full border whitespace-nowrap shrink-0",
                           isDark
                             ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                            : "bg-emerald-50 text-emerald-700 border-emerald-200 font-bold"
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200"
                         )}>
                           {activeChat.dealStage}
                         </span>
                       </div>
                       <div className={cn(
-                        "flex items-center gap-2 text-xs truncate",
+                        "flex items-center gap-2 text-xs truncate mt-0.5",
                         isDark ? "text-slate-400" : "text-slate-500"
                       )}>
-                        <span>{activeChat.phone}</span>
-                        <span>•</span>
-                        <span className="text-emerald-500 font-medium flex items-center gap-1">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse" />
-                          Online • Meta Webhook Live
+                        <span className="font-mono text-[11px] shrink-0 font-medium">{activeChat.phone}</span>
+                        <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">•</span>
+                        <span className="text-emerald-500 font-semibold hidden sm:flex items-center gap-1.5 whitespace-nowrap truncate">
+                          <span className="relative flex h-2 w-2 shrink-0">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          <span className="truncate">Online</span>
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="flex items-center gap-2">
+                  {/* Header Actions (Never crowd or overlap contact identity) */}
+                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                     <button
                       onClick={handleQuickCreateDeal}
                       className={cn(
-                        "hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-medium transition-all cursor-pointer",
+                        "inline-flex items-center justify-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl border text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shadow-2xs hover:scale-102 active:scale-98 shrink-0",
                         isDark
                           ? "bg-white/5 hover:bg-white/10 text-slate-200 border-[#1E293B]"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                          : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                       )}
                       title="Create or link pipeline deal"
                     >
-                      <Handshake className="w-3.5 h-3.5 text-indigo-500" />
-                      <span>Create Deal</span>
+                      <Handshake className="w-4 h-4 text-indigo-500 shrink-0" />
+                      <span className="hidden xl:inline">Create Deal</span>
                     </button>
 
                     <button
                       onClick={handleQuickSendQuote}
-                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold shadow-xs shadow-emerald-500/30 transition-all cursor-pointer"
+                      className="inline-flex items-center justify-center gap-1.5 h-9 px-2.5 sm:px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold whitespace-nowrap shadow-sm shadow-emerald-600/25 transition-all cursor-pointer hover:scale-102 active:scale-98 shrink-0"
                       title="Generate and send instant GST quotation link"
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Send GST Quote</span>
+                      <FileText className="w-3.5 h-3.5 shrink-0" />
+                      <span className="hidden sm:inline">Send Quote</span>
                     </button>
 
                     {/* Right Drawer Toggle */}
                     <button
                       onClick={() => setShowRightDrawer(!showRightDrawer)}
                       className={cn(
-                        "p-2 rounded-xl border transition-colors cursor-pointer",
+                        "h-9 w-9 flex items-center justify-center rounded-xl border transition-all cursor-pointer shrink-0 hover:scale-102 active:scale-98",
                         isDark
                           ? (showRightDrawer
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"
+                              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                               : "bg-white/5 text-slate-400 hover:text-white border-[#1E293B]")
                           : (showRightDrawer
                               ? "bg-emerald-50 text-emerald-700 border-emerald-300"
-                              : "bg-slate-100 text-slate-600 hover:text-slate-900 border-slate-200")
+                              : "bg-slate-50 text-slate-600 hover:text-slate-900 border-slate-200")
                       )}
-                      title={showRightDrawer ? "Hide CRM context" : "Show CRM context"}
+                      title={showRightDrawer ? "Hide CRM context drawer" : "Show CRM context drawer"}
                     >
                       {showRightDrawer ? (
                         <PanelRightClose className="w-4 h-4" />
@@ -1112,18 +1122,18 @@ export default function WhatsAppPage() {
 
                 {/* Message Input Dock (Fixed at bottom) */}
                 <div className={cn(
-                  "p-4 border-t backdrop-blur-md shrink-0 transition-colors",
+                  "p-3.5 sm:p-4 border-t backdrop-blur-md shrink-0 transition-colors",
                   isDark ? "border-[#1E293B] bg-[#090A0F]/90" : "border-slate-200 bg-white/95"
                 )}>
-                  {/* Quick Template bar */}
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
+                  {/* Quick Action Pills & Hints Bar */}
+                  <div className="flex items-center justify-between gap-2 mb-2.5">
+                    <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5 flex-1 min-w-0">
                       <button
                         onClick={() => setShowTemplateSelector(!showTemplateSelector)}
                         className={cn(
-                          "px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer",
+                          "h-8 px-3 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap shrink-0 shadow-2xs hover:scale-102 active:scale-98",
                           showTemplateSelector
-                            ? "bg-emerald-600 text-white shadow-xs shadow-emerald-500/40"
+                            ? "bg-emerald-600 text-white shadow-xs shadow-emerald-500/30"
                             : (isDark
                                 ? "bg-white/5 hover:bg-white/10 text-emerald-400 border border-emerald-500/30"
                                 : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-300")
@@ -1138,34 +1148,43 @@ export default function WhatsAppPage() {
                           setMessageInput("Hi " + activeChat.contactName.split(" ")[0] + ", thanks for reaching out! Let us schedule a quick call.");
                         }}
                         className={cn(
-                          "hidden sm:inline-flex px-2 py-0.5 rounded-md text-[11px] border transition-colors",
-                          isDark ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                          "h-8 px-3 rounded-xl text-xs font-medium border transition-all cursor-pointer whitespace-nowrap shrink-0 hover:scale-102 active:scale-98",
+                          isDark
+                            ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                         )}
                       >
                         ⚡ Quick Greeting
                       </button>
+
                       <button
                         onClick={handleQuickSendQuote}
                         className={cn(
-                          "hidden md:inline-flex px-2 py-0.5 rounded-md text-[11px] border transition-colors",
-                          isDark ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5" : "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200"
+                          "h-8 px-3 rounded-xl text-xs font-medium border transition-all cursor-pointer whitespace-nowrap shrink-0 hover:scale-102 active:scale-98",
+                          isDark
+                            ? "bg-white/5 hover:bg-white/10 text-slate-300 border-white/5"
+                            : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                         )}
                       >
                         ⚡ Share Quotation Link
                       </button>
                     </div>
 
-                    <div className={cn("text-[11px]", isDark ? "text-slate-400" : "text-slate-500")}>
-                      Press <kbd className={cn("px-1 py-0.5 rounded text-[10px]", isDark ? "bg-white/10 text-slate-300" : "bg-slate-200 text-slate-700")}>Enter</kbd> to send
+                    <div className={cn("text-[11px] shrink-0 hidden lg:flex items-center gap-1 pl-2 whitespace-nowrap", isDark ? "text-slate-400" : "text-slate-500")}>
+                      <span>Press</span>
+                      <kbd className={cn("px-1.5 py-0.5 rounded-md text-[10px] font-mono border", isDark ? "bg-white/10 border-white/10 text-slate-300" : "bg-slate-100 border-slate-300 text-slate-700")}>
+                        Enter ↵
+                      </kbd>
+                      <span>to send</span>
                     </div>
                   </div>
 
                   {/* Input row */}
                   <div className={cn(
-                    "flex items-end gap-2 border rounded-2xl p-2 transition-all",
+                    "flex items-center gap-1.5 border rounded-2xl p-1.5 transition-all shadow-xs",
                     isDark
-                      ? "bg-[#131B2E] border-[#1E293B] focus-within:border-emerald-500/60"
-                      : "bg-slate-100 border-slate-300 focus-within:border-emerald-500 focus-within:bg-white focus-within:shadow-xs"
+                      ? "bg-[#131B2E] border-[#1E293B] focus-within:border-emerald-500/60 focus-within:ring-2 focus-within:ring-emerald-500/10"
+                      : "bg-slate-50 border-slate-200 focus-within:border-emerald-500 focus-within:bg-white focus-within:ring-2 focus-within:ring-emerald-500/10"
                   )}>
                     {/* Hidden file input */}
                     <input
@@ -1181,7 +1200,7 @@ export default function WhatsAppPage() {
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
                       className={cn(
-                        "p-2.5 rounded-xl transition-colors cursor-pointer shrink-0",
+                        "h-9 w-9 flex items-center justify-center rounded-xl transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95",
                         isDark ? "text-slate-400 hover:text-emerald-400 hover:bg-white/5" : "text-slate-500 hover:text-emerald-600 hover:bg-slate-200/60"
                       )}
                       title="Attach PDF quote or image"
@@ -1197,7 +1216,7 @@ export default function WhatsAppPage() {
                       onKeyDown={handleKeyDown}
                       placeholder='Type a message or press "/" for Meta templates...'
                       className={cn(
-                        "flex-1 bg-transparent border-0 text-sm focus:outline-none focus:ring-0 resize-none py-2 px-1 max-h-32 min-h-[38px] leading-relaxed",
+                        "flex-1 bg-transparent border-0 text-xs sm:text-sm focus:outline-none focus:ring-0 resize-none py-2 px-2 max-h-32 min-h-[38px] leading-relaxed",
                         isDark ? "text-white placeholder-slate-400" : "text-slate-900 placeholder-slate-400"
                       )}
                     />
@@ -1207,7 +1226,7 @@ export default function WhatsAppPage() {
                       type="button"
                       onClick={() => setMessageInput((prev) => prev + " 👍")}
                       className={cn(
-                        "p-2.5 rounded-xl transition-colors cursor-pointer shrink-0",
+                        "h-9 w-9 flex items-center justify-center rounded-xl transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-95",
                         isDark ? "text-slate-400 hover:text-amber-400 hover:bg-white/5" : "text-slate-500 hover:text-amber-500 hover:bg-slate-200/60"
                       )}
                       title="Add quick emoji"
@@ -1221,9 +1240,9 @@ export default function WhatsAppPage() {
                       onClick={() => handleSendMessage()}
                       disabled={!messageInput.trim() || isSending}
                       className={cn(
-                        "p-2.5 rounded-xl font-bold transition-all flex items-center justify-center shrink-0 cursor-pointer",
+                        "h-9 w-9 rounded-xl font-bold transition-all flex items-center justify-center shrink-0 cursor-pointer shadow-sm shadow-emerald-500/25",
                         messageInput.trim() && !isSending
-                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white shadow-lg shadow-emerald-500/30 hover:scale-105 active:scale-95"
+                          ? "bg-gradient-to-r from-emerald-600 to-teal-500 text-white hover:scale-105 active:scale-95"
                           : (isDark ? "bg-white/5 text-slate-500 cursor-not-allowed" : "bg-slate-200 text-slate-400 cursor-not-allowed")
                       )}
                       title="Send WhatsApp message via Meta Cloud API"
@@ -1253,13 +1272,13 @@ export default function WhatsAppPage() {
           {/* ========================================================= */}
           {showRightDrawer && activeChat && (
             <div className={cn(
-              "w-80 shrink-0 border-l flex flex-col overflow-y-auto scrollbar-thin transition-colors",
+              "w-72 xl:w-80 shrink-0 border-l flex flex-col overflow-y-auto scrollbar-thin transition-colors z-10",
               isDark ? "border-[#1E293B] bg-[#090A0F] scrollbar-thumb-slate-800" : "border-slate-200 bg-white scrollbar-thumb-slate-300"
             )}>
               {/* Header */}
               <div className={cn(
-                "p-4 border-b flex items-center justify-between transition-colors",
-                isDark ? "border-[#1E293B] bg-[#0D0F17]/60" : "border-slate-200 bg-slate-50/80"
+                "h-16 px-5 border-b flex items-center justify-between transition-colors shrink-0",
+                isDark ? "border-[#1E293B] bg-[#0D0F17]/90" : "border-slate-200 bg-slate-50/90"
               )}>
                 <div className="flex items-center gap-2">
                   <User className="w-4 h-4 text-emerald-500" />
@@ -1269,18 +1288,22 @@ export default function WhatsAppPage() {
                 </div>
                 <button
                   onClick={() => setShowRightDrawer(false)}
-                  className={cn("p-1 rounded-lg lg:hidden", isDark ? "text-slate-400 hover:text-white hover:bg-white/5" : "text-slate-500 hover:text-slate-900 hover:bg-slate-100")}
+                  className={cn(
+                    "p-1.5 rounded-xl border transition-all cursor-pointer hover:scale-105 active:scale-95",
+                    isDark ? "text-slate-400 hover:text-white border-white/5 hover:bg-white/5" : "text-slate-500 hover:text-slate-900 border-slate-200 hover:bg-slate-100"
+                  )}
+                  title="Close context panel"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               {/* Customer Profile Card */}
-              <div className={cn("p-4 border-b space-y-3", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
+              <div className={cn("p-4 border-b space-y-3.5", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
                 <div className="flex items-center gap-3">
                   <div
                     className={cn(
-                      "w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center font-bold text-base text-white shadow-md shrink-0",
+                      "w-12 h-12 rounded-2xl bg-gradient-to-br flex items-center justify-center font-bold text-base text-white shadow-md shrink-0 ring-2 ring-emerald-500/20",
                       activeChat.avatarColor
                     )}
                   >
@@ -1318,8 +1341,8 @@ export default function WhatsAppPage() {
                           }}
                           autoFocus
                           className={cn(
-                            "border rounded-lg px-2 py-0.5 text-xs focus:outline-none w-full",
-                            isDark ? "bg-[#131B2E] border-emerald-500/50 text-white" : "bg-white border-emerald-500 text-slate-900 shadow-2xs"
+                            "border rounded-lg px-2 py-1 text-xs focus:outline-none w-full shadow-2xs",
+                            isDark ? "bg-[#131B2E] border-emerald-500/50 text-white" : "bg-white border-emerald-500 text-slate-900"
                           )}
                           placeholder="Contact name..."
                         />
@@ -1347,7 +1370,7 @@ export default function WhatsAppPage() {
                       {activeChat.companyName}
                     </p>
                     <span className={cn(
-                      "inline-block mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold border",
+                      "inline-block mt-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold border shadow-2xs",
                       isDark ? "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" : "bg-indigo-50 text-indigo-700 border-indigo-200"
                     )}>
                       High Intent Prospect
@@ -1356,17 +1379,17 @@ export default function WhatsAppPage() {
                 </div>
 
                 {/* Contact details */}
-                <div className="space-y-2 pt-2 text-xs">
-                  <div className={cn("flex items-center gap-2", isDark ? "text-slate-300" : "text-slate-700")}>
-                    <Phone className={cn("w-3.5 h-3.5 shrink-0", isDark ? "text-slate-400" : "text-slate-500")} />
-                    <span className="font-mono text-[11px] truncate">{activeChat.phone}</span>
+                <div className="space-y-2 pt-1 text-xs">
+                  <div className={cn("flex items-center gap-2.5 p-2 rounded-xl border transition-colors", isDark ? "bg-white/5 border-white/5 text-slate-200" : "bg-slate-50 border-slate-200/80 text-slate-700")}>
+                    <Phone className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                    <span className="font-mono text-[11px] truncate select-all">{activeChat.phone}</span>
                   </div>
-                  <div className={cn("flex items-center gap-2", isDark ? "text-slate-300" : "text-slate-700")}>
-                    <Mail className={cn("w-3.5 h-3.5 shrink-0", isDark ? "text-slate-400" : "text-slate-500")} />
-                    <span className="truncate">{activeChat.email}</span>
+                  <div className={cn("flex items-center gap-2.5 p-2 rounded-xl border transition-colors", isDark ? "bg-white/5 border-white/5 text-slate-200" : "bg-slate-50 border-slate-200/80 text-slate-700")}>
+                    <Mail className="w-3.5 h-3.5 shrink-0 text-indigo-500" />
+                    <span className="truncate select-all">{activeChat.email}</span>
                   </div>
-                  <div className={cn("flex items-center gap-2", isDark ? "text-slate-300" : "text-slate-700")}>
-                    <Building2 className={cn("w-3.5 h-3.5 shrink-0", isDark ? "text-slate-400" : "text-slate-500")} />
+                  <div className={cn("flex items-center gap-2.5 p-2 rounded-xl border transition-colors", isDark ? "bg-white/5 border-white/5 text-slate-200" : "bg-slate-50 border-slate-200/80 text-slate-700")}>
+                    <Building2 className="w-3.5 h-3.5 shrink-0 text-amber-500" />
                     <span className="truncate">{activeChat.companyName}</span>
                   </div>
                 </div>
@@ -1374,8 +1397,8 @@ export default function WhatsAppPage() {
                 {/* Assigned Sales Rep */}
                 <div className={cn("pt-2 border-t flex items-center justify-between text-xs", isDark ? "border-[#1E293B]/60 text-slate-400" : "border-slate-200 text-slate-500")}>
                   <span>Assigned Rep:</span>
-                  <div className={cn("flex items-center gap-1.5 font-medium", isDark ? "text-slate-200" : "text-slate-800")}>
-                    <div className="w-5 h-5 rounded-full bg-emerald-600/30 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-[10px]">
+                  <div className={cn("flex items-center gap-1.5 font-semibold", isDark ? "text-slate-200" : "text-slate-800")}>
+                    <div className="w-5 h-5 rounded-full bg-emerald-600/20 text-emerald-600 dark:text-emerald-400 font-bold flex items-center justify-center text-[10px] ring-1 ring-emerald-500/30">
                       {activeChat.assignedRep.avatar}
                     </div>
                     <span>{activeChat.assignedRep.name}</span>
@@ -1384,14 +1407,14 @@ export default function WhatsAppPage() {
               </div>
 
               {/* Deal Status & Pipeline */}
-              <div className={cn("p-4 border-b space-y-3", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
+              <div className={cn("p-4 border-b space-y-3.5", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
                 <div className="flex items-center justify-between">
                   <span className={cn("font-bold text-xs flex items-center gap-1.5", isDark ? "text-slate-300" : "text-slate-700")}>
-                    <Handshake className="w-3.5 h-3.5 text-indigo-500" />
+                    <Handshake className="w-4 h-4 text-indigo-500" />
                     Pipeline & Deal
                   </span>
                   <span className={cn(
-                    "text-[10px] font-bold px-2 py-0.5 rounded-md border",
+                    "text-[10px] font-bold px-2 py-0.5 rounded-full border shadow-2xs",
                     isDark ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/20" : "text-emerald-700 bg-emerald-50 border-emerald-200"
                   )}>
                     Active
@@ -1407,7 +1430,7 @@ export default function WhatsAppPage() {
                     value={activeChat.dealStage}
                     onChange={(e) => handleStageChange(e.target.value)}
                     className={cn(
-                      "w-full border rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors",
+                      "w-full h-9 border rounded-xl px-3 text-xs focus:outline-none focus:border-emerald-500 cursor-pointer transition-colors shadow-2xs font-medium",
                       isDark ? "bg-[#131B2E] border-[#1E293B] text-white" : "bg-slate-50 border-slate-200 text-slate-900 focus:bg-white"
                     )}
                   >
@@ -1431,34 +1454,34 @@ export default function WhatsAppPage() {
                       value={formatCurrency(activeChat.dealValue)}
                       onChange={(e) => handleDealValueChange(e.target.value)}
                       className={cn(
-                        "w-full border rounded-xl px-3 py-2 text-xs font-bold focus:outline-none focus:border-emerald-500 font-mono transition-colors",
-                        isDark ? "bg-[#131B2E] border-[#1E293B] text-emerald-400" : "bg-slate-50 border-slate-200 text-emerald-600 focus:bg-white"
+                        "w-full h-9 border rounded-xl px-3 text-xs font-bold focus:outline-none focus:border-emerald-500 font-mono transition-colors shadow-2xs",
+                        isDark ? "bg-[#131B2E] border-[#1E293B] text-emerald-400" : "bg-slate-50 border-slate-200 text-emerald-700 focus:bg-white"
                       )}
                     />
                   </div>
                 </div>
 
-                <div className={cn("flex items-center justify-between text-xs pt-1", isDark ? "text-slate-400" : "text-slate-500")}>
+                <div className={cn("flex items-center justify-between text-xs pt-1 border-t", isDark ? "border-white/5 text-slate-400" : "border-slate-200/80 text-slate-500")}>
                   <span>Target Close Date:</span>
-                  <span className={cn("font-medium", isDark ? "text-slate-200" : "text-slate-800")}>{activeChat.dealCloseDate}</span>
+                  <span className={cn("font-semibold", isDark ? "text-slate-200" : "text-slate-800")}>{activeChat.dealCloseDate}</span>
                 </div>
               </div>
 
               {/* Quick Actions Panel */}
-              <div className={cn("p-4 border-b space-y-2", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
-                <span className={cn("font-bold text-xs block mb-2", isDark ? "text-slate-300" : "text-slate-700")}>
+              <div className={cn("p-4 border-b space-y-2.5", isDark ? "border-[#1E293B]/60" : "border-slate-200")}>
+                <span className={cn("font-bold text-xs block mb-1 uppercase tracking-wider", isDark ? "text-slate-400" : "text-slate-500")}>
                   Quick Actions
                 </span>
 
                 <button
                   onClick={() => setShowNewNoteModal(true)}
                   className={cn(
-                    "w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer",
+                    "w-full h-9 flex items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:scale-101 active:scale-98",
                     isDark ? "bg-white/5 hover:bg-white/10 text-slate-200 border-[#1E293B]" : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                   )}
                 >
                   <Plus className="w-3.5 h-3.5 text-emerald-500" />
-                  <span>+ Add Internal Note</span>
+                  <span>Add Internal Note</span>
                 </button>
 
                 <button
@@ -1466,7 +1489,7 @@ export default function WhatsAppPage() {
                     toast.success("Call Scheduled", `Follow-up call booked with ${activeChat.contactName} for tomorrow 3:00 PM`);
                   }}
                   className={cn(
-                    "w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-medium transition-all cursor-pointer",
+                    "w-full h-9 flex items-center justify-center gap-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer shadow-2xs hover:scale-101 active:scale-98",
                     isDark ? "bg-white/5 hover:bg-white/10 text-slate-200 border-[#1E293B]" : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
                   )}
                 >
@@ -1476,14 +1499,9 @@ export default function WhatsAppPage() {
 
                 <button
                   onClick={handleQuickSendQuote}
-                  className={cn(
-                    "w-full flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer",
-                    isDark
-                      ? "bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-300 border-emerald-500/40"
-                      : "bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-300 shadow-2xs"
-                  )}
+                  className="w-full h-9.5 flex items-center justify-center gap-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold transition-all cursor-pointer shadow-sm shadow-emerald-600/25 hover:scale-101 active:scale-98"
                 >
-                  <FileText className="w-3.5 h-3.5" />
+                  <FileText className="w-3.5 h-3.5 shrink-0" />
                   <span>Generate GST Quotation</span>
                 </button>
               </div>
@@ -1491,7 +1509,7 @@ export default function WhatsAppPage() {
               {/* Notes & Activity Timeline */}
               <div className="p-4 flex-1 space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className={cn("font-bold text-xs", isDark ? "text-slate-300" : "text-slate-700")}>
+                  <span className={cn("font-bold text-xs uppercase tracking-wider", isDark ? "text-slate-400" : "text-slate-500")}>
                     Activity & Notes ({activeChat.notes.length})
                   </span>
                 </div>

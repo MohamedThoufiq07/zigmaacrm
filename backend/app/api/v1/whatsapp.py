@@ -6,7 +6,7 @@ from typing import Optional, List, Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, or_
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -274,29 +274,41 @@ async def get_whatsapp_conversations(
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Retrieve active conversation summaries enriched with contact details
+    Optimized: Retrieve active conversation summaries enriched with contact details using indexed queries.
     """
-    stmt = select(WhatsAppMessage).order_by(desc(WhatsAppMessage.created_at)).limit(limit * 8)
+    # 1. Fetch latest messages ordered by indexed created_at DESC with limit
+    stmt = select(WhatsAppMessage).order_by(desc(WhatsAppMessage.created_at)).limit(limit * 5)
     res = await db.execute(stmt)
     all_msgs = res.scalars().all()
 
-    # Pre-fetch contacts
-    c_res = await db.execute(select(Contact).limit(100))
-    contacts_list = c_res.scalars().all()
-    contacts_by_id = {c.id: c for c in contacts_list}
-    contacts_by_phone = {normalize_phone(c.phone): c for c in contacts_list if c.phone}
+    if not all_msgs:
+        return {"status": "success", "conversations": []}
 
-    # Dynamic Backfill for Existing Chat History: ensure all unique numbers have corresponding contacts
-    from app.api.v1.webhooks.whatsapp import backfill_whatsapp_contacts
-    await backfill_whatsapp_contacts(db)
+    # 2. Extract unique phone numbers and contact IDs to fetch ONLY relevant contacts
+    unique_phones = set()
+    unique_contact_ids = set()
+    for m in all_msgs:
+        if m.phone_number:
+            clean = normalize_phone(m.phone_number)
+            if clean:
+                unique_phones.add(clean)
+                unique_phones.add(f"+{clean}")
+                unique_phones.add(m.phone_number)
+        if m.contact_id:
+            unique_contact_ids.add(m.contact_id)
 
-    # Re-fetch contacts and messages after backfill
-    stmt = select(WhatsAppMessage).order_by(desc(WhatsAppMessage.created_at)).limit(limit * 8)
-    res = await db.execute(stmt)
-    all_msgs = res.scalars().all()
+    # 3. Targeted fetch for contacts matching these conversations
+    contact_conditions = []
+    if unique_contact_ids:
+        contact_conditions.append(Contact.id.in_(list(unique_contact_ids)))
+    if unique_phones:
+        contact_conditions.append(Contact.phone.in_(list(unique_phones)))
 
-    c_res = await db.execute(select(Contact).limit(200))
-    contacts_list = c_res.scalars().all()
+    contacts_list = []
+    if contact_conditions:
+        c_res = await db.execute(select(Contact).where(or_(*contact_conditions)).limit(limit * 2))
+        contacts_list = c_res.scalars().all()
+
     contacts_by_id = {c.id: c for c in contacts_list}
     contacts_by_phone = {normalize_phone(c.phone): c for c in contacts_list if c.phone}
 
@@ -307,8 +319,8 @@ async def get_whatsapp_conversations(
             if not contact:
                 clean_m = normalize_phone(m.phone_number)
                 contact = contacts_by_phone.get(clean_m)
-                if not contact:
-                    suffix = clean_m[-10:] if len(clean_m) >= 10 else clean_m
+                if not contact and len(clean_m) >= 10:
+                    suffix = clean_m[-10:]
                     for cp, c_obj in contacts_by_phone.items():
                         if cp.endswith(suffix):
                             contact = c_obj
@@ -325,6 +337,7 @@ async def get_whatsapp_conversations(
                 contact_name = str(prof_name).strip()
             else:
                 contact_name = format_display_phone(m.phone_number)
+
             company_name = (contact.company_name if contact and contact.company_name else "Direct Prospect")
             email = (contact.email if contact and contact.email else "")
             stage = (contact.lifecycle_stage if contact and contact.lifecycle_stage else "Qualified")

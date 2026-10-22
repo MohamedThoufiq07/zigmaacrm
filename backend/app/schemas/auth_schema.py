@@ -41,6 +41,8 @@ class UserOut(BaseModel):
     is_super_admin: Optional[bool] = False
     company_name: Optional[str] = None
     organization_name: Optional[str] = None
+    picture: Optional[str] = None
+    avatar_url: Optional[str] = None
 
     class Config:
         from_attributes = True

@@ -562,6 +562,8 @@ export default function SettingsPage() {
                             src={userPhoto}
                             alt={fullName || "Profile"}
                             className="w-full h-full object-cover"
+                            referrerPolicy="no-referrer"
+                            crossOrigin="anonymous"
                           />
                         ) : (
                           fullName

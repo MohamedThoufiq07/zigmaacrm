@@ -25,7 +25,8 @@ class WhatsAppMessage(TimeStampedBase):
     message_body = Column(Text, nullable=False)
     message_type = Column(String(50), default="text")  # text, template, image, document
     meta_message_id = Column(String(255), nullable=True, index=True)
-    status = Column(String(50), default="SENT")  # SENT, DELIVERED, READ, FAILED
+    status = Column(String(50), default="SENT", index=True)  # SENT, DELIVERED, READ, FAILED
+    timestamp = Column(DateTime, default=datetime.utcnow, nullable=True, index=True)
 
     organization = relationship("Organization")
     contact = relationship("Contact")

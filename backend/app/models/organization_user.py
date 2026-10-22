@@ -28,6 +28,7 @@ class User(TimeStampedBase):
     role = Column(String(50), default="SALES_REP")  # SUPER_ADMIN, ADMIN, SALES_MANAGER, SALES_REP
     is_active = Column(Boolean, default=True)
     is_super_admin = Column(Boolean, default=False)
+    avatar_url = Column(String(1000), nullable=True)
 
     organization = relationship("Organization", back_populates="users")
 

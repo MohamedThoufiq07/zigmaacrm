@@ -25,54 +25,42 @@ async def google_login(payload: GoogleLoginSchema, db: AsyncSession = Depends(ge
     user = result.scalar_one_or_none()
 
     if not user:
-        # Auto-provision new user and workspace for Google SSO login
-        user_name = (payload.name or clean_email.split("@")[0]).strip()
-        workspace_name = f"{user_name}'s Workspace"
-        org_slug = workspace_name.lower().replace(" ", "-")
-
-        is_super = clean_email in ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"]
-
-        org = Organization(
-            name=workspace_name,
-            slug=f"{org_slug}-{secrets.token_hex(3)}",
-            plan="ENTERPRISE" if is_super else "PRO",
-            status="ACTIVE"
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"This Gmail account ({clean_email}) is not registered with Zigmaa CRM. Please register first or sign in with your registered account."
         )
-        db.add(org)
-        await db.flush()
 
-        role = "SUPER_ADMIN" if is_super else "ADMIN"
-
-        user = User(
-            organization_id=org.id,
-            email=clean_email,
-            hashed_password=get_password_hash(secrets.token_urlsafe(32)),
-            full_name=user_name,
-            role=role,
-            is_active=True,
-            is_super_admin=is_super
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact your administrator."
         )
-        db.add(user)
-        await db.flush()
 
-        initial_settings = OrganizationSetting(
-            organization_id=org.id,
-            company_name=workspace_name,
-            email=clean_email,
-            signatory_name=user_name,
-            signatory_designation="Authorized Signatory"
-        )
-        db.add(initial_settings)
+    user_updated = False
+    if payload.name and payload.name.strip():
+        user.full_name = payload.name.strip()
+        user_updated = True
+    if payload.picture and payload.picture.strip():
+        user.avatar_url = payload.picture.strip()
+        user_updated = True
+
+    if user_updated:
         await db.commit()
         await db.refresh(user)
 
-    token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    token = create_access_token({
+        "sub": str(user.id),
+        "email": user.email,
+        "org_id": str(user.organization_id) if user.organization_id else "",
+        "role": user.role
+    })
     user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
         token_type="bearer",
         user=user_out
     )
+
 
 async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
     company_name = None
@@ -95,6 +83,7 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         or (user.email and user.email.lower() in ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
     )
 
+    avatar = getattr(user, "avatar_url", None)
     return UserOut(
         id=user.id,
         organization_id=user.organization_id or "",
@@ -104,7 +93,9 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         is_active=user.is_active,
         is_super_admin=is_super,
         company_name=company_name or "Zigmaa Workspace",
-        organization_name=company_name or "Zigmaa Workspace"
+        organization_name=company_name or "Zigmaa Workspace",
+        picture=avatar,
+        avatar_url=avatar
     )
 
 @router.post("/login", response_model=TokenResponse)
@@ -118,7 +109,18 @@ async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
             detail="Incorrect email or password"
         )
     
-    token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account is deactivated. Please contact your administrator."
+        )
+
+    token = create_access_token({
+        "sub": str(user.id),
+        "email": user.email,
+        "org_id": str(user.organization_id) if user.organization_id else "",
+        "role": user.role
+    })
     user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
@@ -173,7 +175,12 @@ async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
     await db.commit()
     await db.refresh(user)
 
-    token = create_access_token({"sub": user.id, "org_id": user.organization_id, "role": user.role})
+    token = create_access_token({
+        "sub": str(user.id),
+        "email": user.email,
+        "org_id": str(user.organization_id) if user.organization_id else "",
+        "role": user.role
+    })
     user_out = await _build_user_out(user, db)
     return TokenResponse(
         access_token=token,
@@ -195,14 +202,30 @@ async def get_me(
 async def send_otp(payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
     clean_email = payload.email.lower().strip()
     
-    # Check if user exists
+    # Strictly check if user exists in database
     result = await db.execute(select(User).where(User.email == clean_email))
     user = result.scalar_one_or_none()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="No account found with this email address."
+            detail="This email address is not registered with Zigmaa CRM. Please verify the email or sign up."
         )
+
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your account has been deactivated. Please contact your workspace administrator."
+        )
+
+    # Invalidate any existing unused OTPs for this email to prevent multiple valid codes
+    existing_otps_res = await db.execute(
+        select(PasswordResetOTP).where(
+            PasswordResetOTP.email == clean_email,
+            PasswordResetOTP.is_used == False
+        )
+    )
+    for old_otp in existing_otps_res.scalars().all():
+        old_otp.is_used = True
 
     # Generate cryptographically secure 6-digit OTP
     otp_code = f"{secrets.randbelow(900000) + 100000}"
@@ -225,7 +248,7 @@ async def send_otp(payload: SendOtpRequest, db: AsyncSession = Depends(get_db)):
         print(f"Error dispatching OTP email: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to send OTP email: {str(e)}"
+            detail=f"Failed to dispatch OTP email: {str(e)}"
         )
 
     return SimpleMessageResponse(
@@ -371,7 +394,10 @@ async def update_profile(payload: UpdateProfileRequest, db: AsyncSession = Depen
         if org:
             org.name = payload.organization_name.strip()
 
+    if payload.picture is not None:
+        user.avatar_url = payload.picture.strip() if payload.picture else None
+
     await db.commit()
     await db.refresh(user)
 
-    return UserOut.model_validate(user)
+    return await _build_user_out(user, db)

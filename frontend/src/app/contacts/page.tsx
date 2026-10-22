@@ -170,9 +170,40 @@ export default function ContactsPage() {
   }, []);
 
   const handleCreateContact = async (contactData: Partial<Contact>) => {
-    await api.createContact(contactData);
-    toast.success("Contact Created", `${contactData.name} was saved successfully to database.`);
-    await loadContacts();
+    const tempId = `temp-${Date.now()}`;
+    const optimisticContact: Contact = {
+      id: tempId,
+      name: contactData.name || "New Contact",
+      email: contactData.email || "",
+      phone: contactData.phone || "",
+      company_name: contactData.company_name || "",
+      designation: contactData.designation || "",
+      status: contactData.status || "Lead",
+      lifecycle_stage: contactData.lifecycle_stage || "Lead",
+      source: contactData.source || "Direct",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      ...contactData,
+    } as Contact;
+
+    // 1. Optimistically insert into state & close drawer immediately
+    setContacts((prev) => [optimisticContact, ...prev]);
+    setShowAddDrawer(false);
+    toast.success("Contact Created", `${contactData.name || "Contact"} added.`);
+
+    // 2. Perform network request in background
+    try {
+      const created = await api.createContact(contactData);
+      if (created && created.id) {
+        setContacts((prev) =>
+          prev.map((c) => (c.id === tempId ? { ...c, ...created } : c))
+        );
+      }
+    } catch (err: any) {
+      // Rollback on failure
+      setContacts((prev) => prev.filter((c) => c.id !== tempId));
+      toast.error("Failed to Save", err.message || "Could not save contact. Reverted.");
+    }
   };
 
   const handleDelete = async (id: number | string) => {
@@ -186,14 +217,23 @@ export default function ContactsPage() {
     });
 
     if (confirmed) {
+      const previousContacts = contacts;
+      // Optimistic removal
       setContacts((prev) => prev.filter((c) => String(c.id) !== String(id)));
       setSelectedIds((prev) => {
         const next = new Set(prev);
         next.delete(id);
         return next;
       });
-      await api.deleteContact(id);
       toast.success("Contact Deleted", "The contact record was deleted.");
+
+      try {
+        await api.deleteContact(id);
+      } catch (err: any) {
+        // Rollback
+        setContacts(previousContacts);
+        toast.error("Delete Failed", err.message || "Failed to delete contact from server.");
+      }
     }
   };
 
@@ -209,20 +249,25 @@ export default function ContactsPage() {
     });
 
     if (confirmed) {
+      const previousContacts = contacts;
       const idsToDelete = Array.from(selectedIds);
+      // Optimistic bulk removal
       setContacts((prev) => prev.filter((c) => !selectedIds.has(c.id)));
       setSelectedIds(new Set());
+      toast.success("Contacts Deleted", `${count} contacts deleted.`);
+
       try {
         await api.bulkDeleteContacts(idsToDelete);
-        toast.success("Contacts Deleted", `${count} contacts deleted successfully.`);
       } catch (err: any) {
-        toast.error("Delete Failed", err.message || "Could not delete contacts.");
-        loadContacts();
+        setContacts(previousContacts);
+        toast.error("Delete Failed", err.message || "Could not delete contacts. Reverted.");
       }
     }
   };
 
   const handleStageChange = async (contactId: number | string, newStatus: string) => {
+    const previous = contacts.find((c) => String(c.id) === String(contactId));
+    // Optimistic status update
     setContacts((prev) =>
       prev.map((c) =>
         String(c.id) === String(contactId)
@@ -236,7 +281,14 @@ export default function ContactsPage() {
         status: newStatus,
         lifecycle_stage: newStatus
       });
-    } catch {}
+    } catch (err: any) {
+      if (previous) {
+        setContacts((prev) =>
+          prev.map((c) => (String(c.id) === String(contactId) ? previous : c))
+        );
+      }
+      toast.error("Update Failed", "Could not update status. Reverted.");
+    }
   };
 
   const handleOpenDealModal = (contact: Contact) => {

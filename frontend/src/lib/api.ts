@@ -44,6 +44,26 @@ function setStorage<T>(key: string, value: T): void {
   }
 }
 
+// In-Memory Client-Side Data Cache (SWR / 30s TTL for instant tab switching)
+interface CacheEntry<T> {
+  data: T;
+  timestamp: number;
+}
+const clientMemoryCache = new Map<string, CacheEntry<any>>();
+const CLIENT_CACHE_TTL = 30000; // 30 seconds
+
+export function invalidateClientCache(prefix?: string) {
+  if (!prefix) {
+    clientMemoryCache.clear();
+  } else {
+    for (const k of Array.from(clientMemoryCache.keys())) {
+      if (k.startsWith(prefix)) {
+        clientMemoryCache.delete(k);
+      }
+    }
+  }
+}
+
 export function getAuthHeaders(): Record<string, string> {
   const headers: Record<string, string> = {};
   if (typeof window !== "undefined") {
@@ -187,25 +207,32 @@ export const zigmaaApi = {
       throw new Error("Invalid session");
     }
     const user = await res.json();
-    setStorage("zigmaa_user", user);
-    if (user?.role && typeof window !== "undefined") {
-      localStorage.setItem("zigmaa_active_role", user.role);
+    const cached = this.getCurrentUser() || {};
+    const mergedUser = {
+      ...cached,
+      ...user,
+      picture: user.picture || user.avatar_url || cached.picture || cached.avatar_url
+    };
+    setStorage("zigmaa_user", mergedUser);
+    if (mergedUser?.role && typeof window !== "undefined") {
+      localStorage.setItem("zigmaa_active_role", mergedUser.role);
     }
     if (typeof window !== "undefined") {
       window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
     }
-    return user;
+    return mergedUser;
   },
 
   async sendOtp(email: string) {
+    const cleanEmail = email.trim().toLowerCase();
     const res = await fetch(`${API_BASE}/auth/send-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim() })
+      body: JSON.stringify({ email: cleanEmail })
     });
 
     if (!res.ok) {
-      let errorMsg = "Failed to send verification code";
+      let errorMsg = "This email address is not registered with Zigmaa CRM.";
       try {
         const errJson = await res.json();
         errorMsg = errJson.detail || errorMsg;
@@ -217,14 +244,15 @@ export const zigmaaApi = {
   },
 
   async verifyOtp(email: string, otp: string) {
+    const cleanEmail = email.trim().toLowerCase();
     const res = await fetch(`${API_BASE}/auth/verify-otp`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), otp: otp.trim() })
+      body: JSON.stringify({ email: cleanEmail, otp: otp.trim() })
     });
 
     if (!res.ok) {
-      let errorMsg = "Invalid verification code";
+      let errorMsg = "Invalid or expired verification code.";
       try {
         const errJson = await res.json();
         errorMsg = errJson.detail || errorMsg;
@@ -236,14 +264,15 @@ export const zigmaaApi = {
   },
 
   async resetPassword(email: string, otp: string, newPassword: string) {
+    const cleanEmail = email.trim().toLowerCase();
     const res = await fetch(`${API_BASE}/auth/reset-password`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email: email.trim(), otp: otp.trim(), new_password: newPassword })
+      body: JSON.stringify({ email: cleanEmail, otp: otp.trim(), new_password: newPassword })
     });
 
     if (!res.ok) {
-      let errorMsg = "Failed to reset password";
+      let errorMsg = "Failed to reset password.";
       try {
         const errJson = await res.json();
         errorMsg = errJson.detail || errorMsg;
@@ -333,14 +362,29 @@ export const zigmaaApi = {
   },
 
   async loginWithGoogle(googleUser: { email: string; name?: string; picture?: string; token?: string }) {
-    const res = await fetch(`${API_BASE}/auth/google`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(googleUser)
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE}/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(googleUser),
+        signal: controller.signal
+      });
+    } catch (err: any) {
+      clearTimeout(timeoutId);
+      if (err.name === "AbortError") {
+        throw new Error("Server request timed out. Please try again.");
+      }
+      throw err;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!res.ok) {
-      let errorMsg = `No account found with ${googleUser.email}. Please register first.`;
+      let errorMsg = `This Gmail account (${googleUser.email}) is not registered. Please sign up or contact your administrator.`;
       try {
         const errJson = await res.json();
         errorMsg = errJson.detail || errorMsg;
@@ -354,12 +398,25 @@ export const zigmaaApi = {
       id: data.user?.id || `google-${Date.now()}`,
       organization_id: data.user?.organization_id || "org-1",
       email: googleUser.email,
-      full_name: googleUser.name || data.user?.full_name || "Google User",
-      picture: googleUser.picture || data.user?.picture,
+      full_name: data.user?.full_name || googleUser.name || "Google User",
+      picture: googleUser.picture || data.user?.picture || data.user?.avatar_url,
+      avatar_url: googleUser.picture || data.user?.picture || data.user?.avatar_url,
       role: data.user?.role || "ADMIN",
       is_active: true
     };
     setStorage("zigmaa_user", resolvedUser);
+
+    if (data.user?.role) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("zigmaa_active_role", data.user.role);
+      }
+    }
+    if (typeof document !== "undefined" && data.access_token) {
+      document.cookie = `zigmaa_token=${encodeURIComponent(data.access_token)}; path=/; max-age=604800; SameSite=Lax`;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
     return { ...data, user: resolvedUser };
   },
 
@@ -438,18 +495,32 @@ export const zigmaaApi = {
   },
 
   // ===== LEADS CRUD =====
-  async getLeads(filters?: { search?: string; status?: string; source?: string; stage?: string; ad_source?: string }): Promise<Lead[]> {
+  async getLeads(filters?: { search?: string; status?: string; source?: string; stage?: string; ad_source?: string }, forceRefresh = false): Promise<Lead[]> {
+    const cacheKey = `leads:${JSON.stringify(filters || {})}`;
+    const cached = clientMemoryCache.get(cacheKey);
+    if (!forceRefresh && cached) {
+      if (Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+        return cached.data;
+      }
+      // Stale-While-Revalidate: Return cached immediately, revalidate silently
+      this._revalidateLeads(filters, cacheKey);
+      return cached.data;
+    }
+
     try {
       const query = new URLSearchParams();
       if (filters?.search) query.append("search", filters.search);
       if (filters?.status || filters?.stage) query.append("status", (filters.status || filters.stage)!);
       if (filters?.source || filters?.ad_source) query.append("source", (filters.source || filters.ad_source)!);
 
-      const res = await fetch(`${API_BASE}/leads?${query.toString()}`, { cache: "no-store" });
+      const res = await fetch(`${API_BASE}/leads?${query.toString()}`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
       if (res.ok) {
         const backendLeads = await res.json();
         if (Array.isArray(backendLeads) && backendLeads.length > 0) {
-          return backendLeads.map((b: any) => ({
+          const mapped = backendLeads.map((b: any) => ({
             id: b.id,
             name: b.full_name || b.name || "Unnamed Lead",
             full_name: b.full_name || b.name,
@@ -469,6 +540,8 @@ export const zigmaaApi = {
             updated_at: b.updated_at || new Date().toISOString(),
             activities: b.activities || []
           }));
+          clientMemoryCache.set(cacheKey, { data: mapped, timestamp: Date.now() });
+          return mapped;
         }
       }
     } catch {}
@@ -493,7 +566,48 @@ export const zigmaaApi = {
       leads = leads.filter(l => l.ad_source === src || l.source === src);
     }
 
+    clientMemoryCache.set(cacheKey, { data: leads, timestamp: Date.now() });
     return leads;
+  },
+
+  async _revalidateLeads(filters?: any, cacheKey: string = "") {
+    try {
+      const query = new URLSearchParams();
+      if (filters?.search) query.append("search", filters.search);
+      if (filters?.status || filters?.stage) query.append("status", (filters.status || filters.stage)!);
+      if (filters?.source || filters?.ad_source) query.append("source", (filters.source || filters.ad_source)!);
+
+      const res = await fetch(`${API_BASE}/leads?${query.toString()}`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
+      if (res.ok) {
+        const backendLeads = await res.json();
+        if (Array.isArray(backendLeads) && backendLeads.length > 0) {
+          const mapped = backendLeads.map((b: any) => ({
+            id: b.id,
+            name: b.full_name || b.name || "Unnamed Lead",
+            full_name: b.full_name || b.name,
+            phone: b.phone || "",
+            email: b.email || "",
+            company_name: b.company_name || "",
+            ad_source: b.source || b.ad_source || "Manual",
+            source: b.source || b.ad_source || "Manual",
+            stage: b.status || b.stage || "New Lead",
+            status: b.status || b.stage || "New Lead",
+            deal_value: Number(b.deal_value) || 0,
+            assigned_user_id: b.assigned_user_id,
+            notes: b.notes || "",
+            custom_fields: b.custom_fields || {},
+            tags: b.tags || [],
+            created_at: b.created_at || new Date().toISOString(),
+            updated_at: b.updated_at || new Date().toISOString(),
+            activities: b.activities || []
+          }));
+          clientMemoryCache.set(cacheKey, { data: mapped, timestamp: Date.now() });
+        }
+      }
+    } catch {}
   },
 
   async createLead(leadData: Partial<Lead>): Promise<Lead> {
@@ -514,6 +628,7 @@ export const zigmaaApi = {
         body: JSON.stringify(payload)
       });
       if (res.ok) {
+        invalidateClientCache("leads");
         const b = await res.json();
         return {
           id: b.id,
@@ -661,7 +776,10 @@ export const zigmaaApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        invalidateClientCache("leads");
+        return await res.json();
+      }
     } catch {}
 
     const leads = getStorage<Lead[]>("zigmaa_leads", INITIAL_LEADS);
@@ -684,7 +802,10 @@ export const zigmaaApi = {
   async deleteLead(id: number | string): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE}/leads/${id}`, { method: "DELETE" });
-      if (res.ok) return true;
+      if (res.ok) {
+        invalidateClientCache("leads");
+        return true;
+      }
     } catch {}
 
     const leads = getStorage<Lead[]>("zigmaa_leads", INITIAL_LEADS);
@@ -1051,7 +1172,17 @@ export const zigmaaApi = {
   },
 
   // ===== CONTACTS CRUD =====
-  async getContacts(): Promise<Contact[]> {
+  async getContacts(forceRefresh = false): Promise<Contact[]> {
+    const cacheKey = "contacts:all";
+    const cached = clientMemoryCache.get(cacheKey);
+    if (!forceRefresh && cached) {
+      if (Date.now() - cached.timestamp < CLIENT_CACHE_TTL) {
+        return cached.data;
+      }
+      this.revalidateContacts();
+      return cached.data;
+    }
+
     try {
       const res = await fetch(`${API_BASE}/contacts`, {
         headers: getAuthHeaders(),
@@ -1060,7 +1191,7 @@ export const zigmaaApi = {
       if (res.ok) {
         const backendContacts = await res.json();
         if (Array.isArray(backendContacts)) {
-          return backendContacts.map((c: any) => ({
+          const mapped = backendContacts.map((c: any) => ({
             id: c.id,
             name: c.full_name || c.name || "Unnamed",
             email: c.email || "",
@@ -1076,12 +1207,45 @@ export const zigmaaApi = {
             custom_data: c.custom_data || {},
             created_at: c.created_at || new Date().toISOString()
           }));
+          clientMemoryCache.set(cacheKey, { data: mapped, timestamp: Date.now() });
+          return mapped;
         }
       }
     } catch (e) {
       console.error("Failed to fetch contacts from API:", e);
     }
-    return [];
+    return cached?.data || [];
+  },
+
+  async revalidateContacts() {
+    try {
+      const res = await fetch(`${API_BASE}/contacts`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
+      if (res.ok) {
+        const backendContacts = await res.json();
+        if (Array.isArray(backendContacts)) {
+          const mapped = backendContacts.map((c: any) => ({
+            id: c.id,
+            name: c.full_name || c.name || "Unnamed",
+            email: c.email || "",
+            phone: c.phone || "",
+            company_name: c.company_name || "",
+            job_title: c.designation || c.job_title || "",
+            status: c.status || c.lifecycle_stage || "NEW",
+            lifecycle_stage: c.lifecycle_stage || c.status || "NEW",
+            source: c.source || "MANUAL",
+            assigned_to: c.assigned_user_name || "Mohamed Thoufiq",
+            total_deals: c.total_deals || 0,
+            lifetime_value: Number(c.lifetime_value) || 0,
+            custom_data: c.custom_data || {},
+            created_at: c.created_at || new Date().toISOString()
+          }));
+          clientMemoryCache.set("contacts:all", { data: mapped, timestamp: Date.now() });
+        }
+      }
+    } catch {}
   },
 
   async getContactDetail(id: string | number): Promise<any> {
@@ -1133,7 +1297,10 @@ export const zigmaaApi = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data)
       });
-      if (res.ok) return await res.json();
+      if (res.ok) {
+        invalidateClientCache("contacts");
+        return await res.json();
+      }
     } catch {}
 
     const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);
@@ -1186,6 +1353,7 @@ export const zigmaaApi = {
       body: JSON.stringify(payload)
     });
     if (res.ok) {
+      invalidateClientCache("contacts");
       const c = await res.json();
       return {
         id: c.id,
@@ -1268,7 +1436,10 @@ export const zigmaaApi = {
   async deleteContact(id: number | string): Promise<boolean> {
     try {
       const res = await fetch(`${API_BASE}/contacts/${id}`, { method: "DELETE" });
-      if (res.ok) return true;
+      if (res.ok) {
+        invalidateClientCache("contacts");
+        return true;
+      }
     } catch {}
 
     const contacts = getStorage<Contact[]>("zigmaa_contacts", INITIAL_CONTACTS);

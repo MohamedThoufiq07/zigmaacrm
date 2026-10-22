@@ -194,31 +194,40 @@ export default function ContactSlideDrawer({
   const handleSaveField = async (field: string) => {
     if (!currentContact) return;
     setSavingField(true);
-    try {
-      const fullName = `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim() || currentContact.name;
-      const payload: any = {
-        name: fullName,
-        email: editForm.email.trim(),
-        phone: editForm.phone.trim(),
-        company_name: editForm.company_name.trim(),
-        designation: editForm.designation.trim(),
-        job_title: editForm.designation.trim(),
-        source: editForm.source.trim(),
-        assigned_to: editForm.assigned_to.trim(),
-        assigned_user_name: editForm.assigned_to.trim()
-      };
+    const prevDetail = detail;
+    const fullName = `${editForm.firstName.trim()} ${editForm.lastName.trim()}`.trim() || currentContact.name;
+    const payload: any = {
+      name: fullName,
+      email: editForm.email.trim(),
+      phone: editForm.phone.trim(),
+      company_name: editForm.company_name.trim(),
+      designation: editForm.designation.trim(),
+      job_title: editForm.designation.trim(),
+      source: editForm.source.trim(),
+      assigned_to: editForm.assigned_to.trim(),
+      assigned_user_name: editForm.assigned_to.trim()
+    };
 
+    // Optimistically update drawer detail view
+    setDetail((prev: any) => ({
+      ...prev,
+      ...payload
+    }));
+    setEditingField(null);
+    toast.success("Contact Updated", `${field} saved successfully.`);
+
+    try {
       const updated = await api.updateContact(currentContact.id, payload);
-      setDetail((prev: any) => ({
-        ...prev,
-        ...payload,
-        ...(updated || {})
-      }));
-      setEditingField(null);
-      toast.success("Contact Updated", `${field} saved successfully.`);
+      if (updated) {
+        setDetail((prev: any) => ({
+          ...prev,
+          ...updated
+        }));
+      }
       if (onUpdated) onUpdated();
     } catch (err: any) {
-      toast.error("Update Failed", err.message || "Could not save changes.");
+      setDetail(prevDetail);
+      toast.error("Update Failed", err.message || "Could not save changes. Reverted.");
     } finally {
       setSavingField(false);
     }

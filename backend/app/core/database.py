@@ -12,10 +12,23 @@ if db_url.startswith("postgresql://"):
     db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
 connect_args = {}
+engine_kwargs = {
+    "connect_args": connect_args,
+    "echo": False,
+    "pool_pre_ping": True,
+}
 if db_url.startswith("sqlite"):
-    connect_args = {"check_same_thread": False}
+    connect_args["check_same_thread"] = False
+else:
+    # High-concurrency PostgreSQL async connection pool
+    engine_kwargs.update({
+        "pool_size": 20,
+        "max_overflow": 10,
+        "pool_recycle": 300,
+        "pool_timeout": 30,
+    })
 
-engine = create_async_engine(db_url, connect_args=connect_args, echo=False)
+engine = create_async_engine(db_url, **engine_kwargs)
 
 AsyncSessionLocal = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession)
 Base = declarative_base()

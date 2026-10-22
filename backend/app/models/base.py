@@ -10,5 +10,5 @@ class TimeStampedBase(Base):
     __abstract__ = True
 
     id = Column(String(36), primary_key=True, default=generate_uuid)
-    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)

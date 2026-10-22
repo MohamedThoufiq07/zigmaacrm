@@ -181,6 +181,7 @@ export default function WhatsAppPage() {
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isPollingRef = useRef(false);
 
   // Active conversation object
   const activeChat = useMemo(() => {
@@ -307,16 +308,41 @@ export default function WhatsAppPage() {
     }
   }, [activePhone, loadMessages]);
 
-  // Polling: refresh conversations and active messages every 4 seconds
+  // Polling: throttled refresh (8s) with document visibility guard & overlap prevention
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadConversations(true);
-      if (activePhone) {
-        loadMessages(activePhone, true);
+    const poll = async () => {
+      if (typeof document !== "undefined" && document.hidden) return;
+      if (isPollingRef.current) return;
+      isPollingRef.current = true;
+      try {
+        await loadConversations(true);
+        if (activePhone) {
+          await loadMessages(activePhone, true);
+        }
+      } catch (err) {
+        console.warn("WhatsApp background sync error:", err);
+      } finally {
+        isPollingRef.current = false;
       }
-    }, 4000);
+    };
 
-    return () => clearInterval(interval);
+    const interval = setInterval(poll, 8000);
+
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && !document.hidden) {
+        poll();
+      }
+    };
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", handleVisibility);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", handleVisibility);
+      }
+    };
   }, [activePhone, loadConversations, loadMessages]);
 
   // Auto-scroll when messages update

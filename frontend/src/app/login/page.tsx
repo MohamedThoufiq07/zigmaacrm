@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { 
   Eye, 
@@ -14,6 +14,7 @@ import {
   Zap, 
   BarChart3, 
   CheckCircle, 
+  Check,
   ArrowUpRight,
   ShieldCheck,
   Building2,
@@ -62,6 +63,14 @@ export default function LoginPage() {
   const [successMsg, setSuccessMsg] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [otpVerified, setOtpVerified] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+
+  useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(""), 4500);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
 
   // Field-level error validation mapping (e.g. { email: "Invalid email", password: "Password is required" })
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -104,7 +113,7 @@ export default function LoginPage() {
 
     try {
       await api.login(email, password);
-      router.push("/");
+      window.location.href = "/";
     } catch (err: any) {
       const errMsg = err.message || "Incorrect email or password";
       setError(errMsg);
@@ -163,7 +172,7 @@ export default function LoginPage() {
         full_name: fullName,
         organization_name: companyName.trim()
       });
-      router.push("/");
+      window.location.href = "/";
     } catch (err: any) {
       const errMsg = err.message || "Failed to create account.";
       setError(errMsg);
@@ -175,21 +184,34 @@ export default function LoginPage() {
 
   async function handleSendOtp(e: React.FormEvent) {
     e.preventDefault();
-    if (!resetEmail.trim()) {
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    if (!cleanEmail) {
       setError("Please enter your email address");
       return;
     }
+    if (!validateEmailFormat(cleanEmail)) {
+      setError("Please enter a valid email address");
+      return;
+    }
+
     setSubmitting(true);
     setError("");
     setSuccessMsg("");
 
     try {
-      const res = await api.sendOtp(resetEmail);
+      const res = await api.sendOtp(cleanEmail);
       setOtpSent(true);
       setOtpVerified(false);
-      setSuccessMsg(res.message || `Verification code sent to ${resetEmail}`);
+      setToastMessage(`OTP sent to ${cleanEmail}`);
+      setError("");
+      setSuccessMsg("");
     } catch (err: any) {
-      setError(err.message || "Failed to send verification code. Ensure your email exists.");
+      // STRICT: Ensure OTP screen is NEVER displayed if email is not registered
+      setOtpSent(false);
+      setOtpVerified(false);
+      setSuccessMsg("");
+      setToastMessage("");
+      setError(err.message || "This email address is not registered with Zigmaa CRM. Please verify the email or sign up.");
     } finally {
       setSubmitting(false);
     }
@@ -197,7 +219,8 @@ export default function LoginPage() {
 
   async function handleVerifyOtp(e: React.FormEvent) {
     e.preventDefault();
-    const otpCode = otpValues.join("");
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    const otpCode = otpValues.join("").trim();
     if (otpCode.length !== 6) {
       setError("Please enter the complete 6-digit OTP");
       return;
@@ -208,7 +231,7 @@ export default function LoginPage() {
     setSuccessMsg("");
 
     try {
-      const res = await api.verifyOtp(resetEmail, otpCode);
+      const res = await api.verifyOtp(cleanEmail, otpCode);
       setOtpVerified(true);
       setSuccessMsg("Code verified! Please enter your new password below.");
     } catch (err: any) {
@@ -220,7 +243,8 @@ export default function LoginPage() {
 
   async function handleResetPasswordSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const otpCode = otpValues.join("");
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    const otpCode = otpValues.join("").trim();
     if (!newPassword || newPassword.length < 6) {
       setError("Password must be at least 6 characters");
       return;
@@ -231,14 +255,14 @@ export default function LoginPage() {
     setSuccessMsg("");
 
     try {
-      const res = await api.resetPassword(resetEmail, otpCode, newPassword);
+      const res = await api.resetPassword(cleanEmail, otpCode, newPassword);
       setSuccessMsg(res.message || "Password updated successfully. Please log in.");
       setTimeout(() => {
         setIsResetPassword(false);
         setOtpSent(false);
         setOtpVerified(false);
         setPassword(newPassword);
-        setEmail(resetEmail);
+        setEmail(cleanEmail);
       }, 1500);
     } catch (err: any) {
       setError(err.message || "Failed to reset password.");
@@ -254,7 +278,7 @@ export default function LoginPage() {
     "38953728767-m0ufev60495sh0qnmmjpjg2smio9dbhl.apps.googleusercontent.com";
 
   // Load Google Identity Services SDK dynamically
-  useState(() => {
+  useEffect(() => {
     if (typeof window !== "undefined") {
       const existingScript = document.getElementById("google-gsi-script");
       if (!existingScript) {
@@ -266,31 +290,66 @@ export default function LoginPage() {
         document.body.appendChild(script);
       }
     }
-  });
+  }, []);
 
   const handleGoogleSignIn = () => {
     setGoogleLoading(true);
     setError("");
 
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined") {
+      setGoogleLoading(false);
+      return;
+    }
 
     const google = (window as any).google;
 
     if (google?.accounts?.oauth2) {
+      // Auto-reset loading after 12 seconds so the button never stays stuck
+      const safetyTimer = setTimeout(() => {
+        setGoogleLoading(false);
+      }, 12000);
+
+      // Reset loading if the user closes or dismisses the Google popup
+      const onWindowFocus = () => {
+        setTimeout(() => {
+          setGoogleLoading((curr) => {
+            // If still loading after focus regained, user likely closed the popup
+            return false;
+          });
+        }, 2000);
+      };
+      window.addEventListener("focus", onWindowFocus, { once: true });
+
       try {
         const tokenClient = google.accounts.oauth2.initTokenClient({
           client_id: GOOGLE_CLIENT_ID,
           scope: "email profile openid",
           callback: async (tokenResponse: any) => {
+            clearTimeout(safetyTimer);
+            window.removeEventListener("focus", onWindowFocus);
+
             if (tokenResponse && tokenResponse.access_token) {
               try {
-                // Fetch verified user profile directly from Google
+                // Fetch verified user profile directly from Google with 4s timeout
+                const abortCtrl = new AbortController();
+                const timeoutId = setTimeout(() => abortCtrl.abort(), 4000);
+
                 const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
                   headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+                  signal: abortCtrl.signal,
                 });
-                const profile = await userInfoRes.json();
+                clearTimeout(timeoutId);
 
-                // Authenticate with CRM
+                if (!userInfoRes.ok) {
+                  throw new Error("Unable to retrieve Google profile details. Please try again.");
+                }
+
+                const profile = await userInfoRes.json();
+                if (!profile.email) {
+                  throw new Error("No email address provided by Google account.");
+                }
+
+                // Authenticate with CRM backend (verifies email is registered)
                 await api.loginWithGoogle({
                   email: profile.email,
                   name: profile.name,
@@ -298,10 +357,11 @@ export default function LoginPage() {
                   token: tokenResponse.access_token,
                 });
 
-                router.push("/");
+                // User exists and is authenticated: enter CRM
+                window.location.href = "/";
               } catch (e: any) {
-                console.error("Failed to process Google profile", e);
-                setError(e.message || "No account found with this Google email. Please sign up first.");
+                console.error("Google sign-in check failed:", e);
+                setError(e.message || "This Gmail account is not registered. Please register first or sign in with your registered account.");
                 setGoogleLoading(false);
               }
             } else {
@@ -309,6 +369,8 @@ export default function LoginPage() {
             }
           },
           error_callback: (err: any) => {
+            clearTimeout(safetyTimer);
+            window.removeEventListener("focus", onWindowFocus);
             console.error("Google OAuth error", err);
             setError("Google sign-in was cancelled or encountered an error.");
             setGoogleLoading(false);
@@ -317,12 +379,14 @@ export default function LoginPage() {
 
         tokenClient.requestAccessToken({ prompt: "select_account" });
       } catch (err: any) {
+        clearTimeout(safetyTimer);
+        window.removeEventListener("focus", onWindowFocus);
         console.error("Google Token Client initialization error", err);
         setError("Failed to open Google Sign-In popup. Please check your browser popup settings.");
         setGoogleLoading(false);
       }
     } else {
-      // If script is still downloading, retry in 500ms or fallback
+      // If script is still downloading, retry once in 500ms
       setTimeout(() => {
         const retryGoogle = (window as any).google;
         if (retryGoogle?.accounts?.oauth2) {
@@ -331,7 +395,7 @@ export default function LoginPage() {
           setError("Google Sign-In SDK is loading. Please click again in 2 seconds.");
           setGoogleLoading(false);
         }
-      }, 600);
+      }, 500);
     }
   };
 
@@ -344,6 +408,42 @@ export default function LoginPage() {
 
   return (
     <div className="relative h-screen max-h-screen w-screen overflow-hidden bg-white dark:bg-slate-950 text-slate-900 font-sans select-none flex">
+      {/* ================= FLOATING OTP SUCCESS TOAST (Theme Red Animated Countdown) ================= */}
+      {toastMessage && (
+        <div className="fixed top-5 right-5 z-50 animate-in fade-in slide-in-from-top-4 duration-300 pointer-events-auto">
+          <style>{`
+            @keyframes toastShrinkProgress {
+              0% { width: 100%; }
+              100% { width: 0%; }
+            }
+          `}</style>
+          <div className="relative overflow-hidden bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 shadow-xl shadow-slate-200/60 dark:shadow-black/50 rounded-xl px-4 py-3 flex items-center justify-between gap-3 min-w-[300px] sm:min-w-[340px] max-w-[440px]">
+            <div className="flex items-center gap-2.5">
+              <div className="w-5 h-5 rounded-full bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800/60 flex items-center justify-center shrink-0">
+                <Check className="w-3 h-3 text-red-600 dark:text-red-500 stroke-[3]" />
+              </div>
+              <span className="text-xs sm:text-[13px] font-semibold text-slate-800 dark:text-slate-100 tracking-tight">
+                {toastMessage}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setToastMessage("")}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded cursor-pointer transition-colors"
+              title="Close"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            {/* Red Theme Decreasing Loading Progress Bar */}
+            <div 
+              className="absolute bottom-0 left-0 h-[3px] bg-red-600 rounded-bl-xl"
+              style={{ animation: "toastShrinkProgress 4.5s linear forwards" }}
+              onAnimationEnd={() => setToastMessage("")}
+            />
+          </div>
+        </div>
+      )}
+
       {/* ================= LEFT SIDE: ZIGMAA CRM PROMOTIONAL VISUAL ================= */}
       <div className="hidden lg:flex flex-1 h-full relative items-center justify-center bg-[#06040A] text-white border-r border-slate-800/60 overflow-hidden select-none">
         {/* Edge-to-Edge Visual: Fills the entire left panel with zero excess black margin */}
@@ -644,7 +744,7 @@ export default function LoginPage() {
               <p className="text-xs sm:text-sm text-[#6B7280] mt-1 font-normal">
                 {otpSent 
                   ? "We've sent the 6 Digit OTP to your registered email address."
-                  : "We will sent the OTP for your below email address"}
+                  : "We will send the OTP to your registered email address"}
               </p>
             </div>
 
@@ -654,7 +754,7 @@ export default function LoginPage() {
               </div>
             )}
 
-            {successMsg && (
+            {successMsg && !otpSent && (
               <div className="p-2.5 rounded-lg bg-emerald-50 border border-emerald-200 text-emerald-700 text-xs font-medium">
                 {successMsg}
               </div>
@@ -910,6 +1010,9 @@ export default function LoginPage() {
                     setResetEmail(email || "");
                     setIsResetPassword(true);
                     setOtpSent(false);
+                    setOtpVerified(false);
+                    setError("");
+                    setSuccessMsg("");
                   }}
                   className="text-xs font-medium text-red-600 hover:underline cursor-pointer"
                 >
@@ -927,32 +1030,36 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Continue with Google Button */}
+            {/* Continue with Google Button (Turns Theme Red on Hover) */}
             <button
               type="button"
               onClick={handleGoogleSignIn}
               disabled={googleLoading}
-              className="w-full py-2.5 px-4 bg-white hover:bg-slate-50 border border-[#E5E7EB] text-[#374151] font-medium text-xs sm:text-sm rounded-lg shadow-2xs transition-colors flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60"
+              className="w-full py-2.5 px-4 bg-white hover:bg-red-600 active:bg-red-700 border border-[#E5E7EB] hover:border-red-600 text-[#374151] hover:text-white font-medium text-xs sm:text-sm rounded-lg shadow-2xs transition-all duration-200 flex items-center justify-center gap-2.5 cursor-pointer disabled:opacity-60 group"
             >
-              <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.43 7.35 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.98 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.57 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>{googleLoading ? "Signing in..." : "Sign in with Google"}</span>
+              <div className="w-5 h-5 rounded-full bg-white flex items-center justify-center shrink-0 shadow-2xs">
+                <svg className="w-3.5 h-3.5 shrink-0" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.27 21.43 7.35 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.16 0 9.98 0 12s.45 3.84 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.35 0 3.27 2.57 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+              </div>
+              <span className="font-semibold text-xs sm:text-sm text-[#374151] group-hover:text-white transition-colors">
+                {googleLoading ? "Signing in..." : "Sign in with Google"}
+              </span>
             </button>
 
             {/* Not a Member ? Sign Up */}

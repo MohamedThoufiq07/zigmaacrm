@@ -46,6 +46,7 @@ export default function Header({ title }: HeaderProps) {
 
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeRole, setActiveRole] = useState<string>("ADMIN");
+  const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -62,11 +63,17 @@ export default function Header({ title }: HeaderProps) {
       };
       window.addEventListener("zigmaa_role_changed", handleRoleChange);
 
-      // Load logged-in user details
-      const loadUser = () => {
-        const user = api.getCurrentUser();
+      // Load logged-in user details with automatic backend profile refresh
+      const loadUser = async () => {
+        let user = api.getCurrentUser();
+        if (!user || !user.email) {
+          try {
+            user = await api.getMe();
+          } catch {}
+        }
         if (user) {
           setCurrentUser(user);
+          setAvatarError(false);
         }
       };
 
@@ -144,7 +151,7 @@ export default function Header({ title }: HeaderProps) {
   return (
     <>
       <header
-        className={`h-16 bg-white border-b border-slate-200/90 flex items-center justify-between z-20 shrink-0 select-none shadow-xs transition-all ${
+        className={`h-16 bg-white border-b border-slate-200/90 flex items-center justify-between z-40 relative shrink-0 select-none shadow-xs transition-all ${
           isSidebarHidden ? "pl-16 pr-6" : "px-6"
         }`}
       >
@@ -260,20 +267,20 @@ export default function Header({ title }: HeaderProps) {
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
-              className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 text-white font-bold flex items-center justify-center text-xs shadow-xs border border-amber-300/80 shrink-0 cursor-pointer hover:ring-2 hover:ring-red-500/40 transition-all overflow-hidden"
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold flex items-center justify-center text-xs shadow-xs border-2 border-white ring-2 ring-slate-200/90 shrink-0 cursor-pointer hover:ring-red-500/50 transition-all overflow-hidden"
               title={currentUser?.full_name || currentUser?.email || "User Profile"}
             >
-              {currentUser?.picture ? (
+              {currentUser?.picture && !avatarError ? (
                 <img
                   src={currentUser.picture}
                   alt={currentUser?.full_name || "Profile"}
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.display = "none";
-                  }}
+                  className="w-full h-full object-cover rounded-full"
+                  referrerPolicy="no-referrer"
+                  crossOrigin="anonymous"
+                  onError={() => setAvatarError(true)}
                 />
               ) : (
-                <span className="text-[11px] font-bold text-white">
+                <span className="text-[11px] font-bold text-white tracking-wider">
                   {getInitials(currentUser?.full_name, currentUser?.email)}
                 </span>
               )}
@@ -283,25 +290,24 @@ export default function Header({ title }: HeaderProps) {
               <>
                 {/* Backdrop to close on click outside */}
                 <div
-                  className="fixed inset-0 z-40"
+                  className="fixed inset-0 z-50"
                   onClick={() => setShowProfileMenu(false)}
                 />
 
                 {/* Popover Card */}
-                <div className="absolute right-0 mt-2 w-68 bg-white rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-slate-100 z-50 text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-slate-200 z-[60] text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
                   {/* Top Avatar & Name Section */}
-                  <div className="pt-6 pb-3 flex flex-col items-center px-4">
-                    {/* Interactive Profile Avatar with hover change overlay */}
+                  <div className="pt-6 pb-4 flex flex-col items-center px-4 bg-gradient-to-b from-slate-50/90 to-white border-b border-slate-100">
                     {/* Avatar Display */}
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold text-2xl flex items-center justify-center shadow-md select-none overflow-hidden border-2 border-white ring-2 ring-red-100">
-                      {currentUser?.picture ? (
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold text-2xl flex items-center justify-center shadow-md select-none overflow-hidden border-2 border-white ring-4 ring-red-100/90 shrink-0">
+                      {currentUser?.picture && !avatarError ? (
                         <img
                           src={currentUser.picture}
                           alt={currentUser?.full_name || "Profile"}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = "none";
-                          }}
+                          className="w-full h-full object-cover rounded-full"
+                          referrerPolicy="no-referrer"
+                          crossOrigin="anonymous"
+                          onError={() => setAvatarError(true)}
                         />
                       ) : (
                         <span className="text-xl font-bold tracking-tight text-white drop-shadow-xs">
@@ -310,14 +316,19 @@ export default function Header({ title }: HeaderProps) {
                       )}
                     </div>
 
-                    <h3 className="mt-2 text-sm font-bold text-slate-800 tracking-tight select-none text-center">
+                    <h3 className="mt-3 text-sm font-bold text-slate-900 tracking-tight select-none text-center leading-snug">
                       {currentUser?.full_name || "CRM Administrator"}
                     </h3>
-                    {currentUser?.email && (
-                      <p className="text-[11px] text-slate-400 font-normal truncate max-w-[210px] mt-0.5 text-center">
-                        {currentUser.email}
-                      </p>
-                    )}
+                    <p className="text-[11px] text-slate-500 font-medium truncate max-w-[240px] mt-0.5 text-center">
+                      {currentUser?.email || "admin@zigmaa.com"}
+                    </p>
+                    <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200/60">
+                      {currentUser?.is_super_admin || currentUser?.role === "SUPER_ADMIN"
+                        ? "Super Admin"
+                        : currentUser?.role === "SALES_REP"
+                        ? "Sales Rep"
+                        : "Administrator"}
+                    </div>
                   </div>
 
                   <div className="h-px bg-slate-100 mx-3 my-1" />

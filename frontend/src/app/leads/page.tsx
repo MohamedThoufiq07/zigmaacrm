@@ -184,12 +184,16 @@ export default function LeadsPage() {
     });
 
     if (confirmed) {
+      const previousLeads = leads;
+      // Optimistic removal
+      setLeads((prev) => prev.filter((l) => String(l.id) !== String(lead.id)));
+      toast.success("Lead Deleted", `"${lead.name}" was removed.`);
+
       try {
         await api.deleteLead(lead.id);
-        toast.success("Lead Deleted", `"${lead.name}" was removed from the database.`);
-        fetchLeads();
       } catch (err: any) {
-        toast.error("Delete Failed", err.message || "Could not delete lead.");
+        setLeads(previousLeads);
+        toast.error("Delete Failed", err.message || "Could not delete lead. Reverted.");
       }
     }
   };
@@ -206,15 +210,20 @@ export default function LeadsPage() {
     });
 
     if (confirmed) {
+      const previousLeads = leads;
+      const idsToDelete = Array.from(selectedIds);
+      // Optimistic bulk removal
+      setLeads((prev) => prev.filter((l) => !selectedIds.has(l.id)));
+      setSelectedIds(new Set());
+      toast.success("Bulk Delete Complete", `${count} leads deleted.`);
+
       try {
-        for (const id of Array.from(selectedIds)) {
+        for (const id of idsToDelete) {
           await api.deleteLead(id);
         }
-        setSelectedIds(new Set());
-        toast.success("Bulk Delete Complete", `${count} leads deleted.`);
-        fetchLeads();
       } catch {
-        toast.error("Bulk Delete Failed", "An error occurred during deletion.");
+        setLeads(previousLeads);
+        toast.error("Bulk Delete Failed", "An error occurred during deletion. Reverted.");
       }
     }
   };

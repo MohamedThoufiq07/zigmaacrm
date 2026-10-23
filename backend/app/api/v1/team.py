@@ -164,6 +164,32 @@ async def update_member_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found in your organization.")
 
+    # Prevent users from demoting or modifying their own role
+    if user.id == admin_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot change your own role. Another administrator must update your role permissions."
+        )
+
+    # Enforce that an organization must always retain at least 1 active Admin
+    if (user.role or "").lower() == "admin" and norm_role != "admin":
+        admin_count_res = await db.execute(
+            select(func.count(User.id)).where(
+                User.organization_id == admin_user.organization_id,
+                User.is_active == True,
+                or_(
+                    User.role.ilike("admin"),
+                    User.role.ilike("super_admin")
+                )
+            )
+        )
+        active_admins = admin_count_res.scalar() or 0
+        if active_admins <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organization must always retain at least 1 active Administrator."
+            )
+
     user.role = norm_role
     await db.commit()
     await db.refresh(user)
@@ -194,6 +220,25 @@ async def remove_team_member(
 
     if user.id == admin_user.id:
         raise HTTPException(status_code=400, detail="You cannot delete your own active administrator account.")
+
+    # Enforce that an organization must always retain at least 1 active Admin
+    if (user.role or "").lower() == "admin":
+        admin_count_res = await db.execute(
+            select(func.count(User.id)).where(
+                User.organization_id == admin_user.organization_id,
+                User.is_active == True,
+                or_(
+                    User.role.ilike("admin"),
+                    User.role.ilike("super_admin")
+                )
+            )
+        )
+        active_admins = admin_count_res.scalar() or 0
+        if active_admins <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Organization must always retain at least 1 active Administrator."
+            )
 
     # Soft delete / deactivate or remove
     user.is_active = False

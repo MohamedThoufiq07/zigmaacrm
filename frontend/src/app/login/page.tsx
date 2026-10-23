@@ -112,7 +112,16 @@ export default function LoginPage() {
     setSuccessMsg("");
 
     try {
-      await api.login(email, password);
+      const loginRes = await api.login(email, password);
+      const user = loginRes?.user;
+      const roleStr = (user?.role || "").toLowerCase();
+      const emailStr = (user?.email || email || "").toLowerCase();
+      const isSuper = !!user?.is_super_admin || roleStr === "super_admin" || ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"].includes(emailStr);
+      if (isSuper) {
+        api.logout();
+        setError("Incorrect email or password");
+        return;
+      }
       window.location.href = "/";
     } catch (err: any) {
       const errMsg = err.message || "Incorrect email or password";
@@ -350,14 +359,23 @@ export default function LoginPage() {
                 }
 
                 // Authenticate with CRM backend (verifies email is registered)
-                await api.loginWithGoogle({
+                const gRes = await api.loginWithGoogle({
                   email: profile.email,
                   name: profile.name,
                   picture: profile.picture,
                   token: tokenResponse.access_token,
                 });
 
-                // User exists and is authenticated: enter CRM
+                const user = gRes?.user;
+                const roleStr = (user?.role || "").toLowerCase();
+                const emailStr = (user?.email || profile?.email || "").toLowerCase();
+                const isSuper = !!user?.is_super_admin || roleStr === "super_admin" || ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"].includes(emailStr);
+                if (isSuper) {
+                  api.logout();
+                  setError("Incorrect email or password");
+                  setGoogleLoading(false);
+                  return;
+                }
                 window.location.href = "/";
               } catch (e: any) {
                 console.error("Google sign-in check failed:", e);

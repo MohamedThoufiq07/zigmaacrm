@@ -2,7 +2,7 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    email: str  # Allows email or username (e.g. zigmaaadmin)
     password: str
 
 class GoogleLoginSchema(BaseModel):

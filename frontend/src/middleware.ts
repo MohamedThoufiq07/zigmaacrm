@@ -30,6 +30,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL("/", request.url));
   }
 
+  // Dedicated Super Admin Portal (/admin) handles its own authentication gateway
+  if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+    return NextResponse.next();
+  }
+
   // If user does not have token and visits protected route, redirect to /login
   if (!token && !isPublicAuthRoute && pathname !== "/privacy-policy") {
     return NextResponse.redirect(new URL("/login", request.url));

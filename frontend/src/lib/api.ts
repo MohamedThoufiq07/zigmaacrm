@@ -174,6 +174,42 @@ export const zigmaaApi = {
     return data;
   },
 
+  async superAdminLogin(username: string, password: string) {
+    const res = await fetch(`${API_BASE}/auth/login`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Portal": "super_admin"
+      },
+      body: JSON.stringify({ email: username.trim(), password })
+    });
+
+    if (!res.ok) {
+      let errorMsg = "Incorrect username or password";
+      try {
+        const errorData = await res.json();
+        errorMsg = errorData.detail || errorMsg;
+      } catch {}
+      throw new Error(errorMsg);
+    }
+
+    const data = await res.json();
+    setStorage("zigmaa_token", data.access_token);
+    setStorage("zigmaa_user", data.user);
+    if (data.user?.role) {
+      if (typeof window !== "undefined") {
+        localStorage.setItem("zigmaa_active_role", data.user.role);
+      }
+    }
+    if (typeof document !== "undefined" && data.access_token) {
+      document.cookie = `zigmaa_token=${encodeURIComponent(data.access_token)}; path=/; max-age=86400; SameSite=Lax`;
+    }
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+    }
+    return data;
+  },
+
   async signup(data: { email: string; password: string; full_name: string; company_name?: string; organization_name?: string }) {
     const res = await fetch(`${API_BASE}/auth/signup`, {
       method: "POST",
@@ -440,7 +476,8 @@ export const zigmaaApi = {
       picture: googleUser.picture || data.user?.picture || data.user?.avatar_url,
       avatar_url: googleUser.picture || data.user?.picture || data.user?.avatar_url,
       role: data.user?.role || "ADMIN",
-      is_active: true
+      is_active: true,
+      is_super_admin: data.user?.is_super_admin || false
     };
     setStorage("zigmaa_user", resolvedUser);
 
@@ -2722,6 +2759,149 @@ export const zigmaaApi = {
       console.warn("Failed to update contact name on backend", e);
     }
     return { status: "success" };
+  },
+
+  // ===== SUPER ADMIN MASTER PORTAL =====
+  async getSuperAdminOverview(): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/overview`, {
+      headers: getAuthHeaders(),
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      let err = "Failed to fetch master portal overview";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async getSuperAdminOrganizations(): Promise<any[]> {
+    const res = await fetch(`${API_BASE}/admin/organizations`, {
+      headers: getAuthHeaders(),
+      cache: "no-store"
+    });
+    if (!res.ok) {
+      let err = "Failed to fetch organizations";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async updateTenantPlan(orgId: string, plan: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/plan`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ plan })
+    });
+    if (!res.ok) {
+      let err = "Failed to update tenant plan";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async extendTenantTrial(orgId: string, days: number = 14): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/trial`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ days })
+    });
+    if (!res.ok) {
+      let err = "Failed to extend tenant trial";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async updateTenantStatus(orgId: string, status: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/status`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify({ status })
+    });
+    if (!res.ok) {
+      let err = "Failed to update tenant status";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async updateTenantQuotas(orgId: string, quotas: { max_users?: number; max_whatsapp?: number }): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/organizations/${orgId}/quotas`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      },
+      body: JSON.stringify(quotas)
+    });
+    if (!res.ok) {
+      let err = "Failed to update tenant quotas";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    return await res.json();
+  },
+
+  async impersonateTenant(orgId: string): Promise<any> {
+    const res = await fetch(`${API_BASE}/admin/impersonate/${orgId}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...getAuthHeaders()
+      }
+    });
+    if (!res.ok) {
+      let err = "Failed to impersonate tenant";
+      try {
+        const j = await res.json();
+        err = j.detail || err;
+      } catch {}
+      throw new Error(err);
+    }
+    const data = await res.json();
+    if (data.access_token) {
+      setStorage("zigmaa_token", data.access_token);
+      setStorage("zigmaa_user", data.user);
+      if (typeof document !== "undefined") {
+        document.cookie = `zigmaa_token=${encodeURIComponent(data.access_token)}; path=/; max-age=86400; SameSite=Lax`;
+      }
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("zigmaa_user_updated"));
+      }
+    }
+    return data;
   }
 };
 

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.database import engine, Base
-from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router, team, telephony, whatsapp
+from app.api.v1 import auth, organizations, leads, pipelines, deals, activities, webhooks, automations, invoices, contacts, custom_fields, copilot, tasks, dashboard, calendar, settings as settings_router, team, telephony, whatsapp, super_admin
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -29,6 +29,7 @@ app.include_router(settings_router.router, prefix=f"{settings.API_V1_STR}/settin
 app.include_router(team.router, prefix=f"{settings.API_V1_STR}/settings/team", tags=["Team"])
 app.include_router(team.router, prefix=f"{settings.API_V1_STR}/team", tags=["Team-Direct"])
 app.include_router(team.router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
+app.include_router(super_admin.router, prefix=f"{settings.API_V1_STR}/admin", tags=["Super Admin"])
 app.include_router(leads.router, prefix=settings.API_V1_STR, tags=["Leads"])
 app.include_router(contacts.router, prefix=settings.API_V1_STR, tags=["Contacts"])
 app.include_router(pipelines.router, prefix=settings.API_V1_STR, tags=["Pipelines"])
@@ -57,6 +58,8 @@ async def on_startup():
             await conn.execute(text("ALTER TABLE custom_fields ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE;"))
             await conn.execute(text("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS custom_properties JSONB DEFAULT '{}'::jsonb;"))
             await conn.execute(text("ALTER TABLE deals ADD COLUMN IF NOT EXISTS custom_properties JSONB DEFAULT '{}'::jsonb;"))
+            await conn.execute(text("ALTER TABLE organizations ADD COLUMN IF NOT EXISTS max_users INTEGER DEFAULT 15;"))
+            await conn.execute(text("ALTER TABLE organizations ADD COLUMN IF NOT EXISTS max_whatsapp INTEGER DEFAULT 1500;"))
         except Exception as e:
             print(f"[STARTUP MIGRATION] Schema check note: {e}")
     try:

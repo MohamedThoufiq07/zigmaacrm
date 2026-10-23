@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime
+from sqlalchemy import Column, String, Boolean, ForeignKey, DateTime, Integer
 from sqlalchemy.orm import relationship
 from app.models.base import TimeStampedBase
 
@@ -10,6 +10,8 @@ class Organization(TimeStampedBase):
     plan = Column(String(50), default="PRO")  # FREE_TRIAL, STARTER, PRO, ENTERPRISE
     trial_ends_at = Column(DateTime, nullable=True)
     status = Column(String(50), default="ACTIVE")  # ACTIVE, EXPIRED, SUSPENDED
+    max_users = Column(Integer, default=15, nullable=True)
+    max_whatsapp = Column(Integer, default=1500, nullable=True)
 
     users = relationship("User", back_populates="organization", cascade="all, delete-orphan")
     leads = relationship("Lead", back_populates="organization", cascade="all, delete-orphan")

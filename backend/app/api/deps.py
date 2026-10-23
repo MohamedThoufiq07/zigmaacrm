@@ -95,6 +95,22 @@ async def get_current_admin(
         )
     return current_user
 
+async def get_current_super_admin(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    is_super = bool(
+        getattr(current_user, "is_super_admin", False)
+        or (current_user.role or "").lower() in ["super_admin", "superadmin"]
+        or (current_user.email and current_user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
+        or (current_user.email and current_user.email.lower().endswith("@zigmaa.com"))
+    )
+    if not is_super:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Super Admin privileges required to access master management portal."
+        )
+    return current_user
+
 async def get_optional_current_user(
     auth: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: AsyncSession = Depends(get_db)

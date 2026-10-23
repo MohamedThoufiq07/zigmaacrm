@@ -1,8 +1,9 @@
 import secrets
+from typing import Optional
 from datetime import datetime, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, or_
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.models.organization_user import User, Organization
@@ -79,8 +80,9 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
 
     is_super = bool(
         getattr(user, "is_super_admin", False)
-        or user.role == "SUPER_ADMIN"
-        or (user.email and user.email.lower() in ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
+        or (user.role or "").upper() in ["SUPER_ADMIN", "SUPERADMIN"]
+        or (user.email and user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
+        or (user.email and user.email.lower().endswith("@zigmaa.com"))
     )
 
     avatar = getattr(user, "avatar_url", None)
@@ -101,10 +103,21 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
 DUMMY_BCRYPT_HASH = get_password_hash("ZigmaaDummyTimingProtectionPassword2026")
 
 @router.post("/login", response_model=TokenResponse)
-async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
-    clean_email = login_in.email.lower().strip()
-    result = await db.execute(select(User).where(User.email == clean_email))
-    user = result.scalar_one_or_none()
+async def login(
+    login_in: UserLogin,
+    x_portal: Optional[str] = Header(None, alias="X-Portal"),
+    db: AsyncSession = Depends(get_db)
+):
+    clean_identifier = login_in.email.lower().strip()
+    result = await db.execute(
+        select(User).where(
+            or_(
+                User.email == clean_identifier,
+                User.email == f"{clean_identifier}@zigmaa.com"
+            )
+        ).limit(1)
+    )
+    user = result.scalars().first()
     
     # Timing-attack resistant verification (OWASP / CWE-208):
     # Always perform full bcrypt hash computation to avoid user enumeration via latency delta
@@ -112,6 +125,19 @@ async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
     is_valid_pw = verify_password(login_in.password, target_hash)
 
     if not user or not is_valid_pw:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password"
+        )
+
+    # Super Admin is STRICTLY NOT allowed to log in via normal CRM login:
+    # Must use the dedicated Master Admin Portal (/admin)
+    is_super = bool(
+        getattr(user, "is_super_admin", False)
+        or (user.role or "").upper() in ["SUPER_ADMIN", "SUPERADMIN"]
+        or (user.email and user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"])
+    )
+    if is_super and x_portal != "super_admin":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"

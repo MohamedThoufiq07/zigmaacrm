@@ -65,18 +65,22 @@ async def google_login(payload: GoogleLoginSchema, db: AsyncSession = Depends(ge
 
 async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
     company_name = None
+    plan = "PRO"
+    trial_ends_at = None
     if user.organization_id:
+        org_res = await db.execute(select(Organization).where(Organization.id == user.organization_id))
+        org = org_res.scalar_one_or_none()
+        if org:
+            company_name = org.name
+            plan = org.plan or "PRO"
+            trial_ends_at = org.trial_ends_at.isoformat() if org.trial_ends_at else None
+
         org_set_res = await db.execute(
             select(OrganizationSetting).where(OrganizationSetting.organization_id == user.organization_id)
         )
         org_set = org_set_res.scalars().first()
         if org_set and org_set.company_name:
             company_name = org_set.company_name
-        else:
-            org_res = await db.execute(select(Organization).where(Organization.id == user.organization_id))
-            org = org_res.scalar_one_or_none()
-            if org:
-                company_name = org.name
 
     is_super = bool(
         getattr(user, "is_super_admin", False)
@@ -97,7 +101,9 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         company_name=company_name or "Zigmaa Workspace",
         organization_name=company_name or "Zigmaa Workspace",
         picture=avatar,
-        avatar_url=avatar
+        avatar_url=avatar,
+        plan=plan,
+        trial_ends_at=trial_ends_at
     )
 
 DUMMY_BCRYPT_HASH = get_password_hash("ZigmaaDummyTimingProtectionPassword2026")
@@ -177,9 +183,16 @@ async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
     # Determine company/workspace name
     workspace_name = (user_in.company_name or user_in.organization_name or f"{user_in.full_name.strip()}'s Workspace").strip()
     org_slug = workspace_name.lower().replace(" ", "-")
+    now = datetime.utcnow()
+    trial_expiry = now + timedelta(days=7)
     org = Organization(
         name=workspace_name,
-        slug=f"{org_slug}-{secrets.token_hex(3)}"
+        slug=f"{org_slug}-{secrets.token_hex(3)}",
+        plan="FREE_TRIAL",
+        status="ACTIVE",
+        trial_ends_at=trial_expiry,
+        max_users=5,
+        max_whatsapp=500
     )
     db.add(org)
     await db.flush()

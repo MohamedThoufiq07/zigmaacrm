@@ -75,6 +75,77 @@ async def get_super_admin_overview(
     except Exception:
         whatsapp_status = "standby"
 
+    # 5. Notifications & Recent Signups (New Companies & Expiring Trials)
+    now_utc = datetime.utcnow()
+    recent_signups_res = await db.execute(
+        select(Organization)
+        .where(TENANT_FILTER)
+        .order_by(Organization.created_at.desc())
+        .limit(10)
+    )
+    recent_orgs = recent_signups_res.scalars().all()
+    notifications = []
+    recent_signups = []
+
+    for ro in recent_orgs:
+        owner_res = await db.execute(
+            select(User).where(User.organization_id == ro.id).order_by(User.created_at.asc()).limit(1)
+        )
+        owner_u = owner_res.scalar_one_or_none()
+
+        days_left = None
+        if ro.trial_ends_at:
+            delta = ro.trial_ends_at - now_utc
+            days_left = max(0, delta.days + (1 if delta.seconds > 0 else 0))
+
+        is_trial = (ro.plan or "").upper().find("TRIAL") != -1 or ro.trial_ends_at is not None
+
+        # Registration notification
+        is_recent = False
+        if ro.created_at:
+            hours_ago = (now_utc - ro.created_at).total_seconds() / 3600
+            is_recent = hours_ago <= 168  # within 7 days
+
+        signup_item = {
+            "id": ro.id,
+            "name": ro.name,
+            "slug": ro.slug,
+            "plan": (ro.plan or "FREE_TRIAL").upper(),
+            "status": ro.status,
+            "created_at": ro.created_at.isoformat() if ro.created_at else None,
+            "trial_ends_at": ro.trial_ends_at.isoformat() if ro.trial_ends_at else None,
+            "days_left": days_left,
+            "is_recent": is_recent,
+            "owner_name": owner_u.full_name if owner_u else "New Administrator",
+            "owner_email": owner_u.email if owner_u else "N/A"
+        }
+        recent_signups.append(signup_item)
+
+        # 1. New Company notification
+        notifications.append({
+            "id": f"signup_{ro.id}",
+            "type": "NEW_COMPANY",
+            "title": f"New Company Registered: {ro.name}",
+            "message": f"{owner_u.full_name if owner_u else 'New Admin'} ({owner_u.email if owner_u else 'N/A'}) registered on 7-Day Free Trial.",
+            "timestamp": ro.created_at.isoformat() if ro.created_at else None,
+            "org_id": ro.id,
+            "days_left": days_left,
+            "is_urgent": False
+        })
+
+        # 2. Critical Trial Expiring Soon notification (<= 3 days left!)
+        if is_trial and days_left is not None and days_left <= 3:
+            notifications.append({
+                "id": f"trial_exp_{ro.id}",
+                "type": "TRIAL_EXPIRING",
+                "title": f"⚠️ Trial Expiring: {ro.name}",
+                "message": f"Free trial ends in {days_left}d! Company will be suspended unless upgraded.",
+                "timestamp": ro.created_at.isoformat() if ro.created_at else None,
+                "org_id": ro.id,
+                "days_left": days_left,
+                "is_urgent": True
+            })
+
     return {
         "kpi": {
             "total_organizations": total_orgs,
@@ -90,7 +161,9 @@ async def get_super_admin_overview(
             "whatsapp_service": whatsapp_status,
             "api_version": settings.VERSION,
             "uptime_guarantee": "99.98%"
-        }
+        },
+        "notifications": notifications,
+        "recent_signups": recent_signups
     }
 
 
@@ -108,6 +181,7 @@ async def list_all_organizations(
         .order_by(Organization.created_at.desc())
     )
     orgs = res.scalars().all()
+    now_utc = datetime.utcnow()
 
     output = []
     for org in orgs:
@@ -123,7 +197,6 @@ async def list_all_organizations(
         )
         owner = owner_res.scalar_one_or_none()
         if not owner:
-            # Fallback to any user
             any_user_res = await db.execute(select(User).where(User.organization_id == org.id).limit(1))
             owner = any_user_res.scalar_one_or_none()
 
@@ -140,6 +213,12 @@ async def list_all_organizations(
         user_limit = getattr(org, "max_users", None) or default_user_limit
         whatsapp_limit = getattr(org, "max_whatsapp", None) or default_whatsapp_limit
 
+        # Calculate days remaining for trial
+        days_left = None
+        if org.trial_ends_at:
+            delta = org.trial_ends_at - now_utc
+            days_left = max(0, delta.days + (1 if delta.seconds > 0 else 0))
+
         output.append({
             "id": org.id,
             "name": org.name,
@@ -147,6 +226,7 @@ async def list_all_organizations(
             "plan": plan_str,
             "status": (org.status or "ACTIVE").upper(),
             "trial_ends_at": org.trial_ends_at.isoformat() if org.trial_ends_at else None,
+            "days_left": days_left,
             "created_at": org.created_at.isoformat() if org.created_at else None,
             "owner": {
                 "id": owner.id if owner else None,

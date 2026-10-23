@@ -33,7 +33,10 @@ import {
   LogIn,
   User,
   EyeOff,
-  CheckCircle
+  CheckCircle,
+  Bell,
+  AlertCircle,
+  Sparkles
 } from "lucide-react";
 import { api } from "@/lib/api";
 import LogoLoader from "@/components/common/LogoLoader";
@@ -56,10 +59,36 @@ interface OrganizationItem {
   plan: string;
   status: string;
   trial_ends_at: string | null;
+  days_left?: number | null;
   created_at: string | null;
   owner: OrganizationOwner;
   total_users: number;
   quotas: OrganizationQuotas;
+}
+
+interface NotificationItem {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  timestamp: string | null;
+  org_id: string;
+  days_left?: number | null;
+  is_urgent: boolean;
+}
+
+interface RecentSignupItem {
+  id: string;
+  name: string;
+  slug: string;
+  plan: string;
+  status: string;
+  created_at: string | null;
+  trial_ends_at: string | null;
+  days_left: number | null;
+  is_recent: boolean;
+  owner_name: string;
+  owner_email: string;
 }
 
 interface OverviewData {
@@ -78,6 +107,8 @@ interface OverviewData {
     api_version: string;
     uptime_guarantee: string;
   };
+  notifications?: NotificationItem[];
+  recent_signups?: RecentSignupItem[];
 }
 
 export default function SuperAdminPortalPage() {
@@ -102,6 +133,10 @@ export default function SuperAdminPortalPage() {
   const [fetching, setFetching] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [successMsg, setSuccessMsg] = useState<string>("");
+
+  // Notification UI state
+  const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  const [dismissBanner, setDismissBanner] = useState<boolean>(false);
 
   // Table Filters & Search
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -363,6 +398,11 @@ export default function SuperAdminPortalPage() {
     }
   };
 
+  // Notification count (urgent warnings + new registrations)
+  const notificationsList = overview?.notifications || [];
+  const urgentCount = notificationsList.filter((n) => n.is_urgent).length;
+  const recentCompany = overview?.recent_signups?.[0];
+
   // Official Branded Loading State (Light Mode)
   if (loading) {
     return (
@@ -538,8 +578,104 @@ export default function SuperAdminPortalPage() {
           </div>
         </div>
 
-        {/* Master Portal Navigation & Toggle */}
+        {/* Master Portal Navigation & Controls */}
         <div className="flex items-center gap-3">
+          {/* Notifications Dropdown (New Signups & Critical Trial Warnings) */}
+          <div className="relative">
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="p-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-200 shadow-2xs transition-all relative cursor-pointer"
+              title="Platform Notifications (New Signups & Expiring Trials)"
+            >
+              <Bell className="w-4 h-4 text-slate-600" />
+              {notificationsList.length > 0 && (
+                <span className={`absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full text-white font-bold text-[10px] flex items-center justify-center shadow-xs ${
+                  urgentCount > 0 ? "bg-red-600 animate-pulse" : "bg-red-500"
+                }`}>
+                  {notificationsList.length}
+                </span>
+              )}
+            </button>
+
+            {showNotifications && (
+              <>
+                <div
+                  className="fixed inset-0 z-40"
+                  onClick={() => setShowNotifications(false)}
+                />
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 p-4 z-50 text-xs text-slate-900 animate-in fade-in zoom-in-95">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-sm text-slate-900">Platform Notifications</span>
+                      <span className="px-2 py-0.5 rounded-full bg-red-50 text-red-600 font-bold text-[10px] border border-red-200">
+                        {notificationsList.length} total
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setShowNotifications(false)}
+                      className="text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="divide-y divide-slate-100 max-h-80 overflow-y-auto custom-scrollbar my-2">
+                    {notificationsList.length === 0 ? (
+                      <div className="py-8 text-center text-slate-400">
+                        No active notifications.
+                      </div>
+                    ) : (
+                      notificationsList.map((notif) => (
+                        <div
+                          key={notif.id}
+                          className={`p-3 rounded-xl transition-colors ${
+                            notif.is_urgent ? "bg-red-50/70 border border-red-100" : "hover:bg-slate-50"
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5">
+                            {notif.is_urgent ? (
+                              <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5 animate-pulse" />
+                            ) : (
+                              <Building2 className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1">
+                              <div className="font-bold text-slate-900 flex items-center justify-between">
+                                <span>{notif.title}</span>
+                                {notif.days_left !== undefined && notif.days_left !== null && (
+                                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                                    notif.days_left <= 3
+                                      ? "bg-red-600 text-white"
+                                      : "bg-amber-100 text-amber-800"
+                                  }`}>
+                                    {notif.days_left}d left
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed">
+                                {notif.message}
+                              </p>
+                              {notif.timestamp && (
+                                <span className="text-[10px] text-slate-400 font-mono block mt-1">
+                                  {new Date(notif.timestamp).toLocaleString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 text-center">
+                    <span className="text-[11px] text-slate-400">
+                      Notifications auto-update with every new tenant signup
+                    </span>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+
           <button
             onClick={loadPortalData}
             disabled={fetching}
@@ -582,6 +718,46 @@ export default function SuperAdminPortalPage() {
 
       {/* 2. MAIN PORTAL BODY */}
       <main className="flex-1 p-6 max-w-7xl w-full mx-auto space-y-6">
+        {/* NEW COMPANY SIGNUP BANNER ALERT (Triggered upon registration) */}
+        {!dismissBanner && recentCompany && (
+          <div className="p-4 bg-gradient-to-r from-red-50 via-rose-50 to-white border border-red-200 rounded-2xl shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center shadow-md shadow-red-600/20 shrink-0">
+                <Building2 className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="font-extrabold text-slate-900 text-sm">
+                    New Company Registered: {recentCompany.name}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-red-600 text-white text-[10px] font-bold uppercase tracking-wider">
+                    7-Day Trial
+                  </span>
+                </div>
+                <p className="text-xs text-slate-600 mt-0.5">
+                  Owner: <strong className="text-slate-800">{recentCompany.owner_name}</strong> ({recentCompany.owner_email}) • Started 7-Day Free Trial
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-end sm:self-center">
+              <button
+                onClick={() => setSearchQuery(recentCompany.name)}
+                className="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-semibold shadow-xs cursor-pointer transition-all"
+              >
+                Inspect Tenant
+              </button>
+              <button
+                onClick={() => setDismissBanner(true)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 cursor-pointer rounded-lg hover:bg-slate-100 transition-colors"
+                title="Dismiss Banner"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Alerts & Notifications */}
         {errorMsg && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 flex items-center justify-between shadow-xs">
@@ -671,7 +847,7 @@ export default function SuperAdminPortalPage() {
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <span className="text-amber-600 font-semibold">{overview?.kpi.free_trials ?? 0} on Free Trial</span>
               <span>•</span>
-              <span className="text-slate-400">Tier: Starter/Pro/Ent</span>
+              <span className="text-slate-400">7-Day Starter/Pro</span>
             </div>
           </div>
 
@@ -838,15 +1014,54 @@ export default function SuperAdminPortalPage() {
                           </span>
                         </td>
 
-                        {/* Trial Expiry */}
+                        {/* Trial Expiry with Color Transition (Turns RED in the last 3 days - Matching Exact Design) */}
                         <td className="py-3 px-4">
-                          {org.trial_ends_at ? (
-                            <div className="flex items-center gap-1.5 text-slate-700">
-                              <Clock className="w-3 h-3 text-amber-500" />
-                              <span>{new Date(org.trial_ends_at).toLocaleDateString()}</span>
-                            </div>
-                          ) : (
-                            <span className="text-slate-400 text-[11px]">Permanent</span>
+                          {org.trial_ends_at ? (() => {
+                            let days = org.days_left;
+                            if (days === undefined || days === null) {
+                              const diffMs = new Date(org.trial_ends_at).getTime() - new Date().getTime();
+                              days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                            }
+                            const isRedCritical = days <= 3;
+
+                            return (
+                              <div className="flex flex-col gap-1 items-start">
+                                {/* The Exact Pill Badge from user mockup */}
+                                <div
+                                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold select-none shadow-2xs transition-all ${
+                                    isRedCritical
+                                      ? "bg-red-600 text-white shadow-red-600/30 ring-1 ring-red-500/30"
+                                      : "bg-amber-50 text-amber-800 border border-amber-200"
+                                  }`}
+                                  title={
+                                    days <= 0
+                                      ? "Trial has expired!"
+                                      : `Trial expires in ${days} day${days === 1 ? "" : "s"}`
+                                  }
+                                >
+                                  {isRedCritical ? (
+                                    <AlertCircle className="w-3 h-3 text-white shrink-0 animate-pulse" />
+                                  ) : (
+                                    <Clock className="w-3 h-3 text-amber-600 shrink-0" />
+                                  )}
+                                  <span className="font-semibold tracking-tight">Trial</span>
+                                  <span
+                                    className={`px-1.5 py-0.2 rounded-full text-[10px] font-bold shadow-inner ${
+                                      isRedCritical
+                                        ? "bg-red-800/90 text-white"
+                                        : "bg-amber-200/60 text-amber-900"
+                                    }`}
+                                  >
+                                    {days <= 0 ? "Expired" : `${days}d left`}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-slate-400 pl-1 font-mono">
+                                  {new Date(org.trial_ends_at).toLocaleDateString()}
+                                </span>
+                              </div>
+                            );
+                          })() : (
+                            <span className="text-slate-400 text-[11px] font-medium">Permanent</span>
                           )}
                         </td>
 

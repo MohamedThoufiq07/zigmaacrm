@@ -43,6 +43,8 @@ class UserOut(BaseModel):
     organization_name: Optional[str] = None
     picture: Optional[str] = None
     avatar_url: Optional[str] = None
+    plan: Optional[str] = None
+    trial_ends_at: Optional[str] = None
 
     class Config:
         from_attributes = True

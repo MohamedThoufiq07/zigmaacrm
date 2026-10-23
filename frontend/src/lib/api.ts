@@ -2402,6 +2402,17 @@ export const zigmaaApi = {
   // ===== TEAM & RBAC MANAGEMENT =====
   async getTeamMembers(): Promise<any[]> {
     try {
+      const res = await fetch(`${API_BASE}/users`, {
+        headers: getAuthHeaders(),
+        cache: "no-store"
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (e) {
+      console.warn("Failed to fetch team members from /users:", e);
+    }
+    try {
       const res = await fetch(`${API_BASE}/settings/team`, {
         headers: getAuthHeaders(),
         cache: "no-store"
@@ -2410,30 +2421,9 @@ export const zigmaaApi = {
         return await res.json();
       }
     } catch (e) {
-      console.error("Failed to fetch team members:", e);
+      console.warn("Failed to fetch team members from /settings/team:", e);
     }
-    return [
-      {
-        id: "dab48b03-d621-4b8d-9291-83fb2b346c09",
-        full_name: "Alexander Vance (Admin)",
-        email: "admin@zigmaa.com",
-        role: "ADMIN",
-        is_active: true,
-        assigned_deals_count: 12,
-        assigned_leads_count: 2,
-        created_at: new Date().toISOString()
-      },
-      {
-        id: "7ee2c242-cc7f-4c96-ae2d-9cabcd1f1e4e",
-        full_name: "Sarah Jenkins (Senior Sales Rep)",
-        email: "sales@zigmaa.com",
-        role: "SALES_REP",
-        is_active: true,
-        assigned_deals_count: 11,
-        assigned_leads_count: 2,
-        created_at: new Date().toISOString()
-      }
-    ];
+    return [];
   },
 
   async inviteTeamMember(data: { full_name: string; email: string; role: string }): Promise<any> {

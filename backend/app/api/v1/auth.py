@@ -98,12 +98,20 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         avatar_url=avatar
     )
 
+DUMMY_BCRYPT_HASH = get_password_hash("ZigmaaDummyTimingProtectionPassword2026")
+
 @router.post("/login", response_model=TokenResponse)
 async def login(login_in: UserLogin, db: AsyncSession = Depends(get_db)):
     clean_email = login_in.email.lower().strip()
     result = await db.execute(select(User).where(User.email == clean_email))
     user = result.scalar_one_or_none()
-    if not user or not verify_password(login_in.password, user.hashed_password):
+    
+    # Timing-attack resistant verification (OWASP / CWE-208):
+    # Always perform full bcrypt hash computation to avoid user enumeration via latency delta
+    target_hash = user.hashed_password if user else DUMMY_BCRYPT_HASH
+    is_valid_pw = verify_password(login_in.password, target_hash)
+
+    if not user or not is_valid_pw:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password"
@@ -150,13 +158,13 @@ async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
     db.add(org)
     await db.flush()
 
-    # Create User with ADMIN role (Workspace Owner)
+    # Create User with admin role (strictly "admin", Workspace Owner)
     user = User(
         organization_id=org.id,
         email=clean_email,
         hashed_password=get_password_hash(user_in.password),
         full_name=user_in.full_name.strip(),
-        role="ADMIN",
+        role="admin",
         is_active=True
     )
     db.add(user)

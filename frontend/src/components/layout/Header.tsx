@@ -90,11 +90,6 @@ export default function Header({ title }: HeaderProps) {
     }
   }, []);
 
-  const switchRole = (newRole: "ADMIN" | "SALES_REP") => {
-    setActiveRole(newRole);
-    api.setActiveRole(newRole);
-    window.location.reload();
-  };
 
   const getInitials = (name?: string, email?: string) => {
     if (name && name.trim()) {
@@ -233,42 +228,12 @@ export default function Header({ title }: HeaderProps) {
             </div>
           </div>
 
-          {/* Quick Role Simulation Switcher in Navbar */}
-          <div className="hidden sm:flex items-center bg-slate-100/90 border border-slate-200/90 p-0.5 rounded-xl shadow-xs">
-            <button
-              type="button"
-              onClick={() => switchRole("ADMIN")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeRole === "ADMIN"
-                  ? "bg-white text-red-600 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-              title="View full organization pipeline and records"
-            >
-              <ShieldCheck className="w-3.5 h-3.5" />
-              <span>Admin</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => switchRole("SALES_REP")}
-              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
-                activeRole === "SALES_REP"
-                  ? "bg-white text-slate-900 shadow-xs"
-                  : "text-slate-500 hover:text-slate-800"
-              }`}
-              title="View restricted to assigned rep leads and pipeline"
-            >
-              <User className="w-3.5 h-3.5" />
-              <span>Sales Rep</span>
-            </button>
-          </div>
-
           {/* User Profile Avatar with Exact Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="w-9 h-9 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold flex items-center justify-center text-xs shadow-xs border-2 border-white ring-2 ring-slate-200/90 shrink-0 cursor-pointer hover:ring-red-500/50 transition-all overflow-hidden"
-              title={currentUser?.full_name || currentUser?.email || "User Profile"}
+              title={currentUser?.full_name || "User Profile"}
             >
               {currentUser?.picture && !avatarError ? (
                 <img
@@ -295,8 +260,8 @@ export default function Header({ title }: HeaderProps) {
                 />
 
                 {/* Popover Card */}
-                <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-slate-200 z-[60] text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-                  {/* Top Avatar & Name Section */}
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-slate-200 z-[60] text-xs overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+                  {/* Top Avatar & Name Section (Only Name & Avatar) */}
                   <div className="pt-6 pb-4 flex flex-col items-center px-4 bg-gradient-to-b from-slate-50/90 to-white border-b border-slate-100">
                     {/* Avatar Display */}
                     <div className="w-16 h-16 rounded-full bg-gradient-to-br from-red-600 to-rose-600 text-white font-bold text-2xl flex items-center justify-center shadow-md select-none overflow-hidden border-2 border-white ring-4 ring-red-100/90 shrink-0">
@@ -317,64 +282,8 @@ export default function Header({ title }: HeaderProps) {
                     </div>
 
                     <h3 className="mt-3 text-sm font-bold text-slate-900 tracking-tight select-none text-center leading-snug">
-                      {currentUser?.full_name || "CRM Administrator"}
+                      {currentUser?.full_name || "User Profile"}
                     </h3>
-                    <p className="text-[11px] text-slate-500 font-medium truncate max-w-[240px] mt-0.5 text-center">
-                      {currentUser?.email || "admin@zigmaa.com"}
-                    </p>
-                    <div className="mt-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-50 text-red-700 border border-red-200/60">
-                      {currentUser?.is_super_admin || currentUser?.role === "SUPER_ADMIN"
-                        ? "Super Admin"
-                        : currentUser?.role === "SALES_REP"
-                        ? "Sales Rep"
-                        : "Administrator"}
-                    </div>
-                  </div>
-
-                  <div className="h-px bg-slate-100 mx-3 my-1" />
-
-                  {/* Role Simulation Section */}
-                  <div className="mx-3 my-2 p-2.5 bg-slate-50 border border-slate-200/80 rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                        Role Simulation
-                      </span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          activeRole === "ADMIN"
-                            ? "bg-red-100 text-red-700"
-                            : "bg-slate-200 text-slate-800"
-                        }`}
-                      >
-                        {activeRole === "ADMIN" ? "Admin Mode" : "Sales Rep Mode"}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-slate-200/60 rounded-lg">
-                      <button
-                        type="button"
-                        onClick={() => switchRole("ADMIN")}
-                        className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                          activeRole === "ADMIN"
-                            ? "bg-white text-red-600 shadow-xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        <ShieldCheck className="w-3 h-3" />
-                        <span>Admin</span>
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => switchRole("SALES_REP")}
-                        className={`py-1.5 px-2 rounded-md font-semibold text-[11px] transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                          activeRole === "SALES_REP"
-                            ? "bg-white text-slate-900 shadow-xs"
-                            : "text-slate-600 hover:text-slate-900"
-                        }`}
-                      >
-                        <User className="w-3 h-3" />
-                        <span>Sales Rep</span>
-                      </button>
-                    </div>
                   </div>
 
                   {/* Menu Items List */}

@@ -28,6 +28,7 @@ app.include_router(dashboard.router, prefix=f"{settings.API_V1_STR}/dashboard", 
 app.include_router(settings_router.router, prefix=f"{settings.API_V1_STR}/settings", tags=["Settings"])
 app.include_router(team.router, prefix=f"{settings.API_V1_STR}/settings/team", tags=["Team"])
 app.include_router(team.router, prefix=f"{settings.API_V1_STR}/team", tags=["Team-Direct"])
+app.include_router(team.router, prefix=f"{settings.API_V1_STR}/users", tags=["Users"])
 app.include_router(leads.router, prefix=settings.API_V1_STR, tags=["Leads"])
 app.include_router(contacts.router, prefix=settings.API_V1_STR, tags=["Contacts"])
 app.include_router(pipelines.router, prefix=settings.API_V1_STR, tags=["Pipelines"])

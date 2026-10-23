@@ -78,9 +78,9 @@ async def get_current_user(
 
     # Role simulation only allowed for authenticated ADMIN / SUPER_ADMIN
     effective_role = simulate_role or x_user_role
-    if effective_role and user.role in ["ADMIN", "SUPER_ADMIN"]:
-        norm_role = effective_role.upper()
-        if norm_role in ["SALES_REP", "ADMIN", "SUPER_ADMIN", "MANAGER"]:
+    if effective_role and (user.role or "").lower() in ["admin", "super_admin"]:
+        norm_role = effective_role.lower()
+        if norm_role in ["sales_rep", "admin", "super_admin", "manager"]:
             user.role = norm_role
 
     return user
@@ -88,7 +88,7 @@ async def get_current_user(
 async def get_current_admin(
     current_user: User = Depends(get_current_user)
 ) -> User:
-    if current_user.role not in ["ADMIN", "SUPER_ADMIN"]:
+    if (current_user.role or "").lower() not in ["admin", "super_admin"]:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin privileges required to perform this action."

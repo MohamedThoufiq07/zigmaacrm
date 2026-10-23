@@ -7,7 +7,19 @@ import ModulesAndFieldsManager from "@/components/settings/ModulesAndFieldsManag
 import { Sliders } from "lucide-react";
 import Link from "next/link";
 
+import { api } from "@/lib/api";
+
 export default function SettingsModulesPage() {
+  const [isAdmin, setIsAdmin] = React.useState(true);
+
+  React.useEffect(() => {
+    if (typeof window !== "undefined") {
+      const user = api.getCurrentUser();
+      const roleStr = (user?.role || api.getActiveRole() || "").toLowerCase();
+      setIsAdmin(roleStr.includes("admin"));
+    }
+  }, []);
+
   return (
     <div className="flex h-screen bg-[#F8FAFC] dark:bg-[#0b0f19] text-slate-900 dark:text-slate-100 font-sans overflow-hidden select-none">
       <Sidebar />
@@ -40,7 +52,7 @@ export default function SettingsModulesPage() {
           </div>
 
           <div className="w-full max-w-5xl mx-auto">
-            <ModulesAndFieldsManager />
+            <ModulesAndFieldsManager readOnly={!isAdmin} />
           </div>
         </main>
       </div>

@@ -57,6 +57,16 @@ export default function SettingsPage() {
   const [activeRole, setActiveRole] = useState<string>("ADMIN");
   const [teamSearchQuery, setTeamSearchQuery] = useState("");
 
+  // Role Scoping & Settings Tab Permissions
+  const resolvedRole = (currentUser?.role || activeRole || "").toLowerCase();
+  const isAdmin = resolvedRole.includes("admin");
+
+  useEffect(() => {
+    if (!isAdmin && (activeTab === "team" || activeTab === "webhooks")) {
+      setActiveTab("profile");
+    }
+  }, [isAdmin, activeTab]);
+
   // Email Sync State
   const [emailSync, setEmailSync] = useState<{
     is_connected: boolean;
@@ -183,9 +193,10 @@ export default function SettingsPage() {
       const handleRoleChanged = () => setActiveRole(api.getActiveRole());
       window.addEventListener("zigmaa_role_changed", handleRoleChanged);
 
-      const user = api.getCurrentUser();
+      let user = api.getCurrentUser();
       if (user) {
         setCurrentUser(user);
+        if (user.role) setActiveRole(user.role);
         if (user.full_name) {
           setFullName(user.full_name);
           setSignatoryName(user.full_name);
@@ -194,6 +205,21 @@ export default function SettingsPage() {
         if (user.phone) setPhone(user.phone);
         if (user.organization_name) setCompanyName(user.organization_name);
         if (user.picture || user.avatar_url) setUserPhoto(user.picture || user.avatar_url);
+      } else {
+        api.getMe().then((me) => {
+          if (me) {
+            setCurrentUser(me);
+            if (me.role) setActiveRole(me.role);
+            if (me.full_name) {
+              setFullName(me.full_name);
+              setSignatoryName(me.full_name);
+            }
+            if (me.email) setEmail(me.email);
+            if (me.phone) setPhone(me.phone);
+            if (me.organization_name) setCompanyName(me.organization_name);
+            if (me.picture || me.avatar_url) setUserPhoto(me.picture || me.avatar_url);
+          }
+        }).catch(() => {});
       }
 
       // Load persistent organization settings
@@ -228,7 +254,13 @@ export default function SettingsPage() {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab") as SettingsTab;
       if (tabParam && ["profile", "team", "modules", "webhooks", "email-sync", "integrations"].includes(tabParam)) {
-        setActiveTab(tabParam);
+        const roleStr = (user?.role || api.getActiveRole() || "").toLowerCase();
+        const userIsAdmin = roleStr.includes("admin");
+        if (!userIsAdmin && (tabParam === "team" || tabParam === "webhooks")) {
+          setActiveTab("profile");
+        } else {
+          setActiveTab(tabParam);
+        }
       }
 
       return () => {
@@ -468,30 +500,34 @@ export default function SettingsPage() {
               <span>Profile & Security</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("team")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === "team"
-                  ? "bg-red-600 text-white shadow-xs"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
-              }`}
-            >
-              <Users className="w-4 h-4" />
-              <span>Team & Permissions</span>
-              {teamMembers.length > 0 && (
-                <span
-                  className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                    activeTab === "team"
-                      ? "bg-white/20 text-white"
-                      : "bg-red-50 text-red-600"
-                  }`}
-                >
-                  {teamMembers.length}
-                </span>
-              )}
-            </button>
+            {/* Team & Permissions - Admin only */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("team")}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "team"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
+                }`}
+              >
+                <Users className="w-4 h-4" />
+                <span>Team & Permissions</span>
+                {teamMembers.length > 0 && (
+                  <span
+                    className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
+                      activeTab === "team"
+                        ? "bg-white/20 text-white"
+                        : "bg-red-50 text-red-600"
+                    }`}
+                  >
+                    {teamMembers.length}
+                  </span>
+                )}
+              </button>
+            )}
 
+            {/* Modules & Fields - Visible to all, View-only for sales_rep */}
             <button
               type="button"
               onClick={() => setActiveTab("modules")}
@@ -503,20 +539,28 @@ export default function SettingsPage() {
             >
               <Sliders className="w-4 h-4" />
               <span>Modules & Fields</span>
+              {!isAdmin && (
+                <span className="ml-1 px-1.5 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 border border-slate-200">
+                  View Only
+                </span>
+              )}
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab("webhooks")}
-              className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === "webhooks"
-                  ? "bg-red-600 text-white shadow-xs"
-                  : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
-              }`}
-            >
-              <Globe className="w-4 h-4" />
-              <span>Lead Sources & Forms</span>
-            </button>
+            {/* Lead Sources & Forms (System Webhooks) - Admin only */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("webhooks")}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
+                  activeTab === "webhooks"
+                    ? "bg-red-600 text-white shadow-xs"
+                    : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80"
+                }`}
+              >
+                <Globe className="w-4 h-4" />
+                <span>Lead Sources & Forms</span>
+              </button>
+            )}
 
             <button
               type="button"
@@ -824,7 +868,7 @@ export default function SettingsPage() {
             {/* ============================================================== */}
             {/* TAB: TEAM & PERMISSIONS (RBAC)                                 */}
             {/* ============================================================== */}
-            {activeTab === "team" && (
+            {activeTab === "team" && isAdmin && (
               <div className="space-y-6">
                 {/* Header Action Bar */}
                 <div className="p-6 rounded-2xl bg-white border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -842,14 +886,16 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => setShowInviteDrawer(true)}
-                    className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
-                  >
-                    <UserPlus className="w-4 h-4" />
-                    <span>Invite Team Member</span>
-                  </button>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      onClick={() => setShowInviteDrawer(true)}
+                      className="px-4 py-2.5 bg-gradient-to-r from-red-600 to-rose-600 hover:from-red-700 hover:to-rose-700 text-white rounded-xl text-xs font-bold shadow-md shadow-red-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer shrink-0"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>Invite Team Member</span>
+                    </button>
+                  )}
                 </div>
 
                 {/* Team Quick Stats Overview */}
@@ -881,7 +927,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="text-2xl font-black text-slate-900 tracking-tight">
-                      {teamMembers.filter((m) => m.role === "ADMIN").length}
+                      {teamMembers.filter((m) => (m.role || "").toLowerCase() === "admin").length}
                     </div>
                     <p className="text-[11px] text-red-600 mt-1 font-medium">
                       Full access to all leads & settings
@@ -898,7 +944,7 @@ export default function SettingsPage() {
                       </div>
                     </div>
                     <div className="text-2xl font-black text-slate-900 tracking-tight">
-                      {teamMembers.filter((m) => m.role === "SALES_REP").length}
+                      {teamMembers.filter((m) => (m.role || "").toLowerCase() !== "admin").length}
                     </div>
                     <p className="text-[11px] text-slate-500 mt-1 font-medium">
                       Scoped to assigned deals & leads
@@ -961,7 +1007,8 @@ export default function SettingsPage() {
                           .map((member) => {
                             const isSelf = member.email === currentUser?.email || member.id === currentUser?.id;
                             const roleBadge = () => {
-                              if (member.role === "ADMIN") {
+                              const r = (member.role || "").toLowerCase();
+                              if (r === "admin") {
                                 return (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-50 text-red-600 border border-red-200">
                                     <ShieldCheck className="w-3 h-3" />
@@ -969,7 +1016,7 @@ export default function SettingsPage() {
                                   </span>
                                 );
                               }
-                              if (member.role === "MANAGER") {
+                              if (r === "manager") {
                                 return (
                                   <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
                                     <Building2 className="w-3 h-3" />
@@ -1046,37 +1093,37 @@ export default function SettingsPage() {
 
                                 {/* Actions / Role Dropdown */}
                                 <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                  <div className="inline-flex items-center gap-2 justify-end">
-                                    {/* Role Selector Dropdown */}
-                                    <select
-                                      value={member.role}
-                                      onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                      disabled={activeRole !== "ADMIN"}
-                                      className="py-1 px-2.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
-                                      title={activeRole !== "ADMIN" ? "Only Administrators can modify user roles" : "Change Role"}
-                                    >
-                                      <option value="ADMIN">Admin</option>
-                                      <option value="MANAGER">Manager</option>
-                                      <option value="SALES_REP">Sales Rep</option>
-                                    </select>
+                                  {isAdmin ? (
+                                    <div className="inline-flex items-center gap-2 justify-end">
+                                      {/* Role Selector Dropdown */}
+                                      <select
+                                        value={(member.role || "").toLowerCase() === "admin" ? "admin" : "sales_rep"}
+                                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
+                                        className="py-1 px-2.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 cursor-pointer"
+                                        title="Change Role"
+                                      >
+                                        <option value="admin">Admin</option>
+                                        <option value="sales_rep">Sales Rep</option>
+                                      </select>
 
-                                    {/* Delete Button */}
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteMember(member)}
-                                      disabled={activeRole !== "ADMIN" || isSelf}
-                                      className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                      title={
-                                        isSelf
-                                          ? "Cannot delete active account"
-                                          : activeRole !== "ADMIN"
-                                          ? "Admin authorization required"
-                                          : "Remove team member"
-                                      }
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
+                                      {/* Delete Button */}
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteMember(member)}
+                                        disabled={isSelf}
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                                        title={
+                                          isSelf
+                                            ? "Cannot delete active account"
+                                            : "Remove team member"
+                                        }
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-slate-400 italic">View only</span>
+                                  )}
                                 </td>
                               </tr>
                             );
@@ -1098,13 +1145,13 @@ export default function SettingsPage() {
             {/* TAB: MODULES & CUSTOM FIELDS (TWOZO STYLE)                     */}
             {/* ============================================================== */}
             {activeTab === "modules" && (
-              <ModulesAndFieldsManager />
+              <ModulesAndFieldsManager readOnly={!isAdmin} />
             )}
 
             {/* ============================================================== */}
             {/* TAB 2: LEAD SOURCES & FORMS (CLEAN ZIGMAA STYLE)               */}
             {/* ============================================================== */}
-            {activeTab === "webhooks" && (
+            {activeTab === "webhooks" && isAdmin && (
               <div className="space-y-6">
                 {/* Header Subtitle */}
                 <div className="p-5 rounded-2xl bg-white border border-slate-200 shadow-xs flex items-center justify-between">

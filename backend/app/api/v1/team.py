@@ -17,10 +17,10 @@ router = APIRouter()
 class InviteMemberRequest(BaseModel):
     full_name: str
     email: EmailStr
-    role: str = "SALES_REP"  # ADMIN, MANAGER, SALES_REP
+    role: str = "sales_rep"  # admin, sales_rep
 
 class UpdateRoleRequest(BaseModel):
-    role: str  # ADMIN, MANAGER, SALES_REP
+    role: str  # admin, sales_rep
 
 @router.get("", status_code=status.HTTP_200_OK)
 @router.get("/", status_code=status.HTTP_200_OK)
@@ -28,15 +28,27 @@ async def list_team_members(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    query = select(User).order_by(User.created_at.asc())
+    """
+    Strict Organization-Scoped Team Members Query.
+    Never returns users from other organizations or seed accounts.
+    """
+    if not current_user.organization_id:
+        return []
+
+    query = (
+        select(User)
+        .where(User.organization_id == current_user.organization_id)
+        .order_by(User.created_at.asc())
+    )
     res = await db.execute(query)
     users = res.scalars().all()
 
     members = []
     for u in users:
-        # Count deals assigned to this user
+        # Count deals assigned to this user strictly within this organization
         deals_count_res = await db.execute(
             select(func.count(Deal.id)).where(
+                Deal.organization_id == current_user.organization_id,
                 or_(
                     Deal.assigned_user_id == u.id,
                     Deal.owner_id == u.id,
@@ -46,9 +58,10 @@ async def list_team_members(
         )
         deals_count = deals_count_res.scalar() or 0
 
-        # Count leads / contacts assigned to this user
+        # Count leads / contacts assigned to this user strictly within this organization
         contacts_count_res = await db.execute(
             select(func.count(Contact.id)).where(
+                Contact.organization_id == current_user.organization_id,
                 or_(
                     Contact.assigned_user_id == u.id,
                     Contact.owner_id == u.id,
@@ -80,9 +93,8 @@ async def invite_team_member(
     admin_user: User = Depends(get_current_admin)
 ):
     clean_email = req.email.lower().strip()
-    norm_role = req.role.upper().strip()
-    if norm_role not in ["ADMIN", "MANAGER", "SALES_REP"]:
-        norm_role = "SALES_REP"
+    raw_role = (req.role or "").strip().lower()
+    norm_role = "admin" if "admin" in raw_role else "sales_rep"
 
     # Check if user already exists
     existing_res = await db.execute(select(User).where(User.email == clean_email))
@@ -92,10 +104,13 @@ async def invite_team_member(
             detail=f"User with email {clean_email} already exists."
         )
 
-    # Get active organization
-    org_res = await db.execute(select(Organization))
-    org = org_res.scalars().first()
-    org_id = org.id if org else admin_user.organization_id
+    # Strictly assign the inviting admin's organization_id
+    org_id = admin_user.organization_id
+    if not org_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Creator does not have a linked organization."
+        )
 
     # Create new user with temporary secure initial password
     temp_pass = "Zigmaa@2026"
@@ -117,6 +132,7 @@ async def invite_team_member(
         "message": f"Successfully invited {new_user.full_name} ({new_user.email}) as {new_user.role}.",
         "user": {
             "id": new_user.id,
+            "organization_id": new_user.organization_id,
             "full_name": new_user.full_name,
             "email": new_user.email,
             "role": new_user.role,
@@ -134,14 +150,19 @@ async def update_member_role(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_admin)
 ):
-    norm_role = req.role.upper().strip()
-    if norm_role not in ["ADMIN", "MANAGER", "SALES_REP"]:
-        raise HTTPException(status_code=400, detail="Invalid role specified.")
+    raw_role = (req.role or "").strip().lower()
+    norm_role = "admin" if "admin" in raw_role else "sales_rep"
 
-    res = await db.execute(select(User).where(User.id == user_id))
+    # Verify target user belongs strictly to the admin's organization
+    res = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            User.organization_id == admin_user.organization_id
+        )
+    )
     user = res.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="User not found in your organization.")
 
     user.role = norm_role
     await db.commit()
@@ -160,10 +181,16 @@ async def remove_team_member(
     db: AsyncSession = Depends(get_db),
     admin_user: User = Depends(get_current_admin)
 ):
-    res = await db.execute(select(User).where(User.id == user_id))
+    # Verify target user belongs strictly to the admin's organization
+    res = await db.execute(
+        select(User).where(
+            User.id == user_id,
+            User.organization_id == admin_user.organization_id
+        )
+    )
     user = res.scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found.")
+        raise HTTPException(status_code=404, detail="User not found in your organization.")
 
     if user.id == admin_user.id:
         raise HTTPException(status_code=400, detail="You cannot delete your own active administrator account.")

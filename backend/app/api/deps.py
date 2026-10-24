@@ -101,8 +101,7 @@ async def get_current_super_admin(
     is_super = bool(
         getattr(current_user, "is_super_admin", False)
         or (current_user.role or "").lower() in ["super_admin", "superadmin"]
-        or (current_user.email and current_user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
-        or (current_user.email and current_user.email.lower().endswith("@zigmaa.com"))
+        or (current_user.email and current_user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"])
     )
     if not is_super:
         raise HTTPException(

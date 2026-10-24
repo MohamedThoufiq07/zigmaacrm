@@ -1091,39 +1091,38 @@ export default function SettingsPage() {
                                   </span>
                                 </td>
 
-                                {/* Actions / Role Dropdown */}
+                                {/* Actions / Role & Status */}
                                 <td className="py-3.5 px-4 text-right whitespace-nowrap">
-                                  {isAdmin ? (
-                                    <div className="inline-flex items-center gap-2 justify-end">
-                                      {/* Role Selector Dropdown */}
-                                      <select
-                                        value={(member.role || "").toLowerCase() === "admin" ? "admin" : "sales_rep"}
-                                        onChange={(e) => handleRoleChange(member.id, e.target.value)}
-                                        className="py-1 px-2.5 text-xs font-semibold rounded-lg bg-slate-50 border border-slate-200 text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 cursor-pointer"
-                                        title="Change Role"
+                                  <div className="inline-flex items-center gap-2 justify-end">
+                                    {(member.role || "").toLowerCase() === "admin" ? (
+                                      <span
+                                        className="inline-flex items-center gap-1.5 py-1 px-2.5 text-xs font-semibold rounded-lg bg-red-50 text-red-700 border border-red-200 select-none cursor-default"
+                                        title="Organization Administrator (Locked)"
                                       >
-                                        <option value="admin">Admin</option>
-                                        <option value="sales_rep">Sales Rep</option>
-                                      </select>
+                                        <Lock className="w-3 h-3 text-red-500" />
+                                        <span>Admin</span>
+                                      </span>
+                                    ) : (
+                                      <span
+                                        className="inline-flex items-center gap-1.5 py-1 px-2.5 text-xs font-semibold rounded-lg bg-slate-100 text-slate-700 border border-slate-200 select-none cursor-default"
+                                      >
+                                        <User className="w-3 h-3 text-slate-400" />
+                                        <span>Sales Rep</span>
+                                      </span>
+                                    )}
 
-                                      {/* Delete Button */}
+                                    {/* Delete Button (Only active for invited sales reps, locked for admin) */}
+                                    {isAdmin && (member.role || "").toLowerCase() !== "admin" && !isSelf && (
                                       <button
                                         type="button"
                                         onClick={() => handleDeleteMember(member)}
-                                        disabled={isSelf}
-                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
-                                        title={
-                                          isSelf
-                                            ? "Cannot delete active account"
-                                            : "Remove team member"
-                                        }
+                                        className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                        title="Remove team member"
                                       >
                                         <Trash2 className="w-4 h-4" />
                                       </button>
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-slate-400 italic">View only</span>
-                                  )}
+                                    )}
+                                  </div>
                                 </td>
                               </tr>
                             );

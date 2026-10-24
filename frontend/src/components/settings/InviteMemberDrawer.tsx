@@ -56,11 +56,11 @@ export default function InviteMemberDrawer({
       const res = await api.inviteTeamMember({
         full_name: fullName.trim(),
         email: email.trim().toLowerCase(),
-        role: role
+        role: "sales_rep"
       });
 
       toast.success(
-        `Invited ${fullName.trim()} as ${role === "ADMIN" ? "Administrator" : "Sales Representative"}`
+        `Invited ${fullName.trim()} as Sales Representative`
       );
       onMemberInvited(res.user || {
         id: res.user_id || `user-${Date.now()}`,
@@ -169,75 +169,25 @@ export default function InviteMemberDrawer({
                 </p>
               </div>
 
-              {/* Role Selection */}
+              {/* Role Selection - Locked to Sales Rep (Single Admin policy) */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2.5">
-                  Assigned Permission Role <span className="text-red-500">*</span>
+                  Assigned Permission Role
                 </label>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Sales Rep Option */}
-                  <div
-                    onClick={() => setRole("SALES_REP")}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      role === "SALES_REP"
-                        ? "border-red-500 bg-red-50/40 shadow-xs"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-700">
-                        <Briefcase className="w-4 h-4" />
-                      </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          role === "SALES_REP"
-                            ? "border-red-600 bg-red-600"
-                            : "border-slate-300"
-                        }`}
-                      >
-                        {role === "SALES_REP" && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
-                    </div>
-                    <div className="font-bold text-xs text-slate-900 mb-1">
-                      Sales Rep
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Restricted to assigned leads, individual deals pipeline, and personal tasks.
-                    </p>
+                <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/80 flex items-start gap-3.5">
+                  <div className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-700 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Briefcase className="w-4 h-4 text-slate-600" />
                   </div>
-
-                  {/* Admin Option */}
-                  <div
-                    onClick={() => setRole("ADMIN")}
-                    className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-                      role === "ADMIN"
-                        ? "border-red-500 bg-red-50/40 shadow-xs"
-                        : "border-slate-200 bg-white hover:border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="w-8 h-8 rounded-lg bg-red-100 text-red-600 flex items-center justify-center">
-                        <ShieldCheck className="w-4 h-4" />
-                      </div>
-                      <div
-                        className={`w-4 h-4 rounded-full border flex items-center justify-center ${
-                          role === "ADMIN"
-                            ? "border-red-600 bg-red-600"
-                            : "border-slate-300"
-                        }`}
-                      >
-                        {role === "ADMIN" && (
-                          <div className="w-1.5 h-1.5 rounded-full bg-white" />
-                        )}
-                      </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-xs text-slate-900">Sales Representative</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-slate-200/80 text-slate-700 text-[10px] font-bold">
+                        <Lock className="w-2.5 h-2.5" />
+                        Locked
+                      </span>
                     </div>
-                    <div className="font-bold text-xs text-slate-900 mb-1">
-                      Admin (Full Access)
-                    </div>
-                    <p className="text-[11px] text-slate-500 leading-relaxed">
-                      Complete organization pipeline, all deals, team permissions, and CRM settings.
+                    <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                      Your company operates with 1 primary Administrator. All invited team members are registered as Sales Representatives with assigned pipeline access.
                     </p>
                   </div>
                 </div>

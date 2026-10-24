@@ -17,6 +17,8 @@ class UserCreate(BaseModel):
     full_name: str
     organization_name: Optional[str] = None
     company_name: Optional[str] = None
+    phone: Optional[str] = None
+    contact_number: Optional[str] = None
     role: Optional[str] = "ADMIN"
 
 class SignupRequest(BaseModel):
@@ -25,6 +27,8 @@ class SignupRequest(BaseModel):
     full_name: str
     company_name: Optional[str] = None
     organization_name: Optional[str] = None
+    phone: Optional[str] = None
+    contact_number: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -36,6 +40,7 @@ class UserOut(BaseModel):
     organization_id: str
     email: str
     full_name: str
+    phone: Optional[str] = None
     role: str
     is_active: bool
     is_super_admin: Optional[bool] = False

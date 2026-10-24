@@ -93,8 +93,8 @@ async def invite_team_member(
     admin_user: User = Depends(get_current_admin)
 ):
     clean_email = req.email.lower().strip()
-    raw_role = (req.role or "").strip().lower()
-    norm_role = "admin" if "admin" in raw_role else "sales_rep"
+    # The organization operates with 1 primary Administrator. All invited team members are strictly Sales Representatives.
+    norm_role = "sales_rep"
 
     # Check if user already exists
     existing_res = await db.execute(select(User).where(User.email == clean_email))
@@ -164,31 +164,26 @@ async def update_member_role(
     if not user:
         raise HTTPException(status_code=404, detail="User not found in your organization.")
 
-    # Prevent users from demoting or modifying their own role
+    # Prevent admins from demoting or modifying their own role
     if user.id == admin_user.id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Cannot change your own role. Another administrator must update your role permissions."
+            detail="Cannot change your own role. Administrator accounts are permanently locked."
         )
 
-    # Enforce that an organization must always retain at least 1 active Admin
-    if (user.role or "").lower() == "admin" and norm_role != "admin":
-        admin_count_res = await db.execute(
-            select(func.count(User.id)).where(
-                User.organization_id == admin_user.organization_id,
-                User.is_active == True,
-                or_(
-                    User.role.ilike("admin"),
-                    User.role.ilike("super_admin")
-                )
-            )
+    # Locked Admin rule: The primary organization admin cannot be demoted
+    if (user.role or "").lower() == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The organization Administrator role is locked and cannot be demoted."
         )
-        active_admins = admin_count_res.scalar() or 0
-        if active_admins <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Organization must always retain at least 1 active Administrator."
-            )
+
+    # Single Admin rule: Additional team members cannot be promoted to Admin
+    if norm_role == "admin":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="The organization can have strictly one Administrator. Additional team members must be Sales Representatives."
+        )
 
     user.role = norm_role
     await db.commit()

@@ -60,6 +60,7 @@ async def on_startup():
             await conn.execute(text("ALTER TABLE deals ADD COLUMN IF NOT EXISTS custom_properties JSONB DEFAULT '{}'::jsonb;"))
             await conn.execute(text("ALTER TABLE organizations ADD COLUMN IF NOT EXISTS max_users INTEGER DEFAULT 15;"))
             await conn.execute(text("ALTER TABLE organizations ADD COLUMN IF NOT EXISTS max_whatsapp INTEGER DEFAULT 1500;"))
+            await conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR(50);"))
         except Exception as e:
             print(f"[STARTUP MIGRATION] Schema check note: {e}")
     try:

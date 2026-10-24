@@ -184,8 +184,7 @@ export default function SuperAdminPortalPage() {
           Boolean(user.is_super_admin) ||
           roleStr === "super_admin" ||
           roleStr === "superadmin" ||
-          ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"].includes(emailStr) ||
-          emailStr.endsWith("@zigmaa.com");
+          ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"].includes(emailStr);
 
         if (!isSuper) {
           setCurrentUser(user);
@@ -227,8 +226,7 @@ export default function SuperAdminPortalPage() {
         Boolean(user?.is_super_admin) ||
         roleStr === "super_admin" ||
         roleStr === "superadmin" ||
-        ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"].includes(emailStr) ||
-        emailStr.endsWith("@zigmaa.com");
+        ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"].includes(emailStr);
 
       if (!isSuper) {
         setLoginError("Access Denied: This account is authenticated but does not possess Super Administrator privileges.");

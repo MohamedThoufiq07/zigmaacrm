@@ -175,17 +175,36 @@ export default function LoginPage() {
 
     try {
       const fullName = `${firstName.trim()} ${lastName.trim()}`;
+      const fullPhone = `${countryCode} ${contactNumber.trim()}`;
       await api.register({
         email: signUpEmail.trim(),
         password: signUpPassword,
         full_name: fullName,
-        organization_name: companyName.trim()
+        organization_name: companyName.trim(),
+        company_name: companyName.trim(),
+        phone: fullPhone,
+        contact_number: fullPhone
       });
       window.location.href = "/";
     } catch (err: any) {
       const errMsg = err.message || "Failed to create account.";
       setError(errMsg);
-      // Keep error message in top banner only - no duplicate underneath the fields
+
+      // Highlight corresponding field
+      const lower = errMsg.toLowerCase();
+      const newFieldErrors: Record<string, string> = {};
+      if (lower.includes("email")) {
+        newFieldErrors.signUpEmail = "Already registered email";
+      }
+      if (lower.includes("company")) {
+        newFieldErrors.companyName = "Already registered company name";
+      }
+      if (lower.includes("phone") || lower.includes("contact")) {
+        newFieldErrors.contactNumber = "Already registered phone number";
+      }
+      if (Object.keys(newFieldErrors).length > 0) {
+        setFieldErrors(newFieldErrors);
+      }
     } finally {
       setSubmitting(false);
     }

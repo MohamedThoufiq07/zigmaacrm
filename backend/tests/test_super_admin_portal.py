@@ -56,21 +56,23 @@ def test_self_demotion_prevention_and_single_admin_guard():
     rep_user = invite_resp.json()["user"]
     rep_id = rep_user["id"]
 
-    # 3. Promote rep to admin
+    # 3. Attempt to promote sales rep to admin (Must be rejected: organization can have strictly 1 admin)
     promote_resp = client.patch(
         f"/api/v1/team/{rep_id}/role",
         json={"role": "admin"},
         headers=headers
     )
-    assert promote_resp.status_code == 200
+    assert promote_resp.status_code == 400
+    assert "one Administrator" in promote_resp.json().get("detail", "")
 
-    # 4. Now 2 admins exist. Demote rep back to sales_rep
-    demote_resp = client.patch(
-        f"/api/v1/team/{rep_id}/role",
+    # 4. Attempt to demote the organization admin (Must be rejected: admin is permanently locked)
+    demote_admin_resp = client.patch(
+        f"/api/v1/team/{admin_id}/role",
         json={"role": "sales_rep"},
         headers=headers
     )
-    assert demote_resp.status_code == 200
+    assert demote_admin_resp.status_code == 400
+    assert "Cannot change your own role" in demote_admin_resp.json().get("detail", "")
 
     # 5. Log in as rep and ensure rep cannot invite members or delete admin
     rep_login = client.post("/api/v1/auth/login", json={
@@ -87,17 +89,28 @@ def test_self_demotion_prevention_and_single_admin_guard():
 
 def test_super_admin_portal_endpoints():
     uid = uuid.uuid4().hex[:6]
-    super_email = f"super_{uid}@zigmaa.com"
+    normal_email = f"normal_{uid}@mybusiness.com"
 
-    # Register super admin via signup
-    signup_super = client.post("/api/v1/auth/signup", json={
-        "email": super_email,
-        "password": "SuperAdminPass@2026!",
-        "full_name": f"Super Admin {uid}",
-        "company_name": f"Super Corp {uid}"
+    # 0. Normal signup must be strictly FORBIDDEN from accessing super admin portal
+    signup_normal = client.post("/api/v1/auth/signup", json={
+        "email": normal_email,
+        "password": "NormalPass@2026!",
+        "full_name": f"Tenant Admin {uid}",
+        "company_name": f"Tenant Corp {uid}"
     })
-    assert signup_super.status_code == 200
-    super_token = signup_super.json()["access_token"]
+    assert signup_normal.status_code == 200
+    normal_token = signup_normal.json()["access_token"]
+    res_forbidden = client.get("/api/v1/admin/overview", headers={"Authorization": f"Bearer {normal_token}"})
+    assert res_forbidden.status_code == 403
+    assert "Super Admin privileges required" in res_forbidden.json().get("detail", "")
+
+    # Dedicated master admin credentials MUST succeed
+    login_super = client.post("/api/v1/auth/login", json={
+        "email": "zigmaaadmin",
+        "password": "adminzigmaa@123"
+    }, headers={"X-Portal": "super_admin"})
+    assert login_super.status_code == 200
+    super_token = login_super.json()["access_token"]
     headers = {"Authorization": f"Bearer {super_token}"}
 
     # 1. Overview KPIs

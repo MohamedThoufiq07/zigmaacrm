@@ -137,15 +137,7 @@ export default function Header({ title }: HeaderProps) {
     router.replace("/login");
   };
 
-  const isSuperAdmin = Boolean(
-    currentUser?.is_super_admin ||
-    (currentUser?.role || "").toLowerCase() === "super_admin" ||
-    (currentUser?.email && ["admin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"].includes(currentUser.email.toLowerCase())) ||
-    currentUser?.email?.toLowerCase().endsWith("@zigmaa.com")
-  );
-
   const menuItems = [
-    ...(isSuperAdmin ? [{ label: "Master Portal (Super Admin)", href: "/admin", icon: Shield }] : []),
     { label: "Profile", href: "/settings", icon: User },
     { label: "Manage Users & Roles", href: "/settings", icon: UserPlus },
     { label: "Settings", href: "/settings", icon: Settings },
@@ -227,17 +219,7 @@ export default function Header({ title }: HeaderProps) {
             </Link>
           )}
 
-          {/* Super Admin Master Portal Quick Switch */}
-          {isSuperAdmin && (
-            <Link
-              href="/admin"
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full text-xs font-semibold shadow-xs hover:shadow-md transition-all border border-slate-700/60"
-              title="Access Dedicated Super Admin Master Portal"
-            >
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden sm:inline">Master Portal</span>
-            </Link>
-          )}
+
 
           {/* AI Copilot Doubt Clearance Button */}
           <button

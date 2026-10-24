@@ -27,6 +27,7 @@ class User(TimeStampedBase):
     email = Column(String(255), unique=True, index=True, nullable=False)
     hashed_password = Column(String(255), nullable=False)
     full_name = Column(String(255), nullable=False)
+    phone = Column(String(50), nullable=True, index=True)
     role = Column(String(50), default="SALES_REP")  # SUPER_ADMIN, ADMIN, SALES_MANAGER, SALES_REP
     is_active = Column(Boolean, default=True)
     is_super_admin = Column(Boolean, default=False)

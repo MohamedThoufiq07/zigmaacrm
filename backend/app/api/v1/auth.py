@@ -1,9 +1,10 @@
 import secrets
+import re
 from typing import Optional
 from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token
 from app.models.organization_user import User, Organization
@@ -85,8 +86,7 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
     is_super = bool(
         getattr(user, "is_super_admin", False)
         or (user.role or "").upper() in ["SUPER_ADMIN", "SUPERADMIN"]
-        or (user.email and user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com", "thoufiqarsath84@gmail.com", "mdthoufiq0507@gmail.com"])
-        or (user.email and user.email.lower().endswith("@zigmaa.com"))
+        or (user.email and user.email.lower() in ["admin@zigmaa.com", "zigmaaadmin", "zigmaaadmin@zigmaa.com"])
     )
 
     avatar = getattr(user, "avatar_url", None)
@@ -95,6 +95,7 @@ async def _build_user_out(user: User, db: AsyncSession) -> UserOut:
         organization_id=user.organization_id or "",
         email=user.email,
         full_name=user.full_name,
+        phone=getattr(user, "phone", None),
         role=user.role,
         is_active=user.is_active,
         is_super_admin=is_super,
@@ -172,16 +173,63 @@ async def login(
 @router.post("/register", response_model=TokenResponse)
 async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
     clean_email = user_in.email.lower().strip()
-    # Check email
-    result = await db.execute(select(User).where(User.email == clean_email))
-    if result.scalar_one_or_none():
+    raw_company = (user_in.company_name or user_in.organization_name or "").strip()
+    raw_phone = (user_in.phone or user_in.contact_number or "").strip()
+
+    # Rule 1: Email already registered check
+    email_check = await db.execute(select(User).where(func.lower(User.email) == clean_email))
+    if email_check.scalar_one_or_none():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"An account with email {clean_email} already exists. Please sign in."
+            detail=f"This email address ({clean_email}) is already registered. Please sign in or use a different email."
         )
 
+    # Rule 2: Company name already registered check
+    if raw_company:
+        org_check = await db.execute(
+            select(Organization).where(func.lower(Organization.name) == raw_company.lower())
+        )
+        if org_check.scalar_one_or_none():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The company name '{raw_company}' is already registered. Please choose a different company name or sign in."
+            )
+
+        setting_check = await db.execute(
+            select(OrganizationSetting).where(func.lower(OrganizationSetting.company_name) == raw_company.lower())
+        )
+        if setting_check.scalars().first():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"The company name '{raw_company}' is already registered. Please choose a different company name or sign in."
+            )
+
+    # Rule 3: Phone number already registered check
+    if raw_phone:
+        digits = re.sub(r"\D", "", raw_phone)
+        if len(digits) >= 10:
+            last_10 = digits[-10:]
+
+            # Check User phone
+            users_with_phone = await db.execute(select(User.phone).where(User.phone.is_not(None)))
+            for (u_p,) in users_with_phone.all():
+                if u_p and re.sub(r"\D", "", u_p)[-10:] == last_10:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"This phone number ({raw_phone}) is already registered with an existing account. Please use a different phone number or sign in."
+                    )
+
+            # Check OrganizationSetting phone
+            settings_with_phone = await db.execute(select(OrganizationSetting.phone).where(OrganizationSetting.phone.is_not(None)))
+            for (s_p,) in settings_with_phone.all():
+                if s_p and re.sub(r"\D", "", s_p)[-10:] == last_10:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"This phone number ({raw_phone}) is already registered with an existing account. Please use a different phone number or sign in."
+                    )
+
     # Determine company/workspace name
-    workspace_name = (user_in.company_name or user_in.organization_name or f"{user_in.full_name.strip()}'s Workspace").strip()
+    workspace_name = raw_company or f"{user_in.full_name.strip()}'s Workspace"
     org_slug = workspace_name.lower().replace(" ", "-")
     now = datetime.utcnow()
     trial_expiry = now + timedelta(days=7)
@@ -203,6 +251,7 @@ async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
         email=clean_email,
         hashed_password=get_password_hash(user_in.password),
         full_name=user_in.full_name.strip(),
+        phone=raw_phone if raw_phone else None,
         role="admin",
         is_active=True
     )
@@ -214,6 +263,7 @@ async def signup(user_in: SignupRequest, db: AsyncSession = Depends(get_db)):
         organization_id=org.id,
         company_name=workspace_name,
         email=clean_email,
+        phone=raw_phone if raw_phone else "+91 98765 43210",
         signatory_name=user_in.full_name.strip(),
         signatory_designation="Authorized Signatory"
     )

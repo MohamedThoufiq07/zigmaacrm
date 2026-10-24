@@ -210,7 +210,7 @@ export const zigmaaApi = {
     return data;
   },
 
-  async signup(data: { email: string; password: string; full_name: string; company_name?: string; organization_name?: string }) {
+  async signup(data: { email: string; password: string; full_name: string; company_name?: string; organization_name?: string; phone?: string; contact_number?: string }) {
     const res = await fetch(`${API_BASE}/auth/signup`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -243,7 +243,7 @@ export const zigmaaApi = {
     return resData;
   },
 
-  async register(data: { email: string; password: string; full_name: string; organization_name?: string; company_name?: string }) {
+  async register(data: { email: string; password: string; full_name: string; organization_name?: string; company_name?: string; phone?: string; contact_number?: string }) {
     return this.signup(data);
   },
 

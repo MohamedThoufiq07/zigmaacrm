@@ -50,6 +50,15 @@ export default function Header({ title }: HeaderProps) {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [activeRole, setActiveRole] = useState<string>("ADMIN");
   const [avatarError, setAvatarError] = useState(false);
+  const [currentTime, setCurrentTime] = useState<number>(Date.now());
+
+  useEffect(() => {
+    setCurrentTime(Date.now());
+    const ticker = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(ticker);
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -151,14 +160,71 @@ export default function Header({ title }: HeaderProps) {
   const trialEndsAt = currentUser?.trial_ends_at;
   const isTrial = planStr.includes("TRIAL") || planStr === "FREE" || Boolean(trialEndsAt && planStr !== "ENTERPRISE" && planStr !== "PRO");
 
-  let daysLeft: number | null = null;
+  let targetTimestamp: number | null = null;
   if (trialEndsAt) {
-    const diffMs = new Date(trialEndsAt).getTime() - new Date().getTime();
-    daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
-  } else if (isTrial) {
-    daysLeft = 7;
+    const parsed = new Date(trialEndsAt).getTime();
+    if (!isNaN(parsed)) targetTimestamp = parsed;
   }
-  const isCriticalTrial = daysLeft !== null && daysLeft <= 3;
+  if (!targetTimestamp && isTrial && typeof window !== "undefined") {
+    const stored = localStorage.getItem("zigmaa_trial_ends_at");
+    if (stored) {
+      const parsed = parseInt(stored, 10);
+      if (!isNaN(parsed)) targetTimestamp = parsed;
+    } else {
+      const fallbackEnd = Date.now() + 7 * 24 * 60 * 60 * 1000;
+      localStorage.setItem("zigmaa_trial_ends_at", String(fallbackEnd));
+      targetTimestamp = fallbackEnd;
+    }
+  }
+
+  let trialInfo: {
+    badgeText: string;
+    tooltip: string;
+    isCritical: boolean;
+  } | null = null;
+
+  if (targetTimestamp && isTrial) {
+    const diffMs = targetTimestamp - currentTime;
+    if (diffMs <= 0) {
+      trialInfo = {
+        badgeText: "Expired",
+        tooltip: "Free trial expired! Click to upgrade your plan.",
+        isCritical: true,
+      };
+    } else {
+      const totalSecs = Math.floor(diffMs / 1000);
+      const totalMins = Math.floor(totalSecs / 60);
+      const totalHours = Math.floor(totalMins / 60);
+      const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      const isCritical = diffMs <= 3 * 24 * 60 * 60 * 1000;
+
+      // When 24 hours (1 day) or less is left, reduce like the photo in hours and minutes: e.g. "2h 47m left"
+      if (diffMs <= 24 * 60 * 60 * 1000) {
+        const h = totalHours;
+        const m = totalMins % 60;
+        let badgeText = "";
+        if (h > 0) {
+          badgeText = `${h}h ${m}m left`;
+        } else if (m > 0) {
+          badgeText = `${m}m left`;
+        } else {
+          badgeText = `${Math.max(1, totalSecs)}s left`;
+        }
+
+        trialInfo = {
+          badgeText,
+          tooltip: `Free Trial: ${h}h ${m}m remaining. Click to upgrade plan.`,
+          isCritical: true,
+        };
+      } else {
+        trialInfo = {
+          badgeText: `${daysLeft}d left`,
+          tooltip: `Free Trial: ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining. Click to upgrade plan.`,
+          isCritical,
+        };
+      }
+    }
+  }
 
   return (
     <>
@@ -186,22 +252,18 @@ export default function Header({ title }: HeaderProps) {
             />
           </form>
 
-          {/* Trial Countdown Badge (Turns RED in the last 3 days - Matching Exact Design) */}
-          {isTrial && daysLeft !== null && (
+          {/* Trial Countdown Badge (Turns RED in the last 3 days - Reduces to hours and minutes in the last 24h) */}
+          {isTrial && trialInfo && (
             <Link
               href="/settings"
               className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold shadow-xs transition-all cursor-pointer select-none group ${
-                isCriticalTrial
+                trialInfo.isCritical
                   ? "bg-red-600 hover:bg-red-700 text-white shadow-red-600/30 ring-2 ring-red-500/20"
                   : "bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700"
               }`}
-              title={
-                daysLeft <= 0
-                  ? "Trial expired! Click to upgrade your plan"
-                  : `Free Trial: ${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining. Click to upgrade plan.`
-              }
+              title={trialInfo.tooltip}
             >
-              {isCriticalTrial ? (
+              {trialInfo.isCritical ? (
                 <AlertCircle className="w-3.5 h-3.5 text-white shrink-0 animate-pulse" />
               ) : (
                 <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
@@ -209,12 +271,12 @@ export default function Header({ title }: HeaderProps) {
               <span className="font-semibold text-xs tracking-tight">Trial</span>
               <span
                 className={`px-2 py-0.5 rounded-full text-[10px] font-bold tracking-tight shadow-inner ${
-                  isCriticalTrial
+                  trialInfo.isCritical
                     ? "bg-red-800/90 text-white"
                     : "bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300"
                 }`}
               >
-                {daysLeft <= 0 ? "Expired" : `${daysLeft}d left`}
+                {trialInfo.badgeText}
               </span>
             </Link>
           )}

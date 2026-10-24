@@ -1015,12 +1015,21 @@ export default function SuperAdminPortalPage() {
                         {/* Trial Expiry with Color Transition (Turns RED in the last 3 days - Matching Exact Design) */}
                         <td className="py-3 px-4">
                           {org.trial_ends_at ? (() => {
-                            let days = org.days_left;
-                            if (days === undefined || days === null) {
-                              const diffMs = new Date(org.trial_ends_at).getTime() - new Date().getTime();
-                              days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                            const diffMs = new Date(org.trial_ends_at).getTime() - Date.now();
+                            const isExpired = diffMs <= 0;
+                            const totalMins = Math.floor(Math.max(0, diffMs) / (1000 * 60));
+                            const totalHours = Math.floor(totalMins / 60);
+                            const days = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+                            const isRedCritical = isExpired || diffMs <= 3 * 24 * 60 * 60 * 1000;
+
+                            let badgeText = `${days}d left`;
+                            if (isExpired) {
+                              badgeText = "Expired";
+                            } else if (diffMs <= 24 * 60 * 60 * 1000) {
+                              const h = totalHours;
+                              const m = totalMins % 60;
+                              badgeText = h > 0 ? `${h}h ${m}m left` : `${m}m left`;
                             }
-                            const isRedCritical = days <= 3;
 
                             return (
                               <div className="flex flex-col gap-1 items-start">
@@ -1032,8 +1041,10 @@ export default function SuperAdminPortalPage() {
                                       : "bg-amber-50 text-amber-800 border border-amber-200"
                                   }`}
                                   title={
-                                    days <= 0
+                                    isExpired
                                       ? "Trial has expired!"
+                                      : diffMs <= 24 * 60 * 60 * 1000
+                                      ? `Trial expires in ${totalHours}h ${totalMins % 60}m`
                                       : `Trial expires in ${days} day${days === 1 ? "" : "s"}`
                                   }
                                 >
@@ -1050,7 +1061,7 @@ export default function SuperAdminPortalPage() {
                                         : "bg-amber-200/60 text-amber-900"
                                     }`}
                                   >
-                                    {days <= 0 ? "Expired" : `${days}d left`}
+                                    {badgeText}
                                   </span>
                                 </div>
                                 <span className="text-[10px] text-slate-400 pl-1 font-mono">

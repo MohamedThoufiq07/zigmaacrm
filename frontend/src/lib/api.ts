@@ -1153,25 +1153,44 @@ export const zigmaaApi = {
       if (res.ok) {
         const backendDeals = await res.json();
         if (Array.isArray(backendDeals)) {
-          const mapped = backendDeals.map((d: any) => ({
-            id: d.id,
-            title: d.title,
-            company_name: (d.custom_data && d.custom_data.company_name) || d.company_name || "Enterprise Account",
-            contact_name: (d.custom_data && d.custom_data.contact_name) || d.contact_name || "",
-            value: Number(d.deal_value || d.value) || 0,
-            deal_value: Number(d.deal_value || d.value) || 0,
-            currency: d.currency || "INR",
-            stage: d.stage || (d.stage_id ? "Discovery" : "New Deal"),
-            stage_id: d.stage_id,
-            probability: Number(d.probability) || 50,
-            close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
-            expected_close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
-            lead_id: d.lead_id,
-            contact_id: d.contact_id,
-            status: d.status || "OPEN",
-            custom_data: d.custom_data || {},
-            created_at: d.created_at || new Date().toISOString()
-          }));
+          const localDeals = getStorage<Deal[]>("zigmaa_deals", []);
+          const localStageMap: Record<string, string> = {};
+          localDeals.forEach(ld => {
+            if (ld && ld.id && ld.stage) localStageMap[String(ld.id)] = ld.stage;
+          });
+
+          const normalizeStage = (st: string) => {
+            if (!st) return "New Deal";
+            const s = st.trim();
+            if (s.toLowerCase() === "lead in") return "New Deal";
+            if (s.toLowerCase() === "contact made") return "Discovery";
+            return s;
+          };
+
+          const mapped = backendDeals.map((d: any) => {
+            const rawStage = (d.custom_data && d.custom_data.stage) || d.stage;
+            const stageVal = normalizeStage(rawStage || localStageMap[String(d.id)] || d.stage_id || "New Deal");
+            return {
+              id: d.id,
+              title: d.title,
+              company_name: (d.custom_data && d.custom_data.company_name) || d.company_name || "Enterprise Account",
+              contact_name: (d.custom_data && d.custom_data.contact_name) || d.contact_name || "",
+              value: Number(d.deal_value || d.value) || 0,
+              deal_value: Number(d.deal_value || d.value) || 0,
+              currency: d.currency || "INR",
+              stage: stageVal,
+              stage_id: d.stage_id || stageVal,
+              probability: Number(d.probability) || 50,
+              close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+              expected_close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+              lead_id: d.lead_id,
+              contact_id: d.contact_id,
+              status: d.status || "OPEN",
+              custom_data: d.custom_data || {},
+              created_at: d.created_at || new Date().toISOString()
+            };
+          });
+          setStorage("zigmaa_deals", mapped);
           clientMemoryCache.set(cacheKey, { data: mapped, timestamp: Date.now() });
           return mapped;
         }
@@ -1189,25 +1208,44 @@ export const zigmaaApi = {
       if (res.ok) {
         const backendDeals = await res.json();
         if (Array.isArray(backendDeals)) {
-          const mapped = backendDeals.map((d: any) => ({
-            id: d.id,
-            title: d.title,
-            company_name: (d.custom_data && d.custom_data.company_name) || d.company_name || "Enterprise Account",
-            contact_name: (d.custom_data && d.custom_data.contact_name) || d.contact_name || "",
-            value: Number(d.deal_value || d.value) || 0,
-            deal_value: Number(d.deal_value || d.value) || 0,
-            currency: d.currency || "INR",
-            stage: d.stage || (d.stage_id ? "Discovery" : "New Deal"),
-            stage_id: d.stage_id,
-            probability: Number(d.probability) || 50,
-            close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
-            expected_close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
-            lead_id: d.lead_id,
-            contact_id: d.contact_id,
-            status: d.status || "OPEN",
-            custom_data: d.custom_data || {},
-            created_at: d.created_at || new Date().toISOString()
-          }));
+          const localDeals = getStorage<Deal[]>("zigmaa_deals", []);
+          const localStageMap: Record<string, string> = {};
+          localDeals.forEach(ld => {
+            if (ld && ld.id && ld.stage) localStageMap[String(ld.id)] = ld.stage;
+          });
+
+          const normalizeStage = (st: string) => {
+            if (!st) return "New Deal";
+            const s = st.trim();
+            if (s.toLowerCase() === "lead in") return "New Deal";
+            if (s.toLowerCase() === "contact made") return "Discovery";
+            return s;
+          };
+
+          const mapped = backendDeals.map((d: any) => {
+            const rawStage = (d.custom_data && d.custom_data.stage) || d.stage;
+            const stageVal = normalizeStage(rawStage || localStageMap[String(d.id)] || d.stage_id || "New Deal");
+            return {
+              id: d.id,
+              title: d.title,
+              company_name: (d.custom_data && d.custom_data.company_name) || d.company_name || "Enterprise Account",
+              contact_name: (d.custom_data && d.custom_data.contact_name) || d.contact_name || "",
+              value: Number(d.deal_value || d.value) || 0,
+              deal_value: Number(d.deal_value || d.value) || 0,
+              currency: d.currency || "INR",
+              stage: stageVal,
+              stage_id: d.stage_id || stageVal,
+              probability: Number(d.probability) || 50,
+              close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+              expected_close_date: d.expected_close_date || d.close_date || new Date().toISOString().split("T")[0],
+              lead_id: d.lead_id,
+              contact_id: d.contact_id,
+              status: d.status || "OPEN",
+              custom_data: d.custom_data || {},
+              created_at: d.created_at || new Date().toISOString()
+            };
+          });
+          setStorage("zigmaa_deals", mapped);
           clientMemoryCache.set("deals:all", { data: mapped, timestamp: Date.now() });
         }
       }
@@ -1253,23 +1291,34 @@ export const zigmaaApi = {
   },
 
   async updateDealStage(id: number | string, stage: string, stageId?: string): Promise<any> {
-    try {
-      const res = await fetch(`${API_BASE}/deals/${id}/stage`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ stage, stage_id: stageId || stage })
-      });
-      if (res.ok) return await res.json();
-    } catch {}
+    clientMemoryCache.delete("deals:all");
+    clientMemoryCache.delete("deals:board");
 
+    // Immediately persist in localStorage
     const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
     const index = deals.findIndex(d => String(d.id) === String(id));
     if (index !== -1) {
-      deals[index] = { ...deals[index], stage: stage as any };
+      deals[index] = { ...deals[index], stage: stage as any, stage_id: stageId || stage };
       setStorage("zigmaa_deals", deals);
-      return deals[index];
     }
-    return null;
+
+    try {
+      const res = await fetch(`${API_BASE}/deals/${id}/stage`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          ...getAuthHeaders()
+        },
+        body: JSON.stringify({ stage, stage_id: stageId || stage })
+      });
+      if (res.ok) {
+        return await res.json();
+      }
+    } catch (err) {
+      console.warn("Failed to update deal stage on backend, persisted locally:", err);
+    }
+
+    return index !== -1 ? deals[index] : null;
   },
 
   async createDeal(dealData: Partial<Deal>): Promise<Deal> {
@@ -1335,16 +1384,38 @@ export const zigmaaApi = {
   },
 
   async updateDeal(id: number | string, patch: Partial<Deal>): Promise<Deal | null> {
+    clientMemoryCache.delete("deals:all");
+    clientMemoryCache.delete("deals:board");
+
     if (patch.stage) {
       await this.updateDealStage(id, patch.stage as string, patch.stage_id);
+    } else {
+      try {
+        await fetch(`${API_BASE}/deals/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders()
+          },
+          body: JSON.stringify(patch)
+        });
+      } catch (err) {
+        console.warn("Backend updateDeal failed:", err);
+      }
     }
+
     const deals = getStorage<Deal[]>("zigmaa_deals", INITIAL_DEALS);
     const index = deals.findIndex(d => String(d.id) === String(id));
-    if (index === -1) return null;
-
-    deals[index] = { ...deals[index], ...patch };
-    setStorage("zigmaa_deals", deals);
-    return deals[index];
+    if (index !== -1) {
+      deals[index] = { ...deals[index], ...patch };
+      setStorage("zigmaa_deals", deals);
+      return deals[index];
+    } else {
+      const updatedDeal = { id, ...patch } as Deal;
+      deals.push(updatedDeal);
+      setStorage("zigmaa_deals", deals);
+      return updatedDeal;
+    }
   },
 
   async deleteDeal(id: number | string): Promise<boolean> {

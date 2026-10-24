@@ -184,6 +184,61 @@ export default function DashboardPage() {
     fetchDashboardMetrics(dateRange);
   }, [dateRange]);
 
+  // Publish real-time UI context for Zigmaa AI Copilot
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__ZIGMAA_PAGE_STATE = {
+        page: "/",
+        screenName: "Dashboard Overview",
+        activeTab: "Overview",
+        dateRange,
+        metricsSummary: metrics
+          ? {
+              totalLeads: metrics.total_leads,
+              todayLeads: metrics.today_leads,
+              pipelineValue: metrics.pipeline_value,
+              wonRevenue: metrics.won_revenue,
+              activeDeals: metrics.active_deals_count,
+              pendingFollowups: metrics.pending_followups,
+              conversionRate: `${metrics.conversion_rate}%`
+            }
+          : null,
+        recentLeads: metrics?.recent_leads?.slice(0, 5).map((l) => ({
+          name: l.full_name,
+          company: l.company_name,
+          stage: l.lifecycle_stage,
+          source: l.source
+        })),
+        todayTasks: metrics?.today_due_tasks?.slice(0, 5).map((t) => ({
+          title: t.title,
+          priority: t.priority,
+          status: t.status,
+          contact: t.contact_name
+        }))
+      };
+    }
+  }, [dateRange, metrics]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      if (selectedContact) {
+        (window as any).__ZIGMAA_ACTIVE_DRAWER = {
+          type: "contact",
+          id: selectedContact.id,
+          name: selectedContact.name,
+          stage: selectedContact.status || selectedContact.lifecycle_stage || "New",
+          company: selectedContact.company_name,
+          phone: selectedContact.phone,
+          email: selectedContact.email
+        };
+      } else {
+        if ((window as any).__ZIGMAA_ACTIVE_DRAWER?.type === "contact") {
+          (window as any).__ZIGMAA_ACTIVE_DRAWER = null;
+        }
+      }
+    }
+  }, [selectedContact]);
+
   const handleOpenContact = async (contactSummary: any) => {
     try {
       const fullContact = await api.getContactDetail(contactSummary.id);

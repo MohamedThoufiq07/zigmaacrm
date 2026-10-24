@@ -43,6 +43,7 @@ import EditLeadModal from "@/components/leads/EditLeadModal";
 import ConvertToDealModal from "@/components/leads/ConvertToDealModal";
 import ManageCustomFieldsModal from "@/components/common/ManageCustomFieldsModal";
 import FilterSelect from "@/components/common/FilterSelect";
+import CustomDropdown from "@/components/common/CustomDropdown";
 import CallDialerModal from "@/components/common/CallDialerModal";
 import { Sliders } from "lucide-react";
 import MoreViewsDropdown from "@/components/common/MoreViewsDropdown";
@@ -571,27 +572,22 @@ export default function LeadsPage() {
 
                               {/* 6. Stage Dropdown (New Lead, Contacted, Qualified, Lost) */}
                               <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                                <select
+                                <CustomDropdown
                                   value={
                                     isConverted
                                       ? "Converted"
                                       : lead.stage === "Contacted / Follow-up"
                                       ? "Contacted"
-                                      : lead.stage
+                                      : lead.stage || "New Lead"
                                   }
-                                  onChange={(e) => handleStageChange(lead.id, e.target.value)}
-                                  className={`px-2.5 py-1 rounded-lg text-xs font-bold border cursor-pointer focus:outline-none focus:ring-1 focus:ring-red-500 ${
+                                  options={
                                     isConverted
-                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                                      : "bg-red-50 text-red-700 border-red-200"
-                                  }`}
-                                >
-                                  <option value="New Lead">New Lead</option>
-                                  <option value="Contacted">Contacted</option>
-                                  <option value="Qualified">Qualified</option>
-                                  <option value="Lost">Lost</option>
-                                  {isConverted && <option value="Converted">Converted</option>}
-                                </select>
+                                      ? ["New Lead", "Contacted", "Qualified", "Lost", "Converted"]
+                                      : ["New Lead", "Contacted", "Qualified", "Lost"]
+                                  }
+                                  onChange={(val) => handleStageChange(lead.id, val)}
+                                  variant="badge"
+                                />
                               </td>
 
                               {/* 7. Owner / Assigned Agent */}

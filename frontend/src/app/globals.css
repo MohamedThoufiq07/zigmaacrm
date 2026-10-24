@@ -377,3 +377,52 @@ main {
     border-color: rgba(99, 102, 241, 0.35) !important;
   }
 }
+
+/* Theme-matched styling for native selects & date pickers */
+select {
+  accent-color: #ef4444;
+  color-scheme: light;
+  cursor: pointer;
+}
+
+select option {
+  padding: 8px 12px;
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+select option:checked,
+select option:hover {
+  background-color: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: #0f172a;
+  color: #f1f5f9;
+}
+
+.dark select option:checked,
+.dark select option:hover {
+  background-color: #7f1d1d !important;
+  color: #fca5a5 !important;
+}
+
+/* Date picker calendar indicator theme match */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 3px;
+  opacity: 0.65;
+  transition: all 0.15s ease;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+  background-color: rgba(239, 68, 68, 0.12);
+}
+

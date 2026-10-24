@@ -19,7 +19,7 @@ class DealStageUpdate(BaseModel):
     stage_id: Optional[str] = None
     stage: Optional[str] = None
 
-@router.get("/deals", response_model=List[DealOut])
+@router.get("/deals")
 async def get_deals(
     pipeline_id: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
@@ -37,7 +37,45 @@ async def get_deals(
             )
         )
     result = await db.execute(query)
-    return result.scalars().all()
+    deals = result.scalars().all()
+
+    stages_res = await db.execute(select(PipelineStage))
+    all_stages = stages_res.scalars().all()
+    stage_map = {s.id: s.title for s in all_stages}
+
+    legacy_map = {
+        "Lead In": "New Deal",
+        "Contact Made": "Discovery"
+    }
+
+    out = []
+    for d in deals:
+        raw_stage = (d.custom_data or {}).get("stage") or stage_map.get(d.stage_id, d.stage_id) or "New Deal"
+        stage_name = legacy_map.get(raw_stage, raw_stage)
+        out.append({
+            "id": d.id,
+            "organization_id": d.organization_id,
+            "pipeline_id": d.pipeline_id,
+            "stage_id": d.stage_id,
+            "stage": stage_name,
+            "title": d.title,
+            "deal_value": d.deal_value,
+            "value": d.deal_value,
+            "currency": d.currency,
+            "expected_close_date": d.expected_close_date,
+            "close_date": d.expected_close_date,
+            "status": d.status,
+            "custom_data": d.custom_data or {},
+            "custom_properties": d.custom_properties or d.custom_data or {},
+            "lead_id": d.lead_id,
+            "contact_id": d.contact_id,
+            "assigned_user_id": d.assigned_user_id,
+            "owner_id": d.owner_id,
+            "owner_name": d.owner_name,
+            "created_at": d.created_at.isoformat() if d.created_at else None,
+            "updated_at": d.updated_at.isoformat() if d.updated_at else None
+        })
+    return out
 
 @router.get("/deals/board")
 async def get_deals_board(
@@ -204,8 +242,44 @@ async def update_deal(
         deal.custom_data = deal_in["custom_data"]
         deal.custom_properties = deal_in["custom_data"]
 
+    # If stage or stage_id is passed to update_deal, handle stage resolution properly
+    target_stage = deal_in.get("stage") or deal_in.get("stage_id")
+    if target_stage:
+        st_res = await db.execute(
+            select(PipelineStage).where(
+                (PipelineStage.id == target_stage) | (PipelineStage.title.ilike(target_stage))
+            )
+        )
+        stage_obj = st_res.scalars().first()
+        if not stage_obj:
+            synonyms_map = {
+                "New Deal": ["lead in", "new deal", "new"],
+                "Discovery": ["contact made", "discovery", "qualifying"],
+                "Proposal Sent": ["proposal sent", "proposal"],
+                "Negotiation": ["negotiation", "negotiating"],
+                "Won": ["won", "closed won"],
+                "Lost": ["lost", "closed lost"],
+            }
+            for std_name, syns in synonyms_map.items():
+                if target_stage.lower() in syns or any(s in target_stage.lower() for s in syns):
+                    st_res = await db.execute(
+                        select(PipelineStage).where(PipelineStage.title.ilike(std_name))
+                    )
+                    stage_obj = st_res.scalars().first()
+                    if stage_obj:
+                        break
+        if stage_obj:
+            deal.stage_id = stage_obj.id
+            cdata = dict(deal.custom_data or {})
+            cdata["stage"] = stage_obj.title
+            deal.custom_data = cdata
+            if "won" in stage_obj.title.lower():
+                deal.status = "WON"
+            elif "lost" in stage_obj.title.lower():
+                deal.status = "LOST"
+
     for key, val in deal_in.items():
-        if key not in ["id", "created_at", "custom_properties", "custom_data"] and hasattr(deal, key):
+        if key not in ["id", "created_at", "custom_properties", "custom_data", "stage", "stage_id"] and hasattr(deal, key):
             setattr(deal, key, val)
 
     await db.commit()
@@ -235,12 +309,42 @@ async def update_deal_stage(
         )
     )
     stage = stage_res.scalars().first()
-    if stage:
-        deal.stage_id = stage.id
-        stage_title = stage.title
-    else:
-        deal.stage_id = target_stage
-        stage_title = target_stage
+
+    if not stage:
+        synonyms_map = {
+            "New Deal": ["lead in", "new deal", "new"],
+            "Discovery": ["contact made", "discovery", "qualifying"],
+            "Proposal Sent": ["proposal sent", "proposal"],
+            "Negotiation": ["negotiation", "negotiating"],
+            "Won": ["won", "closed won"],
+            "Lost": ["lost", "closed lost"],
+        }
+        for std_name, syns in synonyms_map.items():
+            if target_stage.lower() in syns or any(s in target_stage.lower() for s in syns):
+                stage_res = await db.execute(
+                    select(PipelineStage).where(PipelineStage.title.ilike(std_name))
+                )
+                stage = stage_res.scalars().first()
+                if stage:
+                    break
+
+    # If still not found, create a new PipelineStage dynamically to guarantee foreign key integrity
+    if not stage:
+        import uuid
+        new_stage = PipelineStage(
+            id=str(uuid.uuid4()),
+            pipeline_id=deal.pipeline_id,
+            title=target_stage,
+            stage_order=99,
+            probability=50,
+            color_code="#6366F1"
+        )
+        db.add(new_stage)
+        await db.flush()
+        stage = new_stage
+
+    deal.stage_id = stage.id
+    stage_title = stage.title
 
     # Update deal status if moved to won or lost
     if "won" in stage_title.lower():
@@ -249,6 +353,11 @@ async def update_deal_stage(
         deal.status = "LOST"
     else:
         deal.status = "OPEN"
+
+    # Always persist human-readable stage in custom_data as well
+    cdata = dict(deal.custom_data or {})
+    cdata["stage"] = stage_title
+    deal.custom_data = cdata
 
     # Log activity
     act = Activity(

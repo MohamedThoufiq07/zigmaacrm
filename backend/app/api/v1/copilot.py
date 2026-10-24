@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Any
 import json
+import re
 import urllib.request
 import urllib.error
 import logging
@@ -70,6 +71,47 @@ async def ai_copilot_chat(
         raise HTTPException(status_code=400, detail="Question or message cannot be empty")
 
     gemini_api_key = settings.GEMINI_API_KEY
+    q_lower = question.lower().strip()
+    clean_q = re.sub(r"[^\w\s]", "", q_lower).strip()
+
+    # Instant, calibrated response for pure greetings & pleasantries
+    # Prevents unnecessary CRM pitching, screen recitation, or wordy "bla bla"
+    pure_greetings = {
+        "hi": "Hi there! How can I help you today?",
+        "hello": "Hello! How can I assist you with Zigmaa CRM today?",
+        "hey": "Hey! How can I help you today?",
+        "hi there": "Hi there! How can I help you today?",
+        "hello there": "Hello! How can I assist you today?",
+        "good morning": "Good morning! How can I assist you today?",
+        "good afternoon": "Good afternoon! How can I assist you today?",
+        "good evening": "Good evening! How can I assist you today?",
+        "thanks": "You're very welcome! Let me know if you need any other help.",
+        "thank you": "You're very welcome! Let me know if you need any other help.",
+        "who are you": "I am your Zigmaa AI Copilot, your assistant for managing leads, deals, pipelines, and workflows."
+    }
+
+    # Check for "how are you" variants (e.g. "hi how are you", "how are you", "hey how r u")
+    is_how_are_you = any(p in clean_q for p in [
+        "how are you", "how are you doing", "how r u", "hows it going", "how is it going"
+    ]) and len(clean_q.split()) <= 6
+
+    if is_how_are_you:
+        return {
+            "answer": "Hello! I'm doing great, thank you. How can I help you today?",
+            "engine": "Zigmaa Assistant",
+            "model_used": "direct-assistant",
+            "status": "success",
+            "ui_context_received": bool(req.ui_context)
+        }
+
+    if clean_q in pure_greetings:
+        return {
+            "answer": pure_greetings[clean_q],
+            "engine": "Zigmaa Assistant",
+            "model_used": "direct-assistant",
+            "status": "success",
+            "ui_context_received": bool(req.ui_context)
+        }
 
     # Fetch live CRM database metrics for contextual intelligence
     total_contacts = 0
@@ -112,11 +154,11 @@ async def ai_copilot_chat(
     user_role = ui_ctx.user_role if ui_ctx and ui_ctx.user_role else "ADMIN"
 
     ui_context_text = (
-        "USER REAL-TIME SCREEN & UI CONTEXT (READ-ONLY):\n"
+        "USER REAL-TIME SCREEN & UI CONTEXT (FOR YOUR SILENT ANALYSIS):\n"
         f"- Current Screen/Route: {active_page}\n"
         f"- Active Tab / Filter: {active_tab}\n"
-        f"- Currently Open Drawer Item: {json.dumps(active_item, ensure_ascii=False) if active_item else 'None (Viewing List / Table)'}\n"
-        f"- Visible Records Summary on Screen: {json.dumps(visible_summary, ensure_ascii=False) if visible_summary else f'{total_contacts} total records'}\n"
+        f"- Currently Open Drawer Item: {json.dumps(active_item, ensure_ascii=False) if active_item else 'None'}\n"
+        f"- Visible UI Content / Records Summary: {json.dumps(visible_summary, ensure_ascii=False) if visible_summary else 'Default list view'}\n"
         f"- User Role: {user_role}\n"
     )
 
@@ -129,17 +171,30 @@ async def ai_copilot_chat(
     )
 
     system_instruction = (
-        "You are Zigmaa AI Copilot, a sales advisor. You DO NOT have execution or modification permissions on the CRM database or UI.\n"
-        "You have real-time sight into the user's current screen context provided via ui_context.\n"
-        "Reference the user's immediate screen naturally (e.g., 'Looking at your current Contacts view with 26 records...', 'Since you have opened the contact drawer for dcvfgb dgfdfdg...', 'Since you are on the Deals Kanban board...').\n"
-        "Guide the user on what button to click, which tab to check, or what steps to take next based strictly on what is displayed on their screen.\n\n"
+        "You are Zigmaa AI Copilot, an intelligent, professional, and natural CRM assistant.\n\n"
+        "STRICT COMMUNICATION RULES (MANDATORY):\n"
+        "1. NEVER ANNOUNCE OR RECITE WHAT SECTION OR SCREEN THE USER IS ON:\n"
+        "   - NEVER start or format replies with boilerplate like:\n"
+        "     ❌ 'Looking at your current Overview screen...'\n"
+        "     ❌ 'Observing your active screen on /...'\n"
+        "     ❌ 'Looking at your current Contacts view with 42 records...'\n"
+        "     ❌ 'Since you are on the Deals Kanban board...'\n"
+        "   - The user is already looking at their screen. NEVER state their section, route path, or record count unless they explicitly asked for it.\n"
+        "2. DO NOT MENTION RECORD COUNTS OR DATABASE TOTALS UNPROMPTED:\n"
+        "   - NEVER bring up numbers like '42 records', '15 deals', etc., unless the user specifically asked a question about counts or stats.\n"
+        "3. DO NOT OVER-REPLY OR ADD UNNECESSARY FILLER ('NO BLA BLA'):\n"
+        "   - Answer ONLY what the user asked with appropriate depth and proportion.\n"
+        "   - Do NOT dump unsolicited paragraphs of sales pitch, feature lists, or random suggestions without being asked.\n"
+        "   - Keep casual or quick inquiries crisp and direct.\n"
+        "4. ANALYZE ALL UI CONTENT CHANGES SILENTLY AND RESPOND RESPECTIVELY:\n"
+        "   - Use the real-time UI context below to understand what the user is currently viewing.\n"
+        "   - If a drawer is open and the user asks 'help me with this client' or 'what should I do next?', immediately address that specific client/deal by name and stage, and provide practical next steps.\n"
+        "   - If the user asks about records, metrics, or table data on screen, explain the relevant information clearly and respectively.\n"
+        "5. READ-ONLY ADVISOR:\n"
+        "   - Guide the user on what actions to take in the UI (e.g. click Call or WhatsApp, advance lifecycle stage, create a deal). You cannot directly modify database records.\n\n"
         f"{ui_context_text}\n"
         f"{crm_stats_context}\n"
-        f"{ZIGMAA_CRM_KNOWLEDGE}\n\n"
-        "STRICT GUIDANCE RULES:\n"
-        "1. When on /contacts and user asks 'What should I focus on?', explicitly acknowledge the active Contacts table view and guide them on prioritizing their new leads, contacting unassigned leads, or converting interested contacts.\n"
-        "2. When a contact or deal drawer is open (active_item is populated) and user asks 'Help me with this client', immediately address that opened client by name without asking them to retype it, review their stage, and advise actionable next steps (like calling them, adding timeline notes, or creating a quotation).\n"
-        "3. You are strictly read-only. Never claim you have deleted or mutated database records."
+        f"{ZIGMAA_CRM_KNOWLEDGE}"
     )
 
     full_prompt = (
@@ -162,7 +217,7 @@ async def ai_copilot_chat(
                         "parts": [{"text": full_prompt}]
                     }],
                     "generationConfig": {
-                        "temperature": 0.5,
+                        "temperature": 0.3,
                         "maxOutputTokens": 800
                     }
                 }
@@ -190,18 +245,16 @@ async def ai_copilot_chat(
                 logger.warning(f"Copilot call to {g_model} failed: {e}")
 
     # Fallback contextual responses if Gemini is temporarily unreachable
-    q_lower = question.lower()
-
     # Active drawer contextual fallback
-    if active_item and any(k in q_lower for k in ["this client", "this lead", "this contact", "help me with", "what next"]):
+    if active_item and any(k in q_lower for k in ["this client", "this lead", "this contact", "this deal", "help me with", "what next"]):
         item_name = active_item.get("name") or active_item.get("title") or "this client"
         item_stage = active_item.get("stage") or "New"
         return {
             "answer": (
-                f"Looking at **{item_name}** currently open in your slide drawer (Stage: **{item_stage}**):\n\n"
-                f"1. **Review Contact Info**: Check their phone number and click the **Call** or **WhatsApp** button.\n"
-                f"2. **Advance Lifecycle Stage**: Once contacted, use the stage pill bar at the top to move them from **{item_stage}** to **Interested** or **Qualified**.\n"
-                f"3. **Create Deal / Quotation**: Click **+ Deal** or open Quotes to send them a customized proposal."
+                f"Recommended next steps for **{item_name}** (Stage: **{item_stage}**):\n\n"
+                f"1. **Direct Outreach**: Reach out via the **Call** or **WhatsApp** quick action buttons.\n"
+                f"2. **Advance Stage**: Once in touch, update their stage to **Interested** or **Qualified**.\n"
+                f"3. **Follow-up / Deal**: Add an activity note or click **+ Deal** to move them into your pipeline."
             ),
             "engine": "Zigmaa Contextual Advisor",
             "model_used": "direct-contextual",
@@ -211,12 +264,13 @@ async def ai_copilot_chat(
 
     # /contacts focus fallback
     if active_page.startswith("/contacts") and any(k in q_lower for k in ["focus", "prioritize", "start", "what to do"]):
+        new_count = stage_breakdown.get('New', 0) + stage_breakdown.get('NEW', 0)
         return {
             "answer": (
-                f"Looking at your current **Contacts** view with **{total_contacts} records** (Active Tab: **{active_tab}**):\n\n"
-                f"• **Priority 1**: Filter by **New Leads** ({stage_breakdown.get('New', 0) + stage_breakdown.get('NEW', 0)} leads) and initiate first contact via Call or WhatsApp.\n"
-                f"• **Priority 2**: Check any inquiries older than 24 hours under the **Untouched Enquiries** tab.\n"
-                f"• **Priority 3**: Click any qualified contact and click **+ Deal** to move them into your active sales pipeline."
+                f"Here are key priorities to focus on:\n\n"
+                f"• **Priority 1**: Reach out to **New Leads** ({new_count} leads waiting) via Call or WhatsApp.\n"
+                f"• **Priority 2**: Check pending inquiries under **Untouched Enquiries**.\n"
+                f"• **Priority 3**: Advance qualified contacts by clicking **+ Deal** to add them to your pipeline."
             ),
             "engine": "Zigmaa Contextual Advisor",
             "model_used": "direct-contextual",
@@ -226,7 +280,7 @@ async def ai_copilot_chat(
 
     if any(k in q_lower for k in ["how many contact", "count contact", "number of contact", "total contact"]):
         breakdown_str = ", ".join([f"{count} {stage}" for stage, count in stage_breakdown.items()])
-        answer = f"You currently have **{total_contacts} contacts** in your Zigmaa CRM"
+        answer = f"You have **{total_contacts} contacts** in your CRM"
         if breakdown_str:
             answer += f" ({breakdown_str})."
         else:
@@ -248,18 +302,9 @@ async def ai_copilot_chat(
             "ui_context_received": bool(req.ui_context)
         }
 
-    if any(k in q_lower for k in ["hi", "hello", "hey", "who are you"]):
-        return {
-            "answer": f"Hello! I am your Zigmaa AI Copilot, observing your active screen on **{active_page}** ({active_tab}). How can I guide your sales workflow today?",
-            "engine": "Zigmaa CRM Intelligence Engine",
-            "model_used": "direct-assistant",
-            "status": "success",
-            "ui_context_received": bool(req.ui_context)
-        }
-
     # Default fallback
     return {
-        "answer": f"I am observing your current screen on **{active_page}** with {total_contacts} contacts and {total_deals} active deals. How can I assist with your sales workflow?",
+        "answer": "How can I help you today? Feel free to ask about your leads, deals pipeline, automations, tasks, or any feature in Zigmaa CRM.",
         "engine": "Zigmaa Contextual Advisor",
         "model_used": "fallback",
         "status": "success",

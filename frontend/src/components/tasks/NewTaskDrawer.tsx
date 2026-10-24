@@ -19,6 +19,8 @@ import {
 import { Task, Contact } from "@/lib/mockData";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
+import CustomDropdown from "@/components/common/CustomDropdown";
+import CustomDatePicker from "@/components/common/CustomDatePicker";
 
 interface NewTaskDrawerProps {
   isOpen: boolean;
@@ -325,12 +327,10 @@ export default function NewTaskDrawer({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Due Date <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="date"
-                  required
+                <CustomDatePicker
                   value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2.5 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400 font-medium transition-all"
+                  onChange={(val) => setDueDate(val)}
+                  placeholder="Select due date"
                 />
               </div>
 
@@ -367,18 +367,16 @@ export default function NewTaskDrawer({
                 <label className="block text-xs font-bold text-slate-700 mb-1.5">
                   Priority
                 </label>
-                <div className="relative">
-                  <select
-                    value={priority}
-                    onChange={(e) => setPriority(e.target.value)}
-                    className="w-full appearance-none bg-slate-50 border border-slate-200 rounded-xl text-xs px-3.5 py-2.5 text-slate-900 outline-none focus:ring-2 focus:ring-red-100 focus:border-red-400 font-medium cursor-pointer transition-all pr-8"
-                  >
-                    {PRIORITIES.map((p) => (
-                      <option key={p} value={p}>{p}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
+                <CustomDropdown
+                  value={priority}
+                  options={PRIORITIES.map(p => ({
+                    value: p,
+                    label: p,
+                    dotColor: p === "High" ? "bg-red-500" : p === "Medium" ? "bg-amber-500" : "bg-blue-500"
+                  }))}
+                  onChange={(val) => setPriority(val)}
+                  variant="input"
+                />
               </div>
 
               {/* Assigned To */}

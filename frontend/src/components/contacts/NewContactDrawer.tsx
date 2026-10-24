@@ -5,6 +5,7 @@ import { X, User, Building2, Tag, ShieldCheck, Phone, Mail, Sliders } from "luci
 import { Contact } from "@/lib/mockData";
 import { api } from "@/lib/api";
 import { useToast } from "@/components/common/ToastProvider";
+import CustomDropdown from "@/components/common/CustomDropdown";
 
 interface NewContactDrawerProps {
   isOpen: boolean;
@@ -313,15 +314,12 @@ export default function NewContactDrawer({
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
                   Lifecycle Stage
                 </label>
-                <select
+                <CustomDropdown
                   value={lifecycleStage}
-                  onChange={(e) => setLifecycleStage(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs px-3.5 py-2.5 text-slate-900 font-semibold outline-none cursor-pointer"
-                >
-                  {LIFECYCLE_STAGES.map((st) => (
-                    <option key={st} value={st}>{st}</option>
-                  ))}
-                </select>
+                  options={LIFECYCLE_STAGES}
+                  onChange={(val) => setLifecycleStage(val)}
+                  variant="input"
+                />
               </div>
             </div>
 
@@ -329,33 +327,25 @@ export default function NewContactDrawer({
               <label className="block text-xs font-semibold text-slate-700 mb-1">
                 Assigned Owner
               </label>
-              <div className="relative">
-                <ShieldCheck className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                {teamMembers.length > 0 ? (
-                  <select
-                    value={assignedOwner}
-                    onChange={(e) => setAssignedOwner(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs pl-9 pr-3.5 py-2.5 text-slate-900 font-medium outline-none cursor-pointer"
-                  >
-                    {teamMembers.map((m) => (
-                      <option key={m.id} value={m.full_name}>
-                        {m.full_name} ({m.role === "ADMIN" ? "Admin" : m.role === "MANAGER" ? "Manager" : "Sales Rep"})
-                      </option>
-                    ))}
-                    {!teamMembers.some((m) => m.full_name === assignedOwner) && (
-                      <option value={assignedOwner}>{assignedOwner}</option>
-                    )}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={assignedOwner}
-                    onChange={(e) => setAssignedOwner(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs pl-9 pr-3.5 py-2.5 text-slate-900 font-medium outline-none"
-                    placeholder="Mohamed Thoufiq"
-                  />
-                )}
-              </div>
+              {teamMembers.length > 0 ? (
+                <CustomDropdown
+                  value={assignedOwner}
+                  options={teamMembers.map(m => ({
+                    value: m.full_name,
+                    label: `${m.full_name} (${m.role === "ADMIN" ? "Admin" : m.role === "MANAGER" ? "Manager" : "Sales Rep"})`
+                  }))}
+                  onChange={(val) => setAssignedOwner(val)}
+                  variant="input"
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={assignedOwner}
+                  onChange={(e) => setAssignedOwner(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 focus:border-red-500 focus:bg-white focus:ring-2 focus:ring-red-100 rounded-xl text-xs px-3.5 py-2.5 text-slate-900 font-medium outline-none"
+                  placeholder="Mohamed Thoufiq"
+                />
+              )}
             </div>
           </div>
 

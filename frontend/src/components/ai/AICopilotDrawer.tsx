@@ -17,8 +17,7 @@ import {
   RotateCcw,
   CheckCircle2,
   ChevronRight,
-  Loader2,
-  Eye
+  Loader2
 } from "lucide-react";
 import { api } from "@/lib/api";
 
@@ -69,7 +68,7 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
       id: "welcome",
       role: "assistant",
       content:
-        "👋 **Hello! I am your Zigmaa CRM AI Assistant.**\n\nI can explain all features, workflows, and best practices across the entire CRM — including **Contacts**, **Deals Kanban**, **Automations**, **AI Win Predictor**, **Calendar**, and **Invoices**.\n\nAsk me any question below or pick one of the quick topics to get started!",
+        "👋 **Hello! I am your Zigmaa AI Copilot.**\n\nI can assist you with your leads, pipeline deals, workflow automations, or any CRM feature. Ask me any question below to get started!",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     }
   ]);
@@ -125,31 +124,31 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
       };
     }
 
-    const summaryNumbers = pageState
-      ? {
-          visibleCount: pageState.visibleCount ?? pageState.totalRecords ?? 0,
-          totalRecords: pageState.totalRecords ?? 0,
-          sampleNames: pageState.sampleNames || []
-        }
-      : null;
-
     return {
       page: pathname,
       active_tab: activeTabName,
       active_item: openDrawerItem,
-      visible_summary: summaryNumbers,
+      visible_summary: pageState || { route: pathname, activeTab: activeTabName },
       user_role: role
     };
   };
 
   useEffect(() => {
-    if (isOpen) {
+    if (!isOpen) return;
+
+    const refreshContext = () => {
       setActiveContext(collectActiveUIContext());
-      setTimeout(() => {
-        inputRef.current?.focus();
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-      }, 150);
-    }
+    };
+
+    refreshContext();
+    const interval = setInterval(refreshContext, 1200);
+
+    setTimeout(() => {
+      inputRef.current?.focus();
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }, 150);
+
+    return () => clearInterval(interval);
   }, [isOpen, pathname]);
 
   useEffect(() => {
@@ -362,36 +361,6 @@ export default function AICopilotDrawer({ isOpen, onClose }: AICopilotDrawerProp
               <X className="w-4 h-4" />
             </button>
           </div>
-        </div>
-
-        {/* Real-time Screen Sight Banner */}
-        <div className="px-4 py-2 bg-gradient-to-r from-slate-50 via-slate-100/70 to-slate-50 border-b border-slate-200/80 flex items-center justify-between text-[11px] text-slate-600 shrink-0">
-          <div className="flex items-center gap-2 overflow-hidden text-ellipsis whitespace-nowrap">
-            <span className="relative flex h-2 w-2 shrink-0">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-            </span>
-            <span className="font-semibold text-slate-700 flex items-center gap-1">
-              <Eye className="w-3 h-3 text-slate-500" />
-              Live Sight:
-            </span>
-            <span className="font-mono bg-white px-1.5 py-0.5 rounded border border-slate-200 text-slate-800 text-[10px] font-semibold">
-              {pathname}
-            </span>
-            {activeContext?.active_tab && (
-              <span className="text-slate-500 font-medium">({activeContext.active_tab})</span>
-            )}
-          </div>
-          {activeContext?.active_item?.name ? (
-            <span className="bg-red-50 text-red-700 border border-red-200 font-semibold px-2 py-0.5 rounded-full text-[10px] shrink-0 truncate max-w-[160px] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-red-500 shrink-0"></span>
-              {activeContext.active_item.name}
-            </span>
-          ) : (
-            <span className="text-[10px] text-slate-400 font-medium shrink-0">
-              Read-Only Sales Guide
-            </span>
-          )}
         </div>
 
         {/* Explicit Warning/Error Banner */}

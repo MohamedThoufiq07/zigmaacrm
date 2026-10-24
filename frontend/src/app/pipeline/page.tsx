@@ -176,10 +176,20 @@ export default function PipelineDealsPage() {
   };
 
   const handleStageChange = async (dealId: number | string, newStage: string) => {
-    setDeals((prev) =>
-      prev.map((d) => (String(d.id) === String(dealId) ? { ...d, stage: newStage as any } : d))
-    );
-    await api.updateDeal(dealId, { stage: newStage as any });
+    setDeals((prev) => {
+      const next = prev.map((d) => (String(d.id) === String(dealId) ? { ...d, stage: newStage as any } : d));
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("zigmaa_deals", JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
+    try {
+      await api.updateDeal(dealId, { stage: newStage as any });
+    } catch (err) {
+      console.error("Failed to update deal stage:", err);
+    }
     toast.info("Pipeline Updated", `Deal moved to "${newStage}"`);
   };
 

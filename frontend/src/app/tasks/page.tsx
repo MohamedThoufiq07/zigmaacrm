@@ -226,6 +226,27 @@ export default function TasksPage() {
     });
   }, [tasks, activeTab, selectedStatus, searchQuery]);
 
+  // Publish real-time UI context for Zigmaa AI Copilot
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      (window as any).__ZIGMAA_PAGE_STATE = {
+        page: "/tasks",
+        screenName: "Tasks Management",
+        activeTab,
+        selectedStatus,
+        totalTasks: tasks.length,
+        visibleCount: filteredTasks.length,
+        sampleTasks: filteredTasks.slice(0, 5).map((t) => ({
+          title: t.title,
+          status: t.status,
+          priority: t.priority,
+          dueDate: t.due_date,
+          contact: t.contact_name
+        }))
+      };
+    }
+  }, [activeTab, selectedStatus, tasks, filteredTasks]);
+
   const toggleSelectAll = () => {
     if (selectedIds.size === paginatedTasks.length) {
       setSelectedIds(new Set());

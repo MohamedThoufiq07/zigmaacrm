@@ -6,6 +6,7 @@ class DealBase(BaseModel):
     title: str
     pipeline_id: Optional[str] = None
     stage_id: Optional[str] = None
+    stage: Optional[str] = None
     lead_id: Optional[str] = None
     contact_id: Optional[str] = None
     deal_value: float = 0.0
